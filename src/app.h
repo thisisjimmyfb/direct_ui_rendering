@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 #include <string>
 #include <vector>
+#include <chrono>
 
 // App owns the window, renderer, scene, UI system, and metrics.
 // It drives the frame loop and handles keyboard input.
@@ -16,6 +17,9 @@ class App {
 public:
     // Create window, initialise all subsystems, enter the frame loop.
     int run();
+
+    // Set timeout in seconds (0 = no timeout)
+    void setTimeout(int seconds);
 
 private:
     bool initWindow();
@@ -48,4 +52,8 @@ private:
 
     static constexpr uint32_t WINDOW_WIDTH  = 1280;
     static constexpr uint32_t WINDOW_HEIGHT = 720;
+
+    // Timeout tracking
+    int m_timeoutSeconds{0};
+    std::chrono::steady_clock::time_point m_startTime;
 };

@@ -1,12 +1,13 @@
-Read spec.md and direct_ui_rendering.md for the background on this project.
-Find the most important task from the following list and implement it. After task completion, remove the task (save this file), and prepend a brief summary of the task in ['PROGRESS.md'](PROGRESS.md).
+## Instruction
+Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md) for the background on this project.
+Find the most important task from the following list and implement it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section), and prepend a brief summary of the completed task along with completion date and timestamp in ['PROGRESS.md'](PROGRESS.md).
 
+## Pending Tasks
+- Investigate why the UI atlas fonts are not rendering
+- Investigate why the UI atlas fonts and upside down
+- Investigate why the metric overlay are in the lower left corner instead of upper left
 
-## Known Issues
+## Iterate Loop
+- run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
+- run build/build.sh and execute build/Debug/direct_ui_rendering.exe with a 10 second timeout, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
 
-## Wish List
-- the app needs to accept a commandline parameter to facilitate automated Ralph Loop: the parameter tells the app to exit in X amount of time. This should allow us to update the Iterate Loop section to run this project deterministically and exit within X seconds.
-
-## Iterate Loop (do not mark or remove tasks in this section after completion)
-- run build/test.sh and update this doc with more tasks based on output
-- run build/build.sh and execute build/Debug/direct_ui_rendering.exe and update this doc with more tasks based on output

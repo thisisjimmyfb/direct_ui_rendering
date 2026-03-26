@@ -14,9 +14,18 @@ int App::run()
 {
     if (!initWindow())      return 1;
     if (!initSubsystems())  return 1;
+
+    // Record start time for timeout calculation
+    m_startTime = std::chrono::steady_clock::now();
+
     mainLoop();
     cleanup();
     return 0;
+}
+
+void App::setTimeout(int seconds)
+{
+    m_timeoutSeconds = seconds;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +104,17 @@ bool App::initSubsystems()
 void App::mainLoop()
 {
     while (!glfwWindowShouldClose(m_window)) {
+        // Check timeout if enabled
+        if (m_timeoutSeconds > 0) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - m_startTime).count();
+            if (elapsed >= m_timeoutSeconds) {
+                printf("Timeout reached: %d seconds. Exiting.\n", m_timeoutSeconds);
+                glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+                break;
+            }
+        }
+
         glfwPollEvents();
         drawFrame();
     }

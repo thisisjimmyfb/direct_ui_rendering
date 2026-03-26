@@ -499,28 +499,39 @@ Enabled in Debug builds: `VK_LAYER_KHRONOS_validation`. Disabled in Release.
 
 ```
 direct_ui_rendering/
+├── assets/
+│   └── atlas.png					 # the atlas texture for our UI rendering system
+├── build/
+│   ├──build.sh						 # build the project
+│   ├──run.sh						 # run the project
+│   └──test.sh						 # run tests
 ├── spec/
 │   ├──direct_ui_rendering.md        # Original math reference
 │   ├──SPEC.md
 │   └──PROGRESS.md
 ├── src/
 │   ├── main.cpp                     # Entry point, window loop, input
-│   ├── app.cpp / app.h              # Top-level app: init, frame loop, cleanup
-│   ├── renderer.cpp / renderer.h    # Vulkan device, pipelines, render passes
-│   │                                #   init(headless: bool), RenderTarget abstraction
-│   ├── scene.cpp / scene.h          # Room geometry, light, animation matrix
-│   ├── ui_system.cpp / ui_system.h  # Atlas, glyph quads, vertex buffer
-│   ├── ui_surface.cpp / ui_surface.h  # computeSurfaceTransforms(), computeClipPlanes()
-│   ├── metrics.cpp / metrics.h      # Frame timer, VMA stats, HUD draw
+│   ├── app.h  			             # Top-level app: init, frame loop, cleanup
+│   ├── app.cpp
+│   ├── metrics.h      				 # Frame timer, VMA stats, HUD draw
+│   ├── metrics.cpp
+│   ├── renderer.h    				 # Vulkan device, pipelines, render passes
+│   ├── renderer.cpp
+│   ├── scene.h          			 # Room geometry, light, animation matrix
+│   ├── scene.cpp
+│   ├── ui_system.h  				 # Atlas, glyph quads, vertex buffer
+│   ├── ui_system.cpp
+│   ├── ui_surface.h  				 # computeSurfaceTransforms(), computeClipPlanes()
+│   ├── ui_surface.cpp
 │   └── vk_utils.h                   # Thin helpers: image barriers, buffer upload
 ├── shaders/
+│   ├── composite.frag
+│   ├── quad.vert
 │   ├── room.vert
 │   ├── room.frag
 │   ├── ui_direct.vert
 │   ├── ui_ortho.vert
-│   ├── ui.frag                      # UI_TEST_COLOR preprocessor hook
-│   ├── composite.frag
-│   └── quad.vert
+│   └── ui.frag                      # UI_TEST_COLOR preprocessor hook
 └── tests/
     ├── CMakeLists.txt
     ├── perf_reference.h             # Hardcoded performance regression baselines
