@@ -152,11 +152,12 @@ while true; do
         printf "  commit work to github? [Y/n] "
         read -r COMMIT_REPLY
     fi
-    if ! $AUTO || [[ "${COMMIT_REPLY,,}" != "n" ]]; then
+    if [[ ! -v COMMIT_REPLY || "${COMMIT_REPLY,,}" != "n" ]]; then
         commit_work "$iteration"
         echo ""
     fi
-
+	unset COMMIT_REPLY
+	
     if ! $AUTO; then
         printf "  press enter for iteration $((iteration + 1)), ctrl+c to stop... "
         read -r

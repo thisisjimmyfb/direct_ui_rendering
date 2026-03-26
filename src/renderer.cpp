@@ -51,7 +51,9 @@ bool Renderer::init(bool headless, GLFWwindow* window)
     if (!createPipelines())            return false;  // needs pipeline layout + render passes
     if (!createShadowResources())      return false;
     if (!createSurfaceQuadBuffer())    return false;
-    if (!createFramebuffers())         return false;  // needs render passes (m_mainPass, m_metricsPass)
+    if (!m_headless) {
+        if (!createFramebuffers())     return false;  // needs render passes (m_mainPass, m_metricsPass)
+    }
 
     return true;
 }
@@ -838,7 +840,8 @@ bool Renderer::createRenderPasses()
         colorAttach.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttach.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         colorAttach.initialLayout  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        colorAttach.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        colorAttach.finalLayout    = m_headless ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         VkAttachmentReference colorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 

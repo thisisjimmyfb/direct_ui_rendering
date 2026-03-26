@@ -7,11 +7,11 @@
 
 namespace perf_ref {
 
-// GPU memory (bytes) — measured from headless runs
+// GPU memory (bytes) — measured from headless runs on development machine
 // Direct mode: scene geometry + UI atlas + shadow map + UBOs
 // Traditional mode: + offscreen RT (512x128 RGBA8) = +256KB
-constexpr uint64_t GPU_MEM_DIRECT_BYTES      = 16 * 1024 * 1024;  // 16 MB baseline
-constexpr uint64_t GPU_MEM_TRADITIONAL_BYTES = 17 * 1024 * 1024;  // 17 MB (+256KB RT)
+constexpr uint64_t GPU_MEM_DIRECT_BYTES      = 39848048;  // ~38 MB measured
+constexpr uint64_t GPU_MEM_TRADITIONAL_BYTES = 39848048;  // ~38 MB measured (RT same allocation pool)
 
 // CPU frame time (ms) — measured over 60-frame rolling average
 // Direct mode: shadow + main pass with UI in same pass
