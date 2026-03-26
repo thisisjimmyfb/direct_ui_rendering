@@ -3,6 +3,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <vk_mem_alloc.h>
+#include <cmath>
 #include <cstdio>
 #include <stdexcept>
 
@@ -15,8 +16,9 @@ int App::run()
     if (!initWindow())      return 1;
     if (!initSubsystems())  return 1;
 
-    // Record start time for timeout calculation
-    m_startTime = std::chrono::steady_clock::now();
+    // Record start time for timeout calculation and first-frame delta time
+    m_startTime     = std::chrono::steady_clock::now();
+    m_lastFrameTime = m_startTime;
 
     mainLoop();
     cleanup();
@@ -45,6 +47,8 @@ bool App::initWindow()
 
     glfwSetWindowUserPointer(m_window, this);
     glfwSetKeyCallback(m_window, keyCallback);
+    glfwSetCursorPosCallback(m_window, cursorPosCallback);
+    glfwSetMouseButtonCallback(m_window, mouseButtonCallback);
     return true;
 }
 
@@ -130,16 +134,32 @@ void App::drawFrame()
         m_pendingModeToggle = false;
     }
 
-    m_time += 0.016f;
+    // Compute delta time for smooth camera movement
+    auto now = std::chrono::steady_clock::now();
+    float dt  = std::chrono::duration<float>(now - m_lastFrameTime).count();
+    if (dt > 0.1f) dt = 0.1f;  // clamp first-frame spike
+    m_lastFrameTime = now;
+
+    m_time += dt;
+
+    // WASD camera movement
+    glm::vec3 camFront(
+        std::cos(m_camYaw) * std::cos(m_camPitch),
+        std::sin(m_camPitch),
+        std::sin(m_camYaw) * std::cos(m_camPitch));
+    glm::vec3 camRight = glm::normalize(glm::cross(camFront, glm::vec3(0, 1, 0)));
+    const float camSpeed = 3.0f * dt;
+    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) m_camPos += camFront * camSpeed;
+    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) m_camPos -= camFront * camSpeed;
+    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) m_camPos -= camRight * camSpeed;
+    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) m_camPos += camRight * camSpeed;
 
     // Compute world-space surface corners for this frame.
     glm::vec3 P_00, P_10, P_01, P_11;
     m_scene.worldCorners(m_time, P_00, P_10, P_01, P_11);
 
-    // Fixed look-at camera (Y flipped for Vulkan NDC).
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.5f, 4.0f),
-                                 glm::vec3(0.0f, 1.5f, 0.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    // Camera look-at from current position and orientation
+    glm::mat4 view = glm::lookAt(m_camPos, m_camPos + camFront, glm::vec3(0, 1, 0));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f),
                                       static_cast<float>(WINDOW_WIDTH) / WINDOW_HEIGHT,
                                       0.1f, 100.0f);
@@ -275,6 +295,51 @@ void App::onKey(int key, int action)
     } else if (key == GLFW_KEY_MINUS || key == GLFW_KEY_KP_SUBTRACT) {
         m_depthBias -= 0.0001f;
         printf("depthBias = %.5f\n", m_depthBias);
+    } else if (key == GLFW_KEY_ESCAPE && m_mouseCapture) {
+        m_mouseCapture = false;
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+}
+
+void App::cursorPosCallback(GLFWwindow* win, double x, double y)
+{
+    auto* app = static_cast<App*>(glfwGetWindowUserPointer(win));
+    app->onMouseMove(x, y);
+}
+
+void App::mouseButtonCallback(GLFWwindow* win, int button, int action, int /*mods*/)
+{
+    auto* app = static_cast<App*>(glfwGetWindowUserPointer(win));
+    app->onMouseButton(button, action);
+}
+
+void App::onMouseMove(double x, double y)
+{
+    if (!m_mouseCapture) return;
+    if (m_firstMouse) {
+        m_lastMouseX = x;
+        m_lastMouseY = y;
+        m_firstMouse = false;
+    }
+    double dx = x - m_lastMouseX;
+    double dy = m_lastMouseY - y;  // reversed: y increases downward
+    m_lastMouseX = x;
+    m_lastMouseY = y;
+
+    const float sensitivity = 0.002f;
+    m_camYaw   += static_cast<float>(dx) * sensitivity;
+    m_camPitch += static_cast<float>(dy) * sensitivity;
+    m_camPitch  = glm::clamp(m_camPitch, -glm::radians(89.0f), glm::radians(89.0f));
+}
+
+void App::onMouseButton(int button, int action)
+{
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        m_mouseCapture = !m_mouseCapture;
+        m_firstMouse   = true;
+        glfwSetInputMode(m_window,
+                         GLFW_CURSOR,
+                         m_mouseCapture ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
     }
 }
 

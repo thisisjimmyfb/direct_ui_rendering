@@ -73,12 +73,14 @@ void Scene::init()
 
 glm::mat4 Scene::animationMatrix(float t) const
 {
-    // Gentle oscillation: rotate around Y-axis by ±20° and translate to
-    // the far wall of the room.
-    float angle = glm::radians(20.0f) * std::sin(t * 0.5f);
+    // Slow oscillation with larger lateral translations so the quad
+    // visibly drifts across the far wall.
+    float angle   = glm::radians(15.0f) * std::sin(t * 0.25f);
+    float lateralX = 1.2f * std::sin(t * 0.18f);   // ±1.2 m side-to-side
+    float lateralY = 0.35f * std::sin(t * 0.22f);  // ±0.35 m up-down
 
     glm::mat4 m = glm::mat4(1.0f);
-    m = glm::translate(m, glm::vec3(0.0f, 1.5f, -2.5f)); // position on far wall
+    m = glm::translate(m, glm::vec3(lateralX, 1.5f + lateralY, -2.5f));
     m = glm::rotate(m, angle, glm::vec3(0, 1, 0));
     return m;
 }

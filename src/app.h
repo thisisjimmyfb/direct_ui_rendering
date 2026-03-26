@@ -7,6 +7,7 @@
 #include "metrics.h"
 
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #include <string>
 #include <vector>
 #include <chrono>
@@ -29,7 +30,11 @@ private:
 
     // Input callbacks (static, forwarded to instance methods)
     static void keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods);
+    static void cursorPosCallback(GLFWwindow* win, double x, double y);
+    static void mouseButtonCallback(GLFWwindow* win, int button, int action, int mods);
     void onKey(int key, int action);
+    void onMouseMove(double x, double y);
+    void onMouseButton(int button, int action);
 
     void drawFrame();
 
@@ -44,6 +49,16 @@ private:
     bool       m_pendingModeToggle{false};
     float      m_depthBias{Renderer::DEPTH_BIAS_DEFAULT};
     float      m_time{0.0f};
+
+    // Camera state
+    glm::vec3 m_camPos{0.0f, 1.5f, 4.0f};
+    float     m_camYaw{-1.5707963f};   // -π/2, looking toward -Z
+    float     m_camPitch{0.0f};
+    double    m_lastMouseX{0.0};
+    double    m_lastMouseY{0.0};
+    bool      m_firstMouse{true};
+    bool      m_mouseCapture{false};
+    std::chrono::steady_clock::time_point m_lastFrameTime{};
 
     VkCommandBuffer m_cmd{VK_NULL_HANDLE};
     VkBuffer        m_hudVtxBuf{VK_NULL_HANDLE};
