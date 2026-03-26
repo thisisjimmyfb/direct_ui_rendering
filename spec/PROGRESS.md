@@ -21,30 +21,30 @@ Find the most important unmarked task from the following list and implement it. 
 
 ## Window, Swapchain & Presentation
 - [x] GLFW window creation, Vulkan surface, swapchain with image views
-- [ ] RenderTarget abstraction: wraps VkImage+VkImageView; swapchain image in normal mode, plain VkImage in headless
-- [ ] Renderer::init(headless=true): skip GLFW surface/swapchain; all pipelines and passes init identically
+- [x] RenderTarget abstraction: wraps VkImage+VkImageView; swapchain image in normal mode, plain VkImage in headless
+- [x] Renderer::init(headless=true): skip GLFW surface/swapchain; all pipelines and passes init identically
 
 ## Scene Geometry & Lighting
-- [ ] Hardcoded room mesh: floor, ceiling, 4 walls as vertex/index data compiled into the binary
-- [ ] UI surface quad: local corner geometry (P_00/P_10/P_01/P_11) and looping M_anim(t) animation
-- [ ] Directional light: configurable direction hardcoded at startup, lightViewProj for shadow map
+- [x] Hardcoded room mesh: floor, ceiling, 4 walls as vertex/index data compiled into the binary
+- [x] UI surface quad: local corner geometry (P_00/P_10/P_01/P_11) and looping M_anim(t) animation
+- [x] Directional light: configurable direction hardcoded at startup, lightViewProj for shadow map
 
 ## Shadow Mapping
 - [x] Shadow pass: depth-only render pass + framebuffer (D32, 1024×1024) rendered from light POV
-- [ ] room.vert/room.frag: Blinn-Phong + sampler2DShadow with 2×2 PCF tap
-- [ ] Pipeline barrier: shadow depth DEPTH_STENCIL_WRITE → SHADER_READ before main scene pass
+- [x] room.vert/room.frag: Blinn-Phong + sampler2DShadow with 2×2 PCF tap
+- [x] Pipeline barrier: shadow depth DEPTH_STENCIL_WRITE → SHADER_READ before main scene pass
 
 ## UI System
-- [ ] Glyph atlas: load 512×512 RGBA PNG via stb_image, upload to device-local VkImage (set 2 binding 0)
-- [ ] ASCII UV lookup table: character code → UV rect in atlas (fixed 32×32 glyph cell)
-- [ ] "Hello World" tessellation: per-glyph quads with inUIPos + inUITexCoord; upload once to device-local vertex buffer
+- [x] Glyph atlas: load 512×512 RGBA PNG via stb_image, upload to device-local VkImage (set 2 binding 0)
+- [x] ASCII UV lookup table: character code → UV rect in atlas (fixed 32×32 glyph cell)
+- [x] "Hello World" tessellation: per-glyph quads with inUIPos + inUITexCoord; upload once to device-local vertex buffer
 
 ## Shaders
-- [ ] ui_direct.vert: M_total transform, depth bias, gl_ClipDistance[4] from precomputed clip planes
-- [ ] ui_ortho.vert: push constant ortho matrix (used by RT pass and metrics overlay)
-- [ ] ui.frag: atlas texture sample + #ifdef UI_TEST_COLOR magenta override for render tests
-- [ ] composite.frag: sample offscreen UI RT (set 2 binding 1) onto surface quad
-- [ ] quad.vert: passthrough with UVs for composite draw
+- [x] ui_direct.vert: M_total transform, depth bias, gl_ClipDistance[4] from precomputed clip planes
+- [x] ui_ortho.vert: push constant ortho matrix (used by RT pass and metrics overlay)
+- [x] ui.frag: atlas texture sample + #ifdef UI_TEST_COLOR magenta override for render tests
+- [x] composite.frag: sample offscreen UI RT (set 2 binding 1) onto surface quad
+- [x] quad.vert: passthrough with UVs for composite draw
 
 ## Render Passes & Pipelines
 - [x] SceneUBO and SurfaceUBO struct definitions and per-frame host-visible buffer allocation
@@ -58,26 +58,26 @@ Find the most important unmarked task from the following list and implement it. 
 - [x] pipe_metrics: orthographic HUD reusing ui_ortho.vert / ui.frag
 
 ## Traditional Rendering Mode
-- [ ] Offscreen UI RT: RGBA8 512×128 VkImage, allocated lazily on first toggle to traditional mode
-- [ ] UI RT pass: render glyph quads into offscreen RT via pipe_ui_rt
-- [ ] Image barrier: color attachment WRITE → SHADER_READ before main scene pass samples the RT
-- [ ] Composite draw: surface quad rendered with pipe_composite sampling the UI RT
+- [x] Offscreen UI RT: RGBA8 512×128 VkImage, allocated lazily on first toggle to traditional mode
+- [x] UI RT pass: render glyph quads into offscreen RT via pipe_ui_rt
+- [x] Image barrier: color attachment WRITE → SHADER_READ before main scene pass samples the RT
+- [x] Composite draw: surface quad rendered with pipe_composite sampling the UI RT
 
 ## Direct Rendering Mode
-- [ ] Per-frame SurfaceUBO update: compute M_total, M_world, clip planes from M_anim(t) and current VP
-- [ ] Glyph quads drawn directly in main scene pass via pipe_ui_direct (no offscreen RT)
-- [ ] Depth bias: DEPTH_BIAS_DEFAULT = 0.0001; adjustable at runtime via +/- keys (print to stdout)
+- [x] Per-frame SurfaceUBO update: compute M_total, M_world, clip planes from M_anim(t) and current VP
+- [x] Glyph quads drawn directly in main scene pass via pipe_ui_direct (no offscreen RT)
+- [x] Depth bias: DEPTH_BIAS_DEFAULT = 0.0001; adjustable at runtime via +/- keys (print to stdout)
 
 ## Frame Loop & Synchronization
-- [ ] Per-frame SceneUBO update: view/proj from camera, light params, lightViewProj
-- [ ] Command buffer recording order: shadow → (UI RT if traditional) → main scene → metrics overlay
-- [ ] Swapchain acquire/present semaphores; pipeline stage barriers per spec §6.6
-- [ ] Mode toggle on Space: takes effect at frame start; RT allocated on demand
+- [x] Per-frame SceneUBO update: view/proj from camera, light params, lightViewProj
+- [x] Command buffer recording order: shadow → (UI RT if traditional) → main scene → metrics overlay
+- [x] Swapchain acquire/present semaphores; pipeline stage barriers per spec §6.6
+- [x] Mode toggle on Space: takes effect at frame start; RT allocated on demand
 
 ## Metrics Overlay
-- [ ] CPU frame timer: std::chrono rolling average over last 60 frames
-- [ ] VMA total allocated bytes queried each frame
-- [ ] HUD tessellation: format Mode/Frame/GPU Mem/MSAA strings into glyph quads each frame
+- [x] CPU frame timer: std::chrono rolling average over last 60 frames
+- [x] VMA total allocated bytes queried each frame
+- [x] HUD tessellation: format Mode/Frame/GPU Mem/MSAA strings into glyph quads each frame
 - [ ] HUD drawn via pipe_metrics in metrics overlay pass (top-left, one line per field)
 
 ## Testing

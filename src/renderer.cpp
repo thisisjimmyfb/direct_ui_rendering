@@ -50,6 +50,7 @@ bool Renderer::init(bool headless, GLFWwindow* window)
     if (!createUniformBuffers())       return false;  // writes UBO descriptors into sets
     if (!createPipelines())            return false;  // needs pipeline layout + render passes
     if (!createShadowResources())      return false;
+    if (!createSurfaceQuadBuffer())    return false;
 
     return true;
 }
@@ -81,6 +82,14 @@ void Renderer::cleanup()
     if (m_shadowSampler) { vkDestroySampler    (m_device, m_shadowSampler, nullptr); m_shadowSampler = VK_NULL_HANDLE; }
     if (m_shadowView)    { vkDestroyImageView  (m_device, m_shadowView,    nullptr); m_shadowView    = VK_NULL_HANDLE; }
 
+    // Shadow pipeline
+    if (m_pipeShadow) { vkDestroyPipeline(m_device, m_pipeShadow, nullptr); m_pipeShadow = VK_NULL_HANDLE; }
+
+    // UI RT resources
+    if (m_uiRTFB)      { vkDestroyFramebuffer(m_device, m_uiRTFB,      nullptr); m_uiRTFB      = VK_NULL_HANDLE; }
+    if (m_uiRTSampler) { vkDestroySampler    (m_device, m_uiRTSampler, nullptr); m_uiRTSampler = VK_NULL_HANDLE; }
+    if (m_uiRTView)    { vkDestroyImageView  (m_device, m_uiRTView,    nullptr); m_uiRTView    = VK_NULL_HANDLE; }
+
     // Swapchain (destroys image views + VkSwapchainKHR)
     destroySwapchain();
     if (m_surface) {
@@ -105,7 +114,11 @@ void Renderer::cleanup()
     }
     if (m_allocator) {
         // Shadow image is VMA-allocated — destroy before allocator teardown.
-        if (m_shadowImage) { vmaDestroyImage(m_allocator, m_shadowImage, m_shadowAlloc); m_shadowImage = VK_NULL_HANDLE; }
+        if (m_shadowImage)    { vmaDestroyImage (m_allocator, m_shadowImage,    m_shadowAlloc);    m_shadowImage    = VK_NULL_HANDLE; }
+        if (m_uiRTImage)      { vmaDestroyImage (m_allocator, m_uiRTImage,      m_uiRTAlloc);      m_uiRTImage      = VK_NULL_HANDLE; }
+        if (m_roomVtxBuf)     { vmaDestroyBuffer(m_allocator, m_roomVtxBuf,     m_roomVtxAlloc);   m_roomVtxBuf     = VK_NULL_HANDLE; }
+        if (m_roomIdxBuf)     { vmaDestroyBuffer(m_allocator, m_roomIdxBuf,     m_roomIdxAlloc);   m_roomIdxBuf     = VK_NULL_HANDLE; }
+        if (m_surfaceQuadBuf) { vmaDestroyBuffer(m_allocator, m_surfaceQuadBuf, m_surfaceQuadAlloc); m_surfaceQuadBuf = VK_NULL_HANDLE; }
         vmaDestroyAllocator(m_allocator);
         m_allocator = VK_NULL_HANDLE;
     }
@@ -162,29 +175,176 @@ uint64_t Renderer::getTotalAllocatedBytes() const
 }
 
 // ---------------------------------------------------------------------------
-// Command buffer recording — stubs (TODO: implement each pass)
+// Command buffer recording
 // ---------------------------------------------------------------------------
 
-void Renderer::recordShadowPass(VkCommandBuffer /*cmd*/)
+void Renderer::recordShadowPass(VkCommandBuffer cmd)
 {
-    // TODO: begin shadow render pass, bind pipe_room with shadow variant, draw room + surface quad
+    VkClearValue clearDepth{};
+    clearDepth.depthStencil = {1.0f, 0};
+
+    VkRenderPassBeginInfo rpBI{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rpBI.renderPass      = m_shadowPass;
+    rpBI.framebuffer     = m_shadowFB;
+    rpBI.renderArea      = {{0, 0}, {SHADOW_MAP_SIZE, SHADOW_MAP_SIZE}};
+    rpBI.clearValueCount = 1;
+    rpBI.pClearValues    = &clearDepth;
+
+    vkCmdBeginRenderPass(cmd, &rpBI, VK_SUBPASS_CONTENTS_INLINE);
+
+    if (m_pipeShadow != VK_NULL_HANDLE && m_roomIdxCount > 0 &&
+        m_roomVtxBuf != VK_NULL_HANDLE) {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeShadow);
+
+        VkViewport vp{0.0f, 0.0f, (float)SHADOW_MAP_SIZE, (float)SHADOW_MAP_SIZE, 0.0f, 1.0f};
+        VkRect2D   sc{{0, 0}, {SHADOW_MAP_SIZE, SHADOW_MAP_SIZE}};
+        vkCmdSetViewport(cmd, 0, 1, &vp);
+        vkCmdSetScissor(cmd, 0, 1, &sc);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                0, 1, &m_set0, 0, nullptr);
+
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &m_roomVtxBuf, &offset);
+        vkCmdBindIndexBuffer(cmd, m_roomIdxBuf, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(cmd, m_roomIdxCount, 1, 0, 0, 0);
+    }
+
+    vkCmdEndRenderPass(cmd);
 }
 
-void Renderer::recordUIRTPass(VkCommandBuffer /*cmd*/)
+void Renderer::recordUIRTPass(VkCommandBuffer cmd,
+                              VkBuffer uiVtxBuf, uint32_t uiVtxCount,
+                              const glm::mat4& ortho)
 {
-    // TODO: begin UI RT render pass, bind pipe_ui_rt, draw glyph quads with orthographic projection
+    if (!ensureUIRTAllocated()) return;
+
+    VkClearValue clearColor{};
+    clearColor.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+
+    VkRenderPassBeginInfo rpBI{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rpBI.renderPass      = m_uiRTPass;
+    rpBI.framebuffer     = m_uiRTFB;
+    rpBI.renderArea      = {{0, 0}, {W_UI, H_UI}};
+    rpBI.clearValueCount = 1;
+    rpBI.pClearValues    = &clearColor;
+
+    vkCmdBeginRenderPass(cmd, &rpBI, VK_SUBPASS_CONTENTS_INLINE);
+
+    if (m_pipeUIRT != VK_NULL_HANDLE && uiVtxCount > 0 && uiVtxBuf != VK_NULL_HANDLE) {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeUIRT);
+
+        VkViewport vp{0.0f, 0.0f, (float)W_UI, (float)H_UI, 0.0f, 1.0f};
+        VkRect2D   sc{{0, 0}, {W_UI, H_UI}};
+        vkCmdSetViewport(cmd, 0, 1, &vp);
+        vkCmdSetScissor(cmd, 0, 1, &sc);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                2, 1, &m_set2, 0, nullptr);
+        vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                           0, sizeof(glm::mat4), &ortho);
+
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &uiVtxBuf, &offset);
+        vkCmdDraw(cmd, uiVtxCount, 1, 0, 0);
+    }
+
+    vkCmdEndRenderPass(cmd);
 }
 
-void Renderer::recordMainPass(VkCommandBuffer /*cmd*/, RenderTarget& /*rt*/, bool /*directMode*/)
+void Renderer::recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool directMode,
+                              VkBuffer uiVtxBuf, uint32_t uiVtxCount)
 {
-    // TODO: begin main MSAA pass, draw room via pipe_room,
-    //       if directMode: draw UI via pipe_ui_direct,
-    //       else:          draw surface quad via pipe_composite
+    VkClearValue clearValues[3]{};
+    clearValues[0].color        = {{0.1f, 0.1f, 0.15f, 1.0f}};  // MSAA color clear
+    clearValues[1].depthStencil = {1.0f, 0};                     // depth clear
+    // clearValues[2]: resolve target — DONT_CARE (written by resolve)
+
+    VkRenderPassBeginInfo rpBI{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rpBI.renderPass      = m_mainPass;
+    rpBI.framebuffer     = rt.framebuffer;
+    rpBI.renderArea      = {{0, 0}, {rt.width, rt.height}};
+    rpBI.clearValueCount = 3;
+    rpBI.pClearValues    = clearValues;
+
+    vkCmdBeginRenderPass(cmd, &rpBI, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp{0.0f, 0.0f, (float)rt.width, (float)rt.height, 0.0f, 1.0f};
+    VkRect2D   sc{{0, 0}, {rt.width, rt.height}};
+    vkCmdSetViewport(cmd, 0, 1, &vp);
+    vkCmdSetScissor(cmd, 0, 1, &sc);
+
+    // Room geometry
+    if (m_pipeRoom != VK_NULL_HANDLE && m_roomIdxCount > 0 && m_roomVtxBuf != VK_NULL_HANDLE) {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeRoom);
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                0, 1, &m_set0, 0, nullptr);
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &m_roomVtxBuf, &offset);
+        vkCmdBindIndexBuffer(cmd, m_roomIdxBuf, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(cmd, m_roomIdxCount, 1, 0, 0, 0);
+    }
+
+    if (directMode) {
+        // Direct mode: render glyph quads with M_total transform + clip distances
+        if (m_pipeUIDirect != VK_NULL_HANDLE && uiVtxCount > 0 && uiVtxBuf != VK_NULL_HANDLE) {
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeUIDirect);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                    1, 1, &m_set1, 0, nullptr);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                    2, 1, &m_set2, 0, nullptr);
+            VkDeviceSize offset = 0;
+            vkCmdBindVertexBuffers(cmd, 0, 1, &uiVtxBuf, &offset);
+            vkCmdDraw(cmd, uiVtxCount, 1, 0, 0);
+        }
+    } else {
+        // Traditional mode: composite the offscreen UI RT onto the animated surface quad
+        if (m_pipeComposite != VK_NULL_HANDLE && m_surfaceQuadBuf != VK_NULL_HANDLE) {
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeComposite);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                    0, 1, &m_set0, 0, nullptr);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                    2, 1, &m_set2, 0, nullptr);
+            VkDeviceSize offset = 0;
+            vkCmdBindVertexBuffers(cmd, 0, 1, &m_surfaceQuadBuf, &offset);
+            vkCmdDraw(cmd, 6, 1, 0, 0);
+        }
+    }
+
+    vkCmdEndRenderPass(cmd);
 }
 
-void Renderer::recordMetricsPass(VkCommandBuffer /*cmd*/, RenderTarget& /*rt*/)
+void Renderer::recordMetricsPass(VkCommandBuffer cmd, RenderTarget& rt,
+                                 VkBuffer hudVtxBuf, uint32_t hudVtxCount,
+                                 const glm::mat4& ortho)
 {
-    // TODO: begin metrics overlay pass, bind pipe_metrics, draw HUD glyph quads
+    VkRenderPassBeginInfo rpBI{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rpBI.renderPass      = m_metricsPass;
+    rpBI.framebuffer     = rt.metricsFramebuffer;
+    rpBI.renderArea      = {{0, 0}, {rt.width, rt.height}};
+    rpBI.clearValueCount = 0;  // LOAD_OP_LOAD — preserve main pass output
+
+    vkCmdBeginRenderPass(cmd, &rpBI, VK_SUBPASS_CONTENTS_INLINE);
+
+    if (m_pipeMetrics != VK_NULL_HANDLE && hudVtxCount > 0 && hudVtxBuf != VK_NULL_HANDLE) {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeMetrics);
+
+        VkViewport vp{0.0f, 0.0f, (float)rt.width, (float)rt.height, 0.0f, 1.0f};
+        VkRect2D   sc{{0, 0}, {rt.width, rt.height}};
+        vkCmdSetViewport(cmd, 0, 1, &vp);
+        vkCmdSetScissor(cmd, 0, 1, &sc);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                2, 1, &m_set2, 0, nullptr);
+        vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                           0, sizeof(glm::mat4), &ortho);
+
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &hudVtxBuf, &offset);
+        vkCmdDraw(cmd, hudVtxCount, 1, 0, 0);
+    }
+
+    vkCmdEndRenderPass(cmd);
 }
 
 // ---------------------------------------------------------------------------
@@ -495,6 +655,8 @@ bool Renderer::createSwapchain()
     if (vkCreateSemaphore(m_device, &semCI,   nullptr, &m_renderFinished) != VK_SUCCESS) return false;
     if (vkCreateFence    (m_device, &fenceCI, nullptr, &m_inFlightFence)  != VK_SUCCESS) return false;
 
+    if (!createFramebuffers()) return false;
+
     return true;
 }
 
@@ -677,7 +839,7 @@ bool Renderer::createRenderPasses()
         colorAttach.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttach.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         colorAttach.initialLayout  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        colorAttach.finalLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorAttach.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         VkAttachmentReference colorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
@@ -686,11 +848,21 @@ bool Renderer::createRenderPasses()
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments    = &colorRef;
 
+        VkSubpassDependency metricsDep{};
+        metricsDep.srcSubpass    = VK_SUBPASS_EXTERNAL;
+        metricsDep.dstSubpass    = 0;
+        metricsDep.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        metricsDep.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        metricsDep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        metricsDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
         VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         rpci.attachmentCount = 1;
         rpci.pAttachments    = &colorAttach;
         rpci.subpassCount    = 1;
         rpci.pSubpasses      = &subpass;
+        rpci.dependencyCount = 1;
+        rpci.pDependencies   = &metricsDep;
 
         if (vkCreateRenderPass(m_device, &rpci, nullptr, &m_metricsPass) != VK_SUCCESS)
             return false;
@@ -815,14 +987,15 @@ bool Renderer::createPipelines()
     VkShaderModule fsUI        = loadShaderModule("ui.frag.spv");
     VkShaderModule fsComposite = loadShaderModule("composite.frag.spv");
     VkShaderModule vsQuad      = loadShaderModule("quad.vert.spv");
+    VkShaderModule vsShadow    = loadShaderModule("shadow.vert.spv");
 
     auto destroyModules = [&]() {
         auto d = [&](VkShaderModule m) { if (m) vkDestroyShaderModule(m_device, m, nullptr); };
         d(vsRoom); d(fsRoom); d(vsUIDirect); d(vsUIOrtho);
-        d(fsUI); d(fsComposite); d(vsQuad);
+        d(fsUI); d(fsComposite); d(vsQuad); d(vsShadow);
     };
 
-    if (!vsRoom || !fsRoom || !vsUIDirect || !vsUIOrtho || !fsUI || !fsComposite || !vsQuad) {
+    if (!vsRoom || !fsRoom || !vsUIDirect || !vsUIOrtho || !fsUI || !fsComposite || !vsQuad || !vsShadow) {
         destroyModules();
         return false;
     }
@@ -895,7 +1068,6 @@ bool Renderer::createPipelines()
     uiVertexInput.pVertexAttributeDescriptions    = uiAttrs;
 
     // Vertex input: composite quad (pos:vec3, uv:vec2 = 20 bytes).
-    struct QuadVertex { glm::vec3 pos; glm::vec2 uv; };
     VkVertexInputBindingDescription quadBinding{0, sizeof(QuadVertex), VK_VERTEX_INPUT_RATE_VERTEX};
     VkVertexInputAttributeDescription quadAttrs[2]{
         {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(QuadVertex, pos)},
@@ -907,6 +1079,59 @@ bool Renderer::createPipelines()
     quadVertexInput.pVertexBindingDescriptions      = &quadBinding;
     quadVertexInput.vertexAttributeDescriptionCount = 2;
     quadVertexInput.pVertexAttributeDescriptions    = quadAttrs;
+
+    // --- 0. pipe_shadow: depth-only, renders room geometry using lightViewProj ---
+    {
+        VkPipelineShaderStageCreateInfo stage{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
+        stage.stage  = VK_SHADER_STAGE_VERTEX_BIT;
+        stage.module = vsShadow;
+        stage.pName  = "main";
+
+        VkPipelineRasterizationStateCreateInfo raster{
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        raster.polygonMode             = VK_POLYGON_MODE_FILL;
+        raster.cullMode                = VK_CULL_MODE_FRONT_BIT;  // front-face culling for shadow maps
+        raster.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        raster.lineWidth               = 1.0f;
+        raster.depthBiasEnable         = VK_TRUE;
+        raster.depthBiasConstantFactor = 1.25f;
+        raster.depthBiasSlopeFactor    = 1.75f;
+
+        VkPipelineMultisampleStateCreateInfo msaa{
+            VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        msaa.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depth{
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+        depth.depthTestEnable  = VK_TRUE;
+        depth.depthWriteEnable = VK_TRUE;
+        depth.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+        // Depth-only pass: no color attachments
+        VkPipelineColorBlendStateCreateInfo colorBlend{
+            VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+        colorBlend.attachmentCount = 0;
+
+        VkGraphicsPipelineCreateInfo pci{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        pci.stageCount          = 1;
+        pci.pStages             = &stage;
+        pci.pVertexInputState   = &roomVertexInput;
+        pci.pInputAssemblyState = &inputAssembly;
+        pci.pViewportState      = &viewportState;
+        pci.pRasterizationState = &raster;
+        pci.pMultisampleState   = &msaa;
+        pci.pDepthStencilState  = &depth;
+        pci.pColorBlendState    = &colorBlend;
+        pci.pDynamicState       = &dynState;
+        pci.layout              = m_pipelineLayout;
+        pci.renderPass          = m_shadowPass;
+
+        if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pci, nullptr, &m_pipeShadow)
+                != VK_SUCCESS) {
+            destroyModules();
+            return false;
+        }
+    }
 
     // --- 1. pipe_room: Blinn-Phong room geometry, depth test+write, 4x MSAA ---
     {
@@ -1300,6 +1525,19 @@ bool Renderer::createShadowResources()
 
 void Renderer::destroySwapchain()
 {
+    // MSAA transient attachments
+    if (m_msaaColorView) { vkDestroyImageView(m_device, m_msaaColorView, nullptr); m_msaaColorView = VK_NULL_HANDLE; }
+    if (m_msaaDepthView) { vkDestroyImageView(m_device, m_msaaDepthView, nullptr); m_msaaDepthView = VK_NULL_HANDLE; }
+    if (m_msaaColorImg && m_allocator) { vmaDestroyImage(m_allocator, m_msaaColorImg, m_msaaColorAlloc); m_msaaColorImg = VK_NULL_HANDLE; }
+    if (m_msaaDepthImg && m_allocator) { vmaDestroyImage(m_allocator, m_msaaDepthImg, m_msaaDepthAlloc); m_msaaDepthImg = VK_NULL_HANDLE; }
+
+    // Per-swapchain framebuffers
+    for (auto& rt : m_swapRTs) {
+        if (rt.framebuffer)        vkDestroyFramebuffer(m_device, rt.framebuffer,        nullptr);
+        if (rt.metricsFramebuffer) vkDestroyFramebuffer(m_device, rt.metricsFramebuffer, nullptr);
+    }
+    m_swapRTs.clear();
+
     for (auto iv : m_swapImageViews)
         vkDestroyImageView(m_device, iv, nullptr);
     m_swapImageViews.clear();
@@ -1309,4 +1547,323 @@ void Renderer::destroySwapchain()
         m_swapchain = VK_NULL_HANDLE;
     }
     m_swapImages.clear();
+}
+
+// ---------------------------------------------------------------------------
+// createFramebuffers — MSAA transient images + per-swapchain FBs
+// ---------------------------------------------------------------------------
+
+bool Renderer::createFramebuffers()
+{
+    // MSAA color image (4x, same format as swapchain)
+    {
+        VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        ci.imageType     = VK_IMAGE_TYPE_2D;
+        ci.format        = m_colorFormat;
+        ci.extent        = {m_swapExtent.width, m_swapExtent.height, 1};
+        ci.mipLevels     = 1;
+        ci.arrayLayers   = 1;
+        ci.samples       = VK_SAMPLE_COUNT_4_BIT;
+        ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        ci.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+        ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VmaAllocationCreateInfo ai{};
+        ai.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        if (vmaCreateImage(m_allocator, &ci, &ai,
+                           &m_msaaColorImg, &m_msaaColorAlloc, nullptr) != VK_SUCCESS)
+            return false;
+
+        VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewCI.image    = m_msaaColorImg;
+        viewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewCI.format   = m_colorFormat;
+        viewCI.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        if (vkCreateImageView(m_device, &viewCI, nullptr, &m_msaaColorView) != VK_SUCCESS)
+            return false;
+    }
+
+    // MSAA depth image (4x, D32)
+    {
+        VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        ci.imageType     = VK_IMAGE_TYPE_2D;
+        ci.format        = VK_FORMAT_D32_SFLOAT;
+        ci.extent        = {m_swapExtent.width, m_swapExtent.height, 1};
+        ci.mipLevels     = 1;
+        ci.arrayLayers   = 1;
+        ci.samples       = VK_SAMPLE_COUNT_4_BIT;
+        ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        ci.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+        ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VmaAllocationCreateInfo ai{};
+        ai.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        if (vmaCreateImage(m_allocator, &ci, &ai,
+                           &m_msaaDepthImg, &m_msaaDepthAlloc, nullptr) != VK_SUCCESS)
+            return false;
+
+        VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewCI.image    = m_msaaDepthImg;
+        viewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewCI.format   = VK_FORMAT_D32_SFLOAT;
+        viewCI.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+        if (vkCreateImageView(m_device, &viewCI, nullptr, &m_msaaDepthView) != VK_SUCCESS)
+            return false;
+    }
+
+    // Per-swapchain-image render targets and framebuffers
+    m_swapRTs.resize(m_swapImages.size());
+    for (uint32_t i = 0; i < static_cast<uint32_t>(m_swapImages.size()); ++i) {
+        auto& rt = m_swapRTs[i];
+        rt.image       = m_swapImages[i];
+        rt.imageView   = m_swapImageViews[i];
+        rt.width       = m_swapExtent.width;
+        rt.height      = m_swapExtent.height;
+        rt.isSwapchain = true;
+
+        // Main pass FB: 3 attachments — MSAA color, MSAA depth, resolve target
+        {
+            VkImageView attachments[3] = {m_msaaColorView, m_msaaDepthView, m_swapImageViews[i]};
+            VkFramebufferCreateInfo fbci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+            fbci.renderPass      = m_mainPass;
+            fbci.attachmentCount = 3;
+            fbci.pAttachments    = attachments;
+            fbci.width           = m_swapExtent.width;
+            fbci.height          = m_swapExtent.height;
+            fbci.layers          = 1;
+            if (vkCreateFramebuffer(m_device, &fbci, nullptr, &rt.framebuffer) != VK_SUCCESS)
+                return false;
+        }
+
+        // Metrics pass FB: 1 attachment — the resolved/final swapchain image
+        {
+            VkFramebufferCreateInfo fbci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+            fbci.renderPass      = m_metricsPass;
+            fbci.attachmentCount = 1;
+            fbci.pAttachments    = &m_swapImageViews[i];
+            fbci.width           = m_swapExtent.width;
+            fbci.height          = m_swapExtent.height;
+            fbci.layers          = 1;
+            if (vkCreateFramebuffer(m_device, &fbci, nullptr, &rt.metricsFramebuffer) != VK_SUCCESS)
+                return false;
+        }
+    }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// createSurfaceQuadBuffer — 6 QuadVertex host-visible buffer for composite mode
+// ---------------------------------------------------------------------------
+
+bool Renderer::createSurfaceQuadBuffer()
+{
+    VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    bci.size        = sizeof(QuadVertex) * 6;
+    bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VmaAllocationCreateInfo aci{};
+    aci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+    return vmaCreateBuffer(m_allocator, &bci, &aci,
+                           &m_surfaceQuadBuf, &m_surfaceQuadAlloc, nullptr) == VK_SUCCESS;
+}
+
+// ---------------------------------------------------------------------------
+// ensureUIRTAllocated — lazily create offscreen RGBA8 UI render target
+// ---------------------------------------------------------------------------
+
+bool Renderer::ensureUIRTAllocated()
+{
+    if (m_uiRTImage != VK_NULL_HANDLE) return true;
+
+    // RGBA8 image: W_UI x H_UI, color attachment + sampled
+    {
+        VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        ci.imageType     = VK_IMAGE_TYPE_2D;
+        ci.format        = VK_FORMAT_R8G8B8A8_UNORM;
+        ci.extent        = {W_UI, H_UI, 1};
+        ci.mipLevels     = 1;
+        ci.arrayLayers   = 1;
+        ci.samples       = VK_SAMPLE_COUNT_1_BIT;
+        ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        ci.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VmaAllocationCreateInfo ai{};
+        ai.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        if (vmaCreateImage(m_allocator, &ci, &ai, &m_uiRTImage, &m_uiRTAlloc, nullptr) != VK_SUCCESS)
+            return false;
+    }
+
+    // Image view
+    {
+        VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewCI.image    = m_uiRTImage;
+        viewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewCI.format   = VK_FORMAT_R8G8B8A8_UNORM;
+        viewCI.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        if (vkCreateImageView(m_device, &viewCI, nullptr, &m_uiRTView) != VK_SUCCESS)
+            return false;
+    }
+
+    // Framebuffer against the UI RT render pass
+    {
+        VkFramebufferCreateInfo fbci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fbci.renderPass      = m_uiRTPass;
+        fbci.attachmentCount = 1;
+        fbci.pAttachments    = &m_uiRTView;
+        fbci.width           = W_UI;
+        fbci.height          = H_UI;
+        fbci.layers          = 1;
+        if (vkCreateFramebuffer(m_device, &fbci, nullptr, &m_uiRTFB) != VK_SUCCESS)
+            return false;
+    }
+
+    // Linear sampler for the RT
+    {
+        VkSamplerCreateInfo samplerCI{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        samplerCI.magFilter    = VK_FILTER_LINEAR;
+        samplerCI.minFilter    = VK_FILTER_LINEAR;
+        samplerCI.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        samplerCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        samplerCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        if (vkCreateSampler(m_device, &samplerCI, nullptr, &m_uiRTSampler) != VK_SUCCESS)
+            return false;
+    }
+
+    // Bind into descriptor set 2, binding 1
+    {
+        VkDescriptorImageInfo imgInfo{};
+        imgInfo.sampler     = m_uiRTSampler;
+        imgInfo.imageView   = m_uiRTView;
+        imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet          = m_set2;
+        write.dstBinding      = 1;
+        write.descriptorCount = 1;
+        write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write.pImageInfo      = &imgInfo;
+        vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+    }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// uploadSceneGeometry — upload room mesh to device-local GPU buffers
+// ---------------------------------------------------------------------------
+
+bool Renderer::uploadSceneGeometry(const Scene& scene)
+{
+    const auto& mesh = scene.roomMesh();
+    if (mesh.vertices.empty() || mesh.indices.empty()) return false;
+
+    m_roomIdxCount = static_cast<uint32_t>(mesh.indices.size());
+
+    // Vertex buffer
+    {
+        VkDeviceSize size = sizeof(Vertex) * mesh.vertices.size();
+        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bci.size  = size;
+        bci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo aci{};
+        aci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        if (vmaCreateBuffer(m_allocator, &bci, &aci, &m_roomVtxBuf, &m_roomVtxAlloc, nullptr) != VK_SUCCESS)
+            return false;
+
+        vku::uploadBuffer(m_allocator, m_device, m_cmdPool, m_graphicsQueue,
+                          m_roomVtxBuf, mesh.vertices.data(), size);
+    }
+
+    // Index buffer
+    {
+        VkDeviceSize size = sizeof(uint32_t) * mesh.indices.size();
+        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bci.size  = size;
+        bci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo aci{};
+        aci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        if (vmaCreateBuffer(m_allocator, &bci, &aci, &m_roomIdxBuf, &m_roomIdxAlloc, nullptr) != VK_SUCCESS)
+            return false;
+
+        vku::uploadBuffer(m_allocator, m_device, m_cmdPool, m_graphicsQueue,
+                          m_roomIdxBuf, mesh.indices.data(), size);
+    }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// bindAtlasDescriptor — write UI glyph atlas into set 2 binding 0
+// ---------------------------------------------------------------------------
+
+void Renderer::bindAtlasDescriptor(VkImageView view, VkSampler sampler)
+{
+    VkDescriptorImageInfo imgInfo{};
+    imgInfo.sampler     = sampler;
+    imgInfo.imageView   = view;
+    imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet          = m_set2;
+    write.dstBinding      = 0;
+    write.descriptorCount = 1;
+    write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.pImageInfo      = &imgInfo;
+
+    vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+}
+
+// ---------------------------------------------------------------------------
+// updateSurfaceQuad — write 6 QuadVertices into the host-visible surface buffer
+// ---------------------------------------------------------------------------
+
+void Renderer::updateSurfaceQuad(const glm::vec3& P00, const glm::vec3& P10,
+                                  const glm::vec3& P01, const glm::vec3& P11)
+{
+    if (!m_surfaceQuadBuf) return;
+
+    // Two CCW triangles: (P00, P10, P11) and (P00, P11, P01)
+    QuadVertex verts[6] = {
+        {P00, {0.0f, 0.0f}},
+        {P10, {1.0f, 0.0f}},
+        {P11, {1.0f, 1.0f}},
+        {P00, {0.0f, 0.0f}},
+        {P11, {1.0f, 1.0f}},
+        {P01, {0.0f, 1.0f}},
+    };
+
+    void* mapped = nullptr;
+    vmaMapMemory(m_allocator, m_surfaceQuadAlloc, &mapped);
+    memcpy(mapped, verts, sizeof(verts));
+    vmaUnmapMemory(m_allocator, m_surfaceQuadAlloc);
+}
+
+// ---------------------------------------------------------------------------
+// getSwapchainRT — return the RenderTarget for the given swapchain image index
+// ---------------------------------------------------------------------------
+
+RenderTarget& Renderer::getSwapchainRT(uint32_t imageIndex)
+{
+    return m_swapRTs[imageIndex];
 }

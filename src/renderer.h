@@ -26,6 +26,12 @@ struct SurfaceUBO {
     float     _pad[3];
 };
 
+// Vertex layout for the composite surface quad (world-space pos + UV).
+struct QuadVertex {
+    glm::vec3 pos;
+    glm::vec2 uv;
+};
+
 // ---------------------------------------------------------------------------
 // RenderTarget — wraps a VkImage+VkImageView for use as a render destination.
 // In normal mode this is a swapchain image; in headless mode it is an
@@ -34,7 +40,8 @@ struct SurfaceUBO {
 struct RenderTarget {
     VkImage       image{VK_NULL_HANDLE};
     VkImageView   imageView{VK_NULL_HANDLE};
-    VkFramebuffer framebuffer{VK_NULL_HANDLE};  // created by Renderer against the right pass
+    VkFramebuffer framebuffer{VK_NULL_HANDLE};        // main pass FB (MSAA color + depth + resolve)
+    VkFramebuffer metricsFramebuffer{VK_NULL_HANDLE}; // metrics overlay pass FB (1x final image)
     uint32_t      width{0};
     uint32_t      height{0};
     bool          isSwapchain{false};
@@ -42,6 +49,9 @@ struct RenderTarget {
 
 // Forward-declare GLFWwindow so callers don't need to include GLFW.
 struct GLFWwindow;
+
+// Forward-declare Scene so Renderer methods can reference it without pulling in scene.h.
+class Scene;
 
 // ---------------------------------------------------------------------------
 // Renderer — Vulkan device, pipelines, render passes, per-frame recording.
@@ -62,13 +72,30 @@ public:
 
     // Command buffer recording — call in order each frame
     void recordShadowPass(VkCommandBuffer cmd);
-    void recordUIRTPass(VkCommandBuffer cmd);                             // traditional only
-    void recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool directMode);
-    void recordMetricsPass(VkCommandBuffer cmd, RenderTarget& rt);
+    void recordUIRTPass(VkCommandBuffer cmd,
+                        VkBuffer uiVtxBuf, uint32_t uiVtxCount,
+                        const glm::mat4& ortho);
+    void recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool directMode,
+                        VkBuffer uiVtxBuf, uint32_t uiVtxCount);
+    void recordMetricsPass(VkCommandBuffer cmd, RenderTarget& rt,
+                           VkBuffer hudVtxBuf, uint32_t hudVtxCount,
+                           const glm::mat4& ortho);
 
     // Frame helpers (non-headless only)
     bool acquireSwapchainImage(uint32_t& imageIndex);
     void presentSwapchainImage(uint32_t imageIndex);
+
+    // Upload room mesh geometry to GPU buffers (call once after Scene::init()).
+    bool uploadSceneGeometry(const Scene& scene);
+    // Bind the UI glyph atlas into descriptor set 2, binding 0 (call once after UISystem::init()).
+    void bindAtlasDescriptor(VkImageView view, VkSampler sampler);
+    // Update the surface quad vertex buffer each frame (for composite/traditional mode).
+    void updateSurfaceQuad(const glm::vec3& P00, const glm::vec3& P10,
+                           const glm::vec3& P01, const glm::vec3& P11);
+    // Get the RenderTarget for the given swapchain image index.
+    RenderTarget& getSwapchainRT(uint32_t imageIndex);
+    // Semaphore that becomes signalled when the swapchain image is available.
+    VkSemaphore getImageAvailableSemaphore() const { return m_imageAvailable; }
 
     // Accessors used by App / tests
     VmaAllocator  getAllocator()   const { return m_allocator; }
@@ -111,6 +138,9 @@ private:
     bool createUniformBuffers();
     bool createShadowResources();
     void destroySwapchain();
+    bool createFramebuffers();        // MSAA resources + per-swapchain FBs
+    bool createSurfaceQuadBuffer();   // allocate host-visible surface quad buffer
+    bool ensureUIRTAllocated();       // lazily create offscreen UI RT (traditional mode)
 
     // Instance / device
     VkInstance               m_instance{VK_NULL_HANDLE};
@@ -175,6 +205,31 @@ private:
     VkImageView   m_shadowView{VK_NULL_HANDLE};
     VkFramebuffer m_shadowFB{VK_NULL_HANDLE};
     VkSampler     m_shadowSampler{VK_NULL_HANDLE};
+
+    // Shadow pipeline — depth-only room render from light POV
+    VkPipeline m_pipeShadow{VK_NULL_HANDLE};
+
+    // Room mesh GPU buffers (device-local, uploaded once from Scene::roomMesh())
+    VkBuffer      m_roomVtxBuf{VK_NULL_HANDLE};
+    VmaAllocation m_roomVtxAlloc{VK_NULL_HANDLE};
+    VkBuffer      m_roomIdxBuf{VK_NULL_HANDLE};
+    VmaAllocation m_roomIdxAlloc{VK_NULL_HANDLE};
+    uint32_t      m_roomIdxCount{0};
+
+    // Surface quad buffer (host-visible, 6 QuadVertices, updated per frame for composite mode)
+    VkBuffer      m_surfaceQuadBuf{VK_NULL_HANDLE};
+    VmaAllocation m_surfaceQuadAlloc{VK_NULL_HANDLE};
+
+    // MSAA transient attachments for main pass (shared across all frames)
+    VkImage       m_msaaColorImg{VK_NULL_HANDLE};
+    VmaAllocation m_msaaColorAlloc{VK_NULL_HANDLE};
+    VkImageView   m_msaaColorView{VK_NULL_HANDLE};
+    VkImage       m_msaaDepthImg{VK_NULL_HANDLE};
+    VmaAllocation m_msaaDepthAlloc{VK_NULL_HANDLE};
+    VkImageView   m_msaaDepthView{VK_NULL_HANDLE};
+
+    // Per-swapchain-image render targets (populated by createFramebuffers())
+    std::vector<RenderTarget> m_swapRTs;
 
     // Offscreen UI RT (traditional mode, allocated lazily)
     VkImage       m_uiRTImage{VK_NULL_HANDLE};

@@ -8,6 +8,7 @@
 
 #include <GLFW/glfw3.h>
 #include <string>
+#include <vector>
 
 // App owns the window, renderer, scene, UI system, and metrics.
 // It drives the frame loop and handles keyboard input.
@@ -39,6 +40,11 @@ private:
     bool       m_pendingModeToggle{false};
     float      m_depthBias{Renderer::DEPTH_BIAS_DEFAULT};
     float      m_time{0.0f};
+
+    VkCommandBuffer m_cmd{VK_NULL_HANDLE};
+    VkBuffer        m_hudVtxBuf{VK_NULL_HANDLE};
+    VmaAllocation   m_hudVtxAlloc{VK_NULL_HANDLE};
+    std::vector<UIVertex> m_hudVerts;
 
     static constexpr uint32_t WINDOW_WIDTH  = 1280;
     static constexpr uint32_t WINDOW_HEIGHT = 720;

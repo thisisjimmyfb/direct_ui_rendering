@@ -1,6 +1,8 @@
 #include "app.h"
+#include "vk_utils.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <vk_mem_alloc.h>
 #include <cstdio>
 #include <stdexcept>
 
@@ -52,6 +54,37 @@ bool App::initSubsystems()
         return false;
     }
 
+    // Upload room geometry to GPU
+    if (!m_renderer.uploadSceneGeometry(m_scene)) return false;
+
+    // Bind the glyph atlas into descriptor set 2, binding 0
+    m_renderer.bindAtlasDescriptor(m_ui.atlasView(), m_ui.atlasSampler());
+
+    // Allocate host-visible HUD vertex buffer (max 1024 UIVertex)
+    {
+        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bci.size        = sizeof(UIVertex) * 1024;
+        bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo aci{};
+        aci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+        if (vmaCreateBuffer(m_renderer.getAllocator(), &bci, &aci,
+                            &m_hudVtxBuf, &m_hudVtxAlloc, nullptr) != VK_SUCCESS)
+            return false;
+    }
+
+    // Allocate the per-frame command buffer
+    {
+        VkCommandBufferAllocateInfo ai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        ai.commandPool        = m_renderer.getCommandPool();
+        ai.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        ai.commandBufferCount = 1;
+        if (vkAllocateCommandBuffers(m_renderer.getDevice(), &ai, &m_cmd) != VK_SUCCESS)
+            return false;
+    }
+
     return true;
 }
 
@@ -77,35 +110,36 @@ void App::drawFrame()
         m_pendingModeToggle = false;
     }
 
-    m_time += 0.016f;  // approximate 60 Hz; replace with real delta time
+    m_time += 0.016f;
 
     // Compute world-space surface corners for this frame.
     glm::vec3 P_00, P_10, P_01, P_11;
     m_scene.worldCorners(m_time, P_00, P_10, P_01, P_11);
 
-    // TODO: build view/proj from camera; for now use a fixed look-at
+    // Fixed look-at camera (Y flipped for Vulkan NDC).
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.5f, 4.0f),
                                  glm::vec3(0.0f, 1.5f, 0.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f),
                                       static_cast<float>(WINDOW_WIDTH) / WINDOW_HEIGHT,
                                       0.1f, 100.0f);
+    proj[1][1] *= -1.0f;  // Flip Y for Vulkan clip space
 
     // SceneUBO
     SceneUBO sceneUBO{};
-    sceneUBO.view         = view;
-    sceneUBO.proj         = proj;
+    sceneUBO.view        = view;
+    sceneUBO.proj        = proj;
     sceneUBO.lightViewProj = m_scene.lightViewProj();
-    sceneUBO.lightDir     = glm::vec4(m_scene.light().direction, 0.0f);
-    sceneUBO.lightColor   = glm::vec4(m_scene.light().color, 1.0f);
+    sceneUBO.lightDir    = glm::vec4(m_scene.light().direction, 0.0f);
+    sceneUBO.lightColor  = glm::vec4(m_scene.light().color, 1.0f);
     sceneUBO.ambientColor = glm::vec4(m_scene.light().ambient, 1.0f);
     m_renderer.updateSceneUBO(sceneUBO);
 
-    // SurfaceUBO (only used in direct mode, but always updated)
+    // SurfaceUBO — always computed, only consumed by direct mode shaders
     auto transforms = computeSurfaceTransforms(P_00, P_10, P_01,
                                                W_UI, H_UI,
                                                proj * view);
-    auto clipPlanes = computeClipPlanes(P_00, P_10, P_01);
+    auto clipPlanes  = computeClipPlanes(P_00, P_10, P_01);
 
     SurfaceUBO surfaceUBO{};
     surfaceUBO.totalMatrix = transforms.M_total;
@@ -114,8 +148,86 @@ void App::drawFrame()
     surfaceUBO.depthBias   = m_depthBias;
     m_renderer.updateSurfaceUBO(surfaceUBO);
 
-    // TODO: acquire swapchain image, allocate/begin command buffer,
-    //       record passes, submit, present.
+    // Update animated surface quad for traditional (composite) mode.
+    m_renderer.updateSurfaceQuad(P_00, P_10, P_01, P_11);
+
+    // Tessellate HUD and upload to GPU buffer.
+    m_hudVerts.clear();
+    uint32_t hudVtxCount = m_metrics.tessellateHUD(m_ui, m_mode, 4, m_hudVerts);
+    if (hudVtxCount > 0 && m_hudVtxBuf != VK_NULL_HANDLE) {
+        void* mapped = nullptr;
+        vmaMapMemory(m_renderer.getAllocator(), m_hudVtxAlloc, &mapped);
+        memcpy(mapped, m_hudVerts.data(), sizeof(UIVertex) * hudVtxCount);
+        vmaUnmapMemory(m_renderer.getAllocator(), m_hudVtxAlloc);
+    }
+
+    // Acquire next swapchain image (blocks until previous frame finishes).
+    uint32_t imgIdx = 0;
+    if (!m_renderer.acquireSwapchainImage(imgIdx)) {
+        m_metrics.endFrame();
+        return;
+    }
+
+    // Reset and begin the per-frame command buffer.
+    vkResetCommandBuffer(m_cmd, 0);
+    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(m_cmd, &beginInfo);
+
+    // Shadow pre-pass.
+    m_renderer.recordShadowPass(m_cmd);
+
+    // UI RT pass (traditional mode only).
+    if (m_mode == RenderMode::Traditional) {
+        glm::mat4 uiOrtho = glm::ortho(0.0f, (float)W_UI, (float)H_UI, 0.0f, -1.0f, 1.0f);
+        m_renderer.recordUIRTPass(m_cmd,
+                                  m_ui.helloVertBuffer(), m_ui.helloVertCount(),
+                                  uiOrtho);
+    }
+
+    // Main scene pass: room + UI (direct) or surface composite (traditional).
+    auto& rt = m_renderer.getSwapchainRT(imgIdx);
+    m_renderer.recordMainPass(m_cmd, rt,
+                              m_mode == RenderMode::Direct,
+                              m_ui.helloVertBuffer(), m_ui.helloVertCount());
+
+    // Pipeline barrier: ensure main pass color writes are visible to the metrics pass.
+    vku::imageBarrier(m_cmd, rt.image,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+    // Metrics overlay pass.
+    glm::mat4 hudOrtho = glm::ortho(0.0f, (float)WINDOW_WIDTH,
+                                    (float)WINDOW_HEIGHT, 0.0f, -1.0f, 1.0f);
+    m_renderer.recordMetricsPass(m_cmd, rt,
+                                 m_hudVtxBuf, hudVtxCount,
+                                 hudOrtho);
+
+    vkEndCommandBuffer(m_cmd);
+
+    // Submit with semaphore synchronisation.
+    VkSemaphore          waitSem   = m_renderer.getImageAvailableSemaphore();
+    VkSemaphore          signalSem = m_renderer.getRenderFinishedSemaphore();
+    VkFence              fence     = m_renderer.getInFlightFence();
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submit.waitSemaphoreCount   = 1;
+    submit.pWaitSemaphores      = &waitSem;
+    submit.pWaitDstStageMask    = &waitStage;
+    submit.commandBufferCount   = 1;
+    submit.pCommandBuffers      = &m_cmd;
+    submit.signalSemaphoreCount = 1;
+    submit.pSignalSemaphores    = &signalSem;
+
+    vkQueueSubmit(m_renderer.getGraphicsQueue(), 1, &submit, fence);
+
+    // Present.
+    m_renderer.presentSwapchainImage(imgIdx);
 
     m_metrics.endFrame();
     m_metrics.updateGPUMem(m_renderer.getAllocator());
@@ -152,6 +264,18 @@ void App::onKey(int key, int action)
 
 void App::cleanup()
 {
+    if (m_renderer.getDevice() != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(m_renderer.getDevice());
+        if (m_cmd != VK_NULL_HANDLE) {
+            vkFreeCommandBuffers(m_renderer.getDevice(), m_renderer.getCommandPool(), 1, &m_cmd);
+            m_cmd = VK_NULL_HANDLE;
+        }
+    }
+    if (m_hudVtxBuf != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(m_renderer.getAllocator(), m_hudVtxBuf, m_hudVtxAlloc);
+        m_hudVtxBuf = VK_NULL_HANDLE;
+    }
+
     m_ui.cleanup();
     m_renderer.cleanup();
 

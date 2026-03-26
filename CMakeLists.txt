@@ -104,6 +104,7 @@ set(SHADER_SOURCES
     ${SHADER_DIR}/ui.frag
     ${SHADER_DIR}/composite.frag
     ${SHADER_DIR}/quad.vert
+    ${SHADER_DIR}/shadow.vert
 )
 
 # Production shader SPIRVs (no test defines)
