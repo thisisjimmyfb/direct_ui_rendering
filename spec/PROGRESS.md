@@ -30,7 +30,7 @@ Find the most important unmarked task from the following list and implement it. 
 - [ ] Directional light: configurable direction hardcoded at startup, lightViewProj for shadow map
 
 ## Shadow Mapping
-- [ ] Shadow pass: depth-only render pass + framebuffer (D32, 1024×1024) rendered from light POV
+- [x] Shadow pass: depth-only render pass + framebuffer (D32, 1024×1024) rendered from light POV
 - [ ] room.vert/room.frag: Blinn-Phong + sampler2DShadow with 2×2 PCF tap
 - [ ] Pipeline barrier: shadow depth DEPTH_STENCIL_WRITE → SHADER_READ before main scene pass
 

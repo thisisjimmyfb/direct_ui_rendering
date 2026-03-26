@@ -61,6 +61,23 @@ void Renderer::cleanup()
     if (m_setLayout2)  { vkDestroyDescriptorSetLayout(m_device, m_setLayout2, nullptr); m_setLayout2 = VK_NULL_HANDLE; }
     if (m_pipelineLayout) { vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr); m_pipelineLayout = VK_NULL_HANDLE; }
 
+    // Shadow map resources (must be destroyed before allocator)
+    if (m_shadowFB)      { vkDestroyFramebuffer(m_device, m_shadowFB,      nullptr); m_shadowFB      = VK_NULL_HANDLE; }
+    if (m_shadowSampler) { vkDestroySampler    (m_device, m_shadowSampler, nullptr); m_shadowSampler = VK_NULL_HANDLE; }
+    if (m_shadowView)    { vkDestroyImageView  (m_device, m_shadowView,    nullptr); m_shadowView    = VK_NULL_HANDLE; }
+
+    // Swapchain (destroys image views + VkSwapchainKHR)
+    destroySwapchain();
+    if (m_surface) {
+        vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
+        m_surface = VK_NULL_HANDLE;
+    }
+
+    // Sync objects
+    if (m_imageAvailable) { vkDestroySemaphore(m_device, m_imageAvailable, nullptr); m_imageAvailable = VK_NULL_HANDLE; }
+    if (m_renderFinished) { vkDestroySemaphore(m_device, m_renderFinished, nullptr); m_renderFinished = VK_NULL_HANDLE; }
+    if (m_inFlightFence)  { vkDestroyFence    (m_device, m_inFlightFence,  nullptr); m_inFlightFence  = VK_NULL_HANDLE; }
+
     // Render passes
     if (m_shadowPass)  { vkDestroyRenderPass(m_device, m_shadowPass,  nullptr); m_shadowPass  = VK_NULL_HANDLE; }
     if (m_uiRTPass)    { vkDestroyRenderPass(m_device, m_uiRTPass,    nullptr); m_uiRTPass    = VK_NULL_HANDLE; }
@@ -72,6 +89,8 @@ void Renderer::cleanup()
         m_cmdPool = VK_NULL_HANDLE;
     }
     if (m_allocator) {
+        // Shadow image is VMA-allocated — destroy before allocator teardown.
+        if (m_shadowImage) { vmaDestroyImage(m_allocator, m_shadowImage, m_shadowAlloc); m_shadowImage = VK_NULL_HANDLE; }
         vmaDestroyAllocator(m_allocator);
         m_allocator = VK_NULL_HANDLE;
     }
@@ -1084,12 +1103,90 @@ bool Renderer::createUniformBuffers()
 
 bool Renderer::createShadowResources()
 {
-    // TODO: create D32 shadow image (SHADOW_MAP_SIZE x SHADOW_MAP_SIZE),
-    //       image view, framebuffer, sampler2DShadow
-    return false;
+    // Shadow depth image: SHADOW_MAP_SIZE × SHADOW_MAP_SIZE, D32, depth attachment + sampled.
+    VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+    imageInfo.format        = VK_FORMAT_D32_SFLOAT;
+    imageInfo.extent        = {SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 1};
+    imageInfo.mipLevels     = 1;
+    imageInfo.arrayLayers   = 1;
+    imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                              VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    if (vmaCreateImage(m_allocator, &imageInfo, &allocInfo,
+                       &m_shadowImage, &m_shadowAlloc, nullptr) != VK_SUCCESS)
+        return false;
+
+    // Depth image view.
+    VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+    viewInfo.image    = m_shadowImage;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format   = VK_FORMAT_D32_SFLOAT;
+    viewInfo.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+
+    if (vkCreateImageView(m_device, &viewInfo, nullptr, &m_shadowView) != VK_SUCCESS)
+        return false;
+
+    // Framebuffer against the shadow render pass.
+    VkFramebufferCreateInfo fbci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+    fbci.renderPass      = m_shadowPass;
+    fbci.attachmentCount = 1;
+    fbci.pAttachments    = &m_shadowView;
+    fbci.width           = SHADOW_MAP_SIZE;
+    fbci.height          = SHADOW_MAP_SIZE;
+    fbci.layers          = 1;
+
+    if (vkCreateFramebuffer(m_device, &fbci, nullptr, &m_shadowFB) != VK_SUCCESS)
+        return false;
+
+    // Comparison sampler for sampler2DShadow — lit outside shadow frustum (border = white).
+    VkSamplerCreateInfo samplerInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    samplerInfo.magFilter     = VK_FILTER_LINEAR;
+    samplerInfo.minFilter     = VK_FILTER_LINEAR;
+    samplerInfo.mipmapMode    = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.addressModeU  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeV  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeW  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.borderColor   = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    samplerInfo.compareEnable = VK_TRUE;
+    samplerInfo.compareOp     = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+    if (vkCreateSampler(m_device, &samplerInfo, nullptr, &m_shadowSampler) != VK_SUCCESS)
+        return false;
+
+    // Bind shadow map into descriptor set 0, binding 1.
+    VkDescriptorImageInfo shadowImgInfo{};
+    shadowImgInfo.sampler     = m_shadowSampler;
+    shadowImgInfo.imageView   = m_shadowView;
+    shadowImgInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet          = m_set0;
+    write.dstBinding      = 1;
+    write.descriptorCount = 1;
+    write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.pImageInfo      = &shadowImgInfo;
+    vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+
+    return true;
 }
 
 void Renderer::destroySwapchain()
 {
-    // TODO: destroy swapchain image views, then swapchain
+    for (auto iv : m_swapImageViews)
+        vkDestroyImageView(m_device, iv, nullptr);
+    m_swapImageViews.clear();
+
+    if (m_swapchain) {
+        vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+        m_swapchain = VK_NULL_HANDLE;
+    }
+    m_swapImages.clear();
 }
