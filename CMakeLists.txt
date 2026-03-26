@@ -165,6 +165,17 @@ target_compile_definitions(direct_ui_rendering_lib PUBLIC
 add_executable(direct_ui_rendering src/main.cpp)
 target_link_libraries(direct_ui_rendering PRIVATE direct_ui_rendering_lib)
 
+# Copy glyph atlas to the build output directory so the app can find it at
+# "assets/atlas.png" relative to the executable.
+add_custom_command(TARGET direct_ui_rendering POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        $<TARGET_FILE_DIR:direct_ui_rendering>/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas.png
+        $<TARGET_FILE_DIR:direct_ui_rendering>/assets/atlas.png
+    COMMENT "Copying glyph atlas to build output"
+)
+
 # ---------------------------------------------------------------------------
 # Tests subdirectory
 # ---------------------------------------------------------------------------
