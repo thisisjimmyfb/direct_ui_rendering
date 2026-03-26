@@ -1,6 +1,8 @@
 ## Progress History
 
-- **2026-03-26 (latest)**: Fixed all three UI atlas/overlay rendering bugs. (1) Regenerated `assets/atlas.png` with Courier New glyphs rendered as premultiplied-alpha white-on-transparent — old atlas had near-invisible glyphs. (2) Fixed inverted ortho matrix in `app.cpp`: both `uiOrtho` and `hudOrtho` called `glm::ortho(0,W,H,0,...)` which mapped y=0→Vulkan-bottom and y=H→Vulkan-top, rendering glyphs upside-down and at the wrong screen edge; corrected to `glm::ortho(0,W,0,H,...)`. All 17/17 tests pass, build clean, app runs without crash.
+- **2026-03-26 (latest)**: Iterate loop run — no pending tasks. All 17/17 tests pass, build succeeds cleanly, app runs 10-second timeout and exits with code 0. No issues identified.
+
+- **2026-03-26**: Fixed all three UI atlas/overlay rendering bugs. (1) Regenerated `assets/atlas.png` with Courier New glyphs rendered as premultiplied-alpha white-on-transparent — old atlas had near-invisible glyphs. (2) Fixed inverted ortho matrix in `app.cpp`: both `uiOrtho` and `hudOrtho` called `glm::ortho(0,W,H,0,...)` which mapped y=0→Vulkan-bottom and y=H→Vulkan-top, rendering glyphs upside-down and at the wrong screen edge; corrected to `glm::ortho(0,W,0,H,...)`. All 17/17 tests pass, build clean, app runs without crash.
 
 - **2026-03-26 11:14AM**: Completed iterate loop tasks: all 17 tests pass, build succeeds without errors, and the application runs without crash or validation errors. No pending issues identified.
 - **2026-03-26**: Implemented command-line timeout parameter for automated Ralph Loop testing. App now accepts `--timeout <seconds>` argument to exit after specified duration.
