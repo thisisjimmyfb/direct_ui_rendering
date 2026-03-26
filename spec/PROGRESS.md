@@ -1,5 +1,7 @@
 ## Progress History
 
+- **2026-03-26 18:00**: Fixed UI atlas path to resolve relative to executable directory. Used `GetModuleFileNameA` (Windows) / `readlink /proc/self/exe` (Linux) in `app.cpp` to derive `exeDir()`, replacing the hardcoded relative `"assets/atlas.png"` path so the app finds its atlas regardless of the working directory when launched. 17/17 tests pass, build clean, app exits code 0 after 10s timeout. No new issues found.
+
 - **2026-03-26 17:00**: Iterate loop run — no pending tasks. 17/17 tests pass, Debug build clean, app exits code 0 after 10s timeout. No issues found.
 
 - **2026-03-26 (latest)**: Implemented WASD+mouse camera control and slower UI quad animation with bigger lateral translations. Right-click captures mouse for look; WASD moves camera at 3 m/s; ESC releases cursor. Scene animation slowed (0.25 rad/s rotation, 0.18/0.22 rad/s lateral/vertical) with ±1.2 m lateral and ±0.35 m vertical travel. All 17/17 tests pass, build clean, app exits code 0 after 10s timeout.

@@ -6,6 +6,34 @@
 #include <cmath>
 #include <cstdio>
 #include <stdexcept>
+#include <string>
+
+#ifdef _WIN32
+#  define WIN32_LEAN_AND_MEAN
+#  include <windows.h>
+static std::string exeDir()
+{
+    char buf[MAX_PATH];
+    DWORD len = GetModuleFileNameA(nullptr, buf, MAX_PATH);
+    if (len == 0) return ".";
+    std::string path(buf, len);
+    auto sep = path.find_last_of("\\/");
+    return (sep == std::string::npos) ? "." : path.substr(0, sep);
+}
+#else
+#  include <unistd.h>
+#  include <climits>
+static std::string exeDir()
+{
+    char buf[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len <= 0) return ".";
+    buf[len] = '\0';
+    std::string path(buf);
+    auto sep = path.find_last_of('/');
+    return (sep == std::string::npos) ? "." : path.substr(0, sep);
+}
+#endif
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -58,12 +86,12 @@ bool App::initSubsystems()
 
     m_scene.init();
 
-    // TODO: locate atlas file relative to binary, or embed as C array
+    std::string atlasPath = exeDir() + "/assets/atlas.png";
     if (!m_ui.init(m_renderer.getAllocator(),
                    m_renderer.getDevice(),
                    m_renderer.getCommandPool(),
                    m_renderer.getGraphicsQueue(),
-                   "assets/atlas.png")) {
+                   atlasPath.c_str())) {
         return false;
     }
 
