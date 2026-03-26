@@ -51,6 +51,7 @@ bool Renderer::init(bool headless, GLFWwindow* window)
     if (!createPipelines())            return false;  // needs pipeline layout + render passes
     if (!createShadowResources())      return false;
     if (!createSurfaceQuadBuffer())    return false;
+    if (!createFramebuffers())         return false;  // needs render passes (m_mainPass, m_metricsPass)
 
     return true;
 }
@@ -654,8 +655,6 @@ bool Renderer::createSwapchain()
     if (vkCreateSemaphore(m_device, &semCI,   nullptr, &m_imageAvailable) != VK_SUCCESS) return false;
     if (vkCreateSemaphore(m_device, &semCI,   nullptr, &m_renderFinished) != VK_SUCCESS) return false;
     if (vkCreateFence    (m_device, &fenceCI, nullptr, &m_inFlightFence)  != VK_SUCCESS) return false;
-
-    if (!createFramebuffers()) return false;
 
     return true;
 }
