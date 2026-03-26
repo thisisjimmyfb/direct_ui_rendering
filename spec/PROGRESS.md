@@ -4,7 +4,7 @@ Find the most important unmarked task from the following list and implement it. 
 ## Build & Project Structure
 - [x] CMakeLists.txt: C++20 project, FetchContent for GLFW, VMA, GLM, stb_image, GoogleTest; validation layers in Debug
 - [x] CMakeLists.txt: direct_ui_rendering_lib static library + app executable; glslc shader compilation via add_custom_command
-- [ ] tests/CMakeLists.txt: tests_unit and tests_render targets linking direct_ui_rendering_lib; tests_render compiles shaders with -DUI_TEST_COLOR
+- [x] tests/CMakeLists.txt: tests_unit and tests_render targets linking direct_ui_rendering_lib; tests_render compiles shaders with -DUI_TEST_COLOR
 - [x] Source file stubs for all files listed in spec §12
 - [ ] Build scripts to build and test the project
 
