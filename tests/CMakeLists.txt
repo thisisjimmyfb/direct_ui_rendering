@@ -34,6 +34,7 @@ set(TEST_SHADER_SOURCES
     ${RENDER_SHADER_DIR}/room.vert
     ${RENDER_SHADER_DIR}/room.frag
     ${RENDER_SHADER_DIR}/ui_direct.vert
+    ${RENDER_SHADER_DIR}/ui_direct.frag
     ${RENDER_SHADER_DIR}/ui_ortho.vert
     ${RENDER_SHADER_DIR}/ui.frag
     ${RENDER_SHADER_DIR}/composite.frag

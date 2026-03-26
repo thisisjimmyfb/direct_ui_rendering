@@ -1,7 +1,8 @@
 #version 450
 
-// Passthrough vertex shader for the composite surface quad.
-// Transforms world-space vertex positions by the scene VP matrix and passes UVs through.
+// Vertex shader for the composite surface quad (traditional mode).
+// Transforms world-space vertex positions by the scene VP matrix, passes UVs through,
+// and computes shadow coordinates for shadow-map sampling in composite.frag.
 
 layout(set = 0, binding = 0) uniform SceneUBO {
     mat4 view;
@@ -15,8 +16,19 @@ layout(set = 0, binding = 0) uniform SceneUBO {
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec2 inUV;
 layout(location = 0) out vec2 outUV;
+layout(location = 1) out vec4 outShadowCoord;
+
+// Maps NDC [-1,1] to UV [0,1] for shadow map sampling.
+const mat4 biasMat = mat4(
+    0.5, 0.0, 0.0, 0.0,
+    0.0, 0.5, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.5, 0.5, 0.0, 1.0
+);
 
 void main() {
-    gl_Position = proj * view * vec4(inPos, 1.0);
-    outUV = inUV;
+    vec4 worldPos4 = vec4(inPos, 1.0);
+    gl_Position    = proj * view * worldPos4;
+    outUV          = inUV;
+    outShadowCoord = biasMat * lightViewProj * worldPos4;
 }

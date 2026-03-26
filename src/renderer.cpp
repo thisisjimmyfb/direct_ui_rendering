@@ -990,22 +990,23 @@ bool Renderer::createPipelines()
         return mod;
     };
 
-    VkShaderModule vsRoom      = loadShaderModule("room.vert.spv");
-    VkShaderModule fsRoom      = loadShaderModule("room.frag.spv");
-    VkShaderModule vsUIDirect  = loadShaderModule("ui_direct.vert.spv");
-    VkShaderModule vsUIOrtho   = loadShaderModule("ui_ortho.vert.spv");
-    VkShaderModule fsUI        = loadShaderModule("ui.frag.spv");
-    VkShaderModule fsComposite = loadShaderModule("composite.frag.spv");
-    VkShaderModule vsQuad      = loadShaderModule("quad.vert.spv");
-    VkShaderModule vsShadow    = loadShaderModule("shadow.vert.spv");
+    VkShaderModule vsRoom        = loadShaderModule("room.vert.spv");
+    VkShaderModule fsRoom        = loadShaderModule("room.frag.spv");
+    VkShaderModule vsUIDirect    = loadShaderModule("ui_direct.vert.spv");
+    VkShaderModule fsUIDirect    = loadShaderModule("ui_direct.frag.spv");
+    VkShaderModule vsUIOrtho     = loadShaderModule("ui_ortho.vert.spv");
+    VkShaderModule fsUI          = loadShaderModule("ui.frag.spv");
+    VkShaderModule fsComposite   = loadShaderModule("composite.frag.spv");
+    VkShaderModule vsQuad        = loadShaderModule("quad.vert.spv");
+    VkShaderModule vsShadow      = loadShaderModule("shadow.vert.spv");
 
     auto destroyModules = [&]() {
         auto d = [&](VkShaderModule m) { if (m) vkDestroyShaderModule(m_device, m, nullptr); };
-        d(vsRoom); d(fsRoom); d(vsUIDirect); d(vsUIOrtho);
+        d(vsRoom); d(fsRoom); d(vsUIDirect); d(fsUIDirect); d(vsUIOrtho);
         d(fsUI); d(fsComposite); d(vsQuad); d(vsShadow);
     };
 
-    if (!vsRoom || !fsRoom || !vsUIDirect || !vsUIOrtho || !fsUI || !fsComposite || !vsQuad || !vsShadow) {
+    if (!vsRoom || !fsRoom || !vsUIDirect || !fsUIDirect || !vsUIOrtho || !fsUI || !fsComposite || !vsQuad || !vsShadow) {
         destroyModules();
         return false;
     }
@@ -1193,9 +1194,9 @@ bool Renderer::createPipelines()
     {
         VkPipelineShaderStageCreateInfo stages[2]{};
         stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-                     VK_SHADER_STAGE_VERTEX_BIT,   vsUIDirect, "main", nullptr};
+                     VK_SHADER_STAGE_VERTEX_BIT,   vsUIDirect,  "main", nullptr};
         stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-                     VK_SHADER_STAGE_FRAGMENT_BIT, fsUI,       "main", nullptr};
+                     VK_SHADER_STAGE_FRAGMENT_BIT, fsUIDirect,  "main", nullptr};
 
         VkPipelineRasterizationStateCreateInfo raster{
             VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};

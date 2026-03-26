@@ -5,6 +5,7 @@ Find the most important unmarked task from the following list and implement it. 
 
 ## Completed
 
+- [x] Applied shadow map to UI surface in both direct and traditional modes (SPEC §2.3). Created `shaders/ui_direct.frag` with 2×2 PCF shadow sampling + `UI_TEST_COLOR` guard; updated `composite.frag` to sample shadow map and modulate UI RT color; updated `ui_direct.vert` and `quad.vert` to compute and output `outShadowCoord` using the same `biasMat * lightViewProj` transform as `room.vert`. All 17/17 tests pass.
 - [x] Fixed Vulkan validation error: `m_renderFinished` semaphore was reused before the swapchain presentation engine was done with it. Changed from a single semaphore to a per-swapchain-image `std::vector<VkSemaphore>`. `getRenderFinishedSemaphore()` now takes `imageIndex`.
 - [x] Generated glyph atlas `assets/atlas.png` (512×512 RGBA, 32×32 cells, ASCII 32–126, Courier New font). Added CMake `POST_BUILD` step to copy it to `$<TARGET_FILE_DIR>/assets/atlas.png` so the app finds it at runtime.
 

@@ -1,5 +1,14 @@
 #version 450
 
+layout(set = 0, binding = 0) uniform SceneUBO {
+    mat4 view;
+    mat4 proj;
+    mat4 lightViewProj;
+    vec4 lightDir;
+    vec4 lightColor;
+    vec4 ambientColor;
+};
+
 layout(set = 1, binding = 0) uniform SurfaceUBO {
     mat4 totalMatrix;
     mat4 worldMatrix;
@@ -10,11 +19,20 @@ layout(set = 1, binding = 0) uniform SurfaceUBO {
 layout(location = 0) in vec2 inUIPos;
 layout(location = 1) in vec2 inUITexCoord;
 layout(location = 0) out vec2 outTexCoord;
+layout(location = 1) out vec4 outShadowCoord;
 
 out gl_PerVertex {
     vec4  gl_Position;
     float gl_ClipDistance[4];
 };
+
+// Maps NDC [-1,1] to UV [0,1] for shadow map sampling.
+const mat4 biasMat = mat4(
+    0.5, 0.0, 0.0, 0.0,
+    0.0, 0.5, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.5, 0.5, 0.0, 1.0
+);
 
 void main() {
     vec4 uiVert   = vec4(inUIPos, 0.0, 1.0);
@@ -28,5 +46,6 @@ void main() {
     gl_Position    = totalMatrix * uiVert;
     gl_Position.z -= depthBias * gl_Position.w;
 
-    outTexCoord = inUITexCoord;
+    outTexCoord   = inUITexCoord;
+    outShadowCoord = biasMat * lightViewProj * worldPos;
 }

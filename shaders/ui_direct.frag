@@ -10,7 +10,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
 };
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
-layout(set = 2, binding = 1) uniform sampler2D uiRT;
+layout(set = 2, binding = 0) uniform sampler2D uiAtlas;
 
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) in vec4 inShadowCoord;
@@ -32,8 +32,13 @@ float sampleShadowPCF(vec4 shadowCoord) {
 }
 
 void main() {
-    vec4  uiColor = texture(uiRT, inTexCoord);
-    float shadow  = sampleShadowPCF(inShadowCoord);
-    vec3  lit     = clamp(ambientColor.rgb + shadow * lightColor.rgb, 0.0, 1.0);
-    outColor = vec4(uiColor.rgb * lit, uiColor.a);
+#ifdef UI_TEST_COLOR
+    // Bypass shadow and atlas — output solid magenta for containment testing.
+    outColor = vec4(1.0, 0.0, 1.0, 1.0);
+#else
+    vec4 atlasColor = texture(uiAtlas, inTexCoord);
+    float shadow    = sampleShadowPCF(inShadowCoord);
+    vec3  lit       = clamp(ambientColor.rgb + shadow * lightColor.rgb, 0.0, 1.0);
+    outColor = vec4(atlasColor.rgb * lit, atlasColor.a);
+#endif
 }

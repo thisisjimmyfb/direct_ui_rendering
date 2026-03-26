@@ -100,6 +100,7 @@ set(SHADER_SOURCES
     ${SHADER_DIR}/room.vert
     ${SHADER_DIR}/room.frag
     ${SHADER_DIR}/ui_direct.vert
+    ${SHADER_DIR}/ui_direct.frag
     ${SHADER_DIR}/ui_ortho.vert
     ${SHADER_DIR}/ui.frag
     ${SHADER_DIR}/composite.frag
