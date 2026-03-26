@@ -50,6 +50,19 @@ struct RenderTarget {
 // Forward-declare GLFWwindow so callers don't need to include GLFW.
 struct GLFWwindow;
 
+// Headless render target: wraps a RenderTarget with owned MSAA attachments.
+// Create with createHeadlessRT(), destroy with destroyHeadlessRT().
+struct HeadlessRenderTarget {
+    RenderTarget  rt;              // RenderTarget for record* calls
+    VmaAllocation resolveAlloc{};  // Allocation for rt.image
+    VkImage       msaaColor{VK_NULL_HANDLE};
+    VmaAllocation msaaColorAlloc{};
+    VkImageView   msaaColorView{VK_NULL_HANDLE};
+    VkImage       msaaDepth{VK_NULL_HANDLE};
+    VmaAllocation msaaDepthAlloc{};
+    VkImageView   msaaDepthView{VK_NULL_HANDLE};
+};
+
 // Forward-declare Scene so Renderer methods can reference it without pulling in scene.h.
 class Scene;
 
@@ -87,6 +100,9 @@ public:
 
     // Upload room mesh geometry to GPU buffers (call once after Scene::init()).
     bool uploadSceneGeometry(const Scene& scene);
+    bool createHeadlessRT(uint32_t width, uint32_t height, HeadlessRenderTarget& out);
+    void destroyHeadlessRT(HeadlessRenderTarget& hrt);
+    bool initOffscreenRT();
     // Bind the UI glyph atlas into descriptor set 2, binding 0 (call once after UISystem::init()).
     void bindAtlasDescriptor(VkImageView view, VkSampler sampler);
     // Update the surface quad vertex buffer each frame (for composite/traditional mode).

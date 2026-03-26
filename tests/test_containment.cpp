@@ -2,7 +2,10 @@
 #include "renderer.h"
 #include "scene.h"
 #include "ui_surface.h"
+#include "ui_system.h"
+#include "vk_utils.h"
 
+#include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
@@ -84,16 +87,195 @@ TEST_F(ContainmentTest, DirectMode_MagentaPixels_InsideSurfaceQuad)
     glm::mat4 proj = glm::perspective(glm::radians(60.0f),
                                       static_cast<float>(FB_WIDTH) / FB_HEIGHT,
                                       0.1f, 100.0f);
+    proj[1][1] *= -1.0f;  // Vulkan Y-flip
     glm::mat4 vp = proj * view;
 
-    // TODO: allocate offscreen RenderTarget, record + submit one direct-mode frame,
-    //       readback RGBA pixels into `pixels`.
+    // Upload room geometry.
+    ASSERT_TRUE(renderer.uploadSceneGeometry(scene));
 
-    // Placeholder: skip test until renderer is implemented.
-    std::vector<uint8_t> pixels; // FB_WIDTH * FB_HEIGHT * 4 bytes when implemented
-    if (pixels.empty()) {
-        GTEST_SKIP() << "Renderer not yet implemented — skipping pixel readback test";
+    // Create a 1x1 dummy atlas image (UI_TEST_COLOR overrides the sample, but
+    // the descriptor must be valid for validation layers).
+    VkImage       dummyImg   = VK_NULL_HANDLE;
+    VmaAllocation dummyAlloc = VK_NULL_HANDLE;
+    VkImageView   dummyView  = VK_NULL_HANDLE;
+    VkSampler     dummySampler = VK_NULL_HANDLE;
+    {
+        VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        ci.imageType     = VK_IMAGE_TYPE_2D;
+        ci.format        = VK_FORMAT_R8G8B8A8_UNORM;
+        ci.extent        = {1, 1, 1};
+        ci.mipLevels     = 1;
+        ci.arrayLayers   = 1;
+        ci.samples       = VK_SAMPLE_COUNT_1_BIT;
+        ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        ci.usage         = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VmaAllocationCreateInfo ai{};
+        ai.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        ASSERT_EQ(vmaCreateImage(renderer.getAllocator(), &ci, &ai,
+                                 &dummyImg, &dummyAlloc, nullptr), VK_SUCCESS);
+
+        // Transition to SHADER_READ_ONLY_OPTIMAL.
+        VkCommandBuffer transCmd = vku::beginOneShot(renderer.getDevice(),
+                                                     renderer.getCommandPool());
+        vku::imageBarrier(transCmd, dummyImg,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            0, VK_ACCESS_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        vku::endOneShot(renderer.getDevice(), renderer.getCommandPool(),
+                        renderer.getGraphicsQueue(), transCmd);
+
+        VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewCI.image            = dummyImg;
+        viewCI.viewType         = VK_IMAGE_VIEW_TYPE_2D;
+        viewCI.format           = VK_FORMAT_R8G8B8A8_UNORM;
+        viewCI.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        ASSERT_EQ(vkCreateImageView(renderer.getDevice(), &viewCI, nullptr, &dummyView), VK_SUCCESS);
+
+        VkSamplerCreateInfo sampCI{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        sampCI.magFilter    = VK_FILTER_NEAREST;
+        sampCI.minFilter    = VK_FILTER_NEAREST;
+        sampCI.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        sampCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ASSERT_EQ(vkCreateSampler(renderer.getDevice(), &sampCI, nullptr, &dummySampler), VK_SUCCESS);
+
+        renderer.bindAtlasDescriptor(dummyView, dummySampler);
     }
+
+    // Ensure the offscreen RT descriptor (set 2 binding 1) is valid.
+    ASSERT_TRUE(renderer.initOffscreenRT());
+
+    // Create a simple UI vertex buffer: one quad covering the full canvas.
+    // With UI_TEST_COLOR defined in the test shaders, every rendered UI pixel
+    // is solid magenta regardless of UVs.
+    VkBuffer      uiVtxBuf   = VK_NULL_HANDLE;
+    VmaAllocation uiVtxAlloc = VK_NULL_HANDLE;
+    constexpr uint32_t UI_VTX_COUNT = 6;
+    {
+        const float W = static_cast<float>(Renderer::W_UI);
+        const float H = static_cast<float>(Renderer::H_UI);
+        UIVertex verts[UI_VTX_COUNT] = {
+            {{0, 0}, {0, 0}}, {{W, 0}, {1, 0}}, {{W, H}, {1, 1}},
+            {{0, 0}, {0, 0}}, {{W, H}, {1, 1}}, {{0, H}, {0, 1}},
+        };
+        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bci.size        = sizeof(verts);
+        bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VmaAllocationCreateInfo ai{};
+        ai.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        ASSERT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
+                                  &uiVtxBuf, &uiVtxAlloc, nullptr), VK_SUCCESS);
+        void* mapped = nullptr;
+        vmaMapMemory(renderer.getAllocator(), uiVtxAlloc, &mapped);
+        memcpy(mapped, verts, sizeof(verts));
+        vmaUnmapMemory(renderer.getAllocator(), uiVtxAlloc);
+    }
+
+    // Compute surface transforms and clip planes.
+    auto transforms = computeSurfaceTransforms(P00, P10, P01,
+                                               static_cast<float>(Renderer::W_UI),
+                                               static_cast<float>(Renderer::H_UI),
+                                               vp);
+    auto clipPlanes = computeClipPlanes(P00, P10, P01);
+
+    SceneUBO sceneUBO{};
+    sceneUBO.view         = view;
+    sceneUBO.proj         = proj;
+    sceneUBO.lightViewProj = scene.lightViewProj();
+    sceneUBO.lightDir     = glm::vec4(scene.light().direction, 0.0f);
+    sceneUBO.lightColor   = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.ambientColor = glm::vec4(scene.light().ambient,   1.0f);
+    renderer.updateSceneUBO(sceneUBO);
+
+    SurfaceUBO surfaceUBO{};
+    surfaceUBO.totalMatrix = transforms.M_total;
+    surfaceUBO.worldMatrix = transforms.M_world;
+    for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
+    surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
+    renderer.updateSurfaceUBO(surfaceUBO);
+
+    // Create the headless render target.
+    HeadlessRenderTarget hrt{};
+    ASSERT_TRUE(renderer.createHeadlessRT(FB_WIDTH, FB_HEIGHT, hrt));
+
+    // Allocate a CPU-visible readback buffer.
+    VkBuffer      readbackBuf   = VK_NULL_HANDLE;
+    VmaAllocation readbackAlloc = VK_NULL_HANDLE;
+    const VkDeviceSize readbackSize = static_cast<VkDeviceSize>(FB_WIDTH) * FB_HEIGHT * 4;
+    {
+        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bci.size        = readbackSize;
+        bci.usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VmaAllocationCreateInfo ai{};
+        ai.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+        ASSERT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
+                                  &readbackBuf, &readbackAlloc, nullptr), VK_SUCCESS);
+    }
+
+    // Record commands: shadow pass + main pass (direct mode) + readback copy.
+    VkCommandBufferAllocateInfo cbAI{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    cbAI.commandPool        = renderer.getCommandPool();
+    cbAI.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cbAI.commandBufferCount = 1;
+    VkCommandBuffer cmd = VK_NULL_HANDLE;
+    ASSERT_EQ(vkAllocateCommandBuffers(renderer.getDevice(), &cbAI, &cmd), VK_SUCCESS);
+
+    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cmd, &beginInfo);
+
+    renderer.recordShadowPass(cmd);
+    renderer.recordMainPass(cmd, hrt.rt, /*directMode=*/true, uiVtxBuf, UI_VTX_COUNT);
+
+    // After the main pass, resolve image is in COLOR_ATTACHMENT_OPTIMAL.
+    // Transition to TRANSFER_SRC_OPTIMAL for the copy.
+    vku::imageBarrier(cmd, hrt.rt.image,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+    VkBufferImageCopy copyRegion{};
+    copyRegion.bufferOffset      = 0;
+    copyRegion.bufferRowLength   = 0;
+    copyRegion.bufferImageHeight = 0;
+    copyRegion.imageSubresource  = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    copyRegion.imageOffset       = {0, 0, 0};
+    copyRegion.imageExtent       = {FB_WIDTH, FB_HEIGHT, 1};
+    vkCmdCopyImageToBuffer(cmd, hrt.rt.image,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           readbackBuf, 1, &copyRegion);
+
+    vkEndCommandBuffer(cmd);
+
+    VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers    = &cmd;
+    ASSERT_EQ(vkQueueSubmit(renderer.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE), VK_SUCCESS);
+    vkQueueWaitIdle(renderer.getGraphicsQueue());
+
+    // Map and copy pixels to CPU.
+    void* mapped = nullptr;
+    vmaMapMemory(renderer.getAllocator(), readbackAlloc, &mapped);
+    std::vector<uint8_t> pixels(readbackSize);
+    memcpy(pixels.data(), mapped, static_cast<size_t>(readbackSize));
+    vmaUnmapMemory(renderer.getAllocator(), readbackAlloc);
+
+    // Cleanup temporary resources before assertions (so TearDown is clean).
+    vkFreeCommandBuffers(renderer.getDevice(), renderer.getCommandPool(), 1, &cmd);
+    vmaDestroyBuffer(renderer.getAllocator(), readbackBuf, readbackAlloc);
+    vmaDestroyBuffer(renderer.getAllocator(), uiVtxBuf,   uiVtxAlloc);
+    vkDestroySampler(renderer.getDevice(), dummySampler, nullptr);
+    vkDestroyImageView(renderer.getDevice(), dummyView, nullptr);
+    vmaDestroyImage(renderer.getAllocator(), dummyImg, dummyAlloc);
+    renderer.destroyHeadlessRT(hrt);
 
     // Project surface corners to screen space.
     glm::vec2 screenCorners[4] = {

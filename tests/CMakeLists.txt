@@ -40,6 +40,7 @@ set(TEST_SHADER_SOURCES
     ${RENDER_SHADER_DIR}/ui.frag
     ${RENDER_SHADER_DIR}/composite.frag
     ${RENDER_SHADER_DIR}/quad.vert
+    ${RENDER_SHADER_DIR}/shadow.vert
 )
 
 set(TEST_SPIRV_OUTPUTS "")

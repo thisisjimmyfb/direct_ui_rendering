@@ -959,7 +959,12 @@ bool Renderer::createPipelines()
 {
     // Helper: read a .spv file and create a VkShaderModule.
     auto loadShaderModule = [&](const char* relName) -> VkShaderModule {
-        std::string path = std::string(SHADER_DIR) + relName;
+#ifdef TEST_SHADER_DIR
+        const char* activeShaderDir = TEST_SHADER_DIR;
+#else
+        const char* activeShaderDir = SHADER_DIR;
+#endif
+        std::string path = std::string(activeShaderDir) + relName;
         FILE* f = fopen(path.c_str(), "rb");
         if (!f) {
             fprintf(stderr, "Renderer: cannot open shader: %s\n", path.c_str());
@@ -1866,4 +1871,150 @@ void Renderer::updateSurfaceQuad(const glm::vec3& P00, const glm::vec3& P10,
 RenderTarget& Renderer::getSwapchainRT(uint32_t imageIndex)
 {
     return m_swapRTs[imageIndex];
+}
+
+// ---------------------------------------------------------------------------
+// createHeadlessRT / destroyHeadlessRT / initOffscreenRT — headless test support
+// ---------------------------------------------------------------------------
+
+bool Renderer::createHeadlessRT(uint32_t width, uint32_t height, HeadlessRenderTarget& hrt)
+{
+    VmaAllocationCreateInfo gpuOnly{};
+    gpuOnly.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    // 1. Resolve target (1x, COLOR_ATTACHMENT + TRANSFER_SRC)
+    {
+        VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        ci.imageType     = VK_IMAGE_TYPE_2D;
+        ci.format        = m_colorFormat;
+        ci.extent        = {width, height, 1};
+        ci.mipLevels     = 1;
+        ci.arrayLayers   = 1;
+        ci.samples       = VK_SAMPLE_COUNT_1_BIT;
+        ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        ci.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        if (vmaCreateImage(m_allocator, &ci, &gpuOnly,
+                           &hrt.rt.image, &hrt.resolveAlloc, nullptr) != VK_SUCCESS)
+            return false;
+
+        VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewCI.image            = hrt.rt.image;
+        viewCI.viewType         = VK_IMAGE_VIEW_TYPE_2D;
+        viewCI.format           = m_colorFormat;
+        viewCI.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        if (vkCreateImageView(m_device, &viewCI, nullptr, &hrt.rt.imageView) != VK_SUCCESS)
+            return false;
+    }
+
+    // 2. MSAA color (4x, TRANSIENT + COLOR_ATTACHMENT)
+    {
+        VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        ci.imageType     = VK_IMAGE_TYPE_2D;
+        ci.format        = m_colorFormat;
+        ci.extent        = {width, height, 1};
+        ci.mipLevels     = 1;
+        ci.arrayLayers   = 1;
+        ci.samples       = VK_SAMPLE_COUNT_4_BIT;
+        ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        ci.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+        ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        if (vmaCreateImage(m_allocator, &ci, &gpuOnly,
+                           &hrt.msaaColor, &hrt.msaaColorAlloc, nullptr) != VK_SUCCESS)
+            return false;
+
+        VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewCI.image            = hrt.msaaColor;
+        viewCI.viewType         = VK_IMAGE_VIEW_TYPE_2D;
+        viewCI.format           = m_colorFormat;
+        viewCI.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        if (vkCreateImageView(m_device, &viewCI, nullptr, &hrt.msaaColorView) != VK_SUCCESS)
+            return false;
+    }
+
+    // 3. MSAA depth (4x, TRANSIENT + DEPTH_STENCIL)
+    {
+        VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        ci.imageType     = VK_IMAGE_TYPE_2D;
+        ci.format        = VK_FORMAT_D32_SFLOAT;
+        ci.extent        = {width, height, 1};
+        ci.mipLevels     = 1;
+        ci.arrayLayers   = 1;
+        ci.samples       = VK_SAMPLE_COUNT_4_BIT;
+        ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        ci.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+        ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        if (vmaCreateImage(m_allocator, &ci, &gpuOnly,
+                           &hrt.msaaDepth, &hrt.msaaDepthAlloc, nullptr) != VK_SUCCESS)
+            return false;
+
+        VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewCI.image            = hrt.msaaDepth;
+        viewCI.viewType         = VK_IMAGE_VIEW_TYPE_2D;
+        viewCI.format           = VK_FORMAT_D32_SFLOAT;
+        viewCI.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+        if (vkCreateImageView(m_device, &viewCI, nullptr, &hrt.msaaDepthView) != VK_SUCCESS)
+            return false;
+    }
+
+    // 4. Main pass framebuffer (MSAA color, MSAA depth, resolve)
+    {
+        VkImageView attachments[3] = {hrt.msaaColorView, hrt.msaaDepthView, hrt.rt.imageView};
+        VkFramebufferCreateInfo fbci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fbci.renderPass      = m_mainPass;
+        fbci.attachmentCount = 3;
+        fbci.pAttachments    = attachments;
+        fbci.width           = width;
+        fbci.height          = height;
+        fbci.layers          = 1;
+        if (vkCreateFramebuffer(m_device, &fbci, nullptr, &hrt.rt.framebuffer) != VK_SUCCESS)
+            return false;
+    }
+
+    hrt.rt.width      = width;
+    hrt.rt.height     = height;
+    hrt.rt.isSwapchain = false;
+    return true;
+}
+
+void Renderer::destroyHeadlessRT(HeadlessRenderTarget& hrt)
+{
+    if (hrt.rt.framebuffer) {
+        vkDestroyFramebuffer(m_device, hrt.rt.framebuffer, nullptr);
+        hrt.rt.framebuffer = VK_NULL_HANDLE;
+    }
+    if (hrt.msaaDepthView) {
+        vkDestroyImageView(m_device, hrt.msaaDepthView, nullptr);
+        hrt.msaaDepthView = VK_NULL_HANDLE;
+    }
+    if (hrt.msaaColorView) {
+        vkDestroyImageView(m_device, hrt.msaaColorView, nullptr);
+        hrt.msaaColorView = VK_NULL_HANDLE;
+    }
+    if (hrt.rt.imageView) {
+        vkDestroyImageView(m_device, hrt.rt.imageView, nullptr);
+        hrt.rt.imageView = VK_NULL_HANDLE;
+    }
+    if (hrt.msaaDepth) {
+        vmaDestroyImage(m_allocator, hrt.msaaDepth, hrt.msaaDepthAlloc);
+        hrt.msaaDepth = VK_NULL_HANDLE;
+    }
+    if (hrt.msaaColor) {
+        vmaDestroyImage(m_allocator, hrt.msaaColor, hrt.msaaColorAlloc);
+        hrt.msaaColor = VK_NULL_HANDLE;
+    }
+    if (hrt.rt.image) {
+        vmaDestroyImage(m_allocator, hrt.rt.image, hrt.resolveAlloc);
+        hrt.rt.image = VK_NULL_HANDLE;
+    }
+}
+
+bool Renderer::initOffscreenRT()
+{
+    return ensureUIRTAllocated();
 }
