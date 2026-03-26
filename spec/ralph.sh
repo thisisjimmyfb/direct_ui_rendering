@@ -75,6 +75,20 @@ $SKIP_PERMISSIONS && CLAUDE_FLAGS+=("--dangerously-skip-permissions")
 # ── signal handling ───────────────────────────────────────────────────────────
 trap 'echo ""; echo "ralph stopped after $iteration iteration(s)."; exit 0' INT TERM
 
+# ── commit helper ─────────────────────────────────────────────────────────────
+commit_work() {
+    local iteration="$1"
+    git add -A
+    local commit_msg
+    commit_msg=$(git diff --cached --quiet && echo "" || git diff --cached --stat | head -20 | claude -p "Generate a concise commit message for these git changes. Output only the message, no quotes or prefixes.")
+    if [[ -n "$commit_msg" ]]; then
+        git commit -m "$commit_msg" -m "ralph: iteration $iteration" || echo "  (nothing to commit)"
+    else
+        git commit -m "ralph: iteration $iteration" || echo "  (nothing to commit)"
+    fi
+    git push
+}
+
 # ── loop ──────────────────────────────────────────────────────────────────────
 iteration=0
 
@@ -97,20 +111,13 @@ while true; do
     echo "└─ iteration $iteration complete ────────────────────────────────────────────"
     echo ""
 
-    if $AUTO; then
-        git add -A
-        git commit -m "ralph: iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')" || echo "  (nothing to commit)"
-        git push
+	if ! $AUTO; then
+		printf "  commit work to github? [Y/n] "
+		read -r COMMIT_REPLY
+	fi
+    if ! $AUTO || [[ "${COMMIT_REPLY,,}" != "n" ]]; then
+        commit_work "$iteration"
         echo ""
-    else
-        printf "  commit work to github? [Y/n] "
-        read -r COMMIT_REPLY
-        if [[ "${COMMIT_REPLY,,}" != "n" ]]; then
-            git add -A
-            git commit -m "ralph: iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')" || echo "  (nothing to commit)"
-            git push
-            echo ""
-        fi
     fi
 
     if ! $AUTO; then

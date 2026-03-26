@@ -81,7 +81,7 @@ Find the most important unmarked task from the following list and implement it. 
 - [x] HUD drawn via pipe_metrics in metrics overlay pass (top-left, one line per field)
 
 ## Testing
-- [ ] tests/perf_reference.h: TBD placeholder values for GPU mem and frame time in both modes
+- [x] tests/perf_reference.h: placeholder values for GPU mem and frame time in both modes
 - [x] test_math.cpp: M_us, M_sw, M_total map corners to expected world positions (identity VP)
 - [x] test_math.cpp: clip plane signs — inside points all ≥ 0, outside ≥ 1 negative, boundary ~0 (±1e-5)
 - [x] test_perf.cpp: N headless frames; assert frame time and GPU mem ≤ reference × (1 + tolerance)
