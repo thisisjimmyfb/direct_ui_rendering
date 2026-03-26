@@ -288,11 +288,12 @@ void App::drawFrame()
         }
     }
 
-    // Select UI vertex buffer: terminal text in UITerminal mode, else Hello World.
-    VkBuffer uiVtxBuf   = (m_inputMode == InputMode::UITerminal && m_uiTermVtxBuf != VK_NULL_HANDLE)
-                          ? m_uiTermVtxBuf : m_ui.helloVertBuffer();
-    uint32_t uiVtxCount = (m_inputMode == InputMode::UITerminal)
-                          ? m_uiTermVtxCount : m_ui.helloVertCount();
+    // Select UI vertex buffer: use terminal text if it has content (persists across
+    // input mode changes), otherwise fall back to the static Hello World buffer.
+    bool useTermBuf = (m_uiTermVtxBuf != VK_NULL_HANDLE) &&
+                      (m_inputMode == InputMode::UITerminal || m_uiTermVtxCount > 0);
+    VkBuffer uiVtxBuf   = useTermBuf ? m_uiTermVtxBuf : m_ui.helloVertBuffer();
+    uint32_t uiVtxCount = useTermBuf ? m_uiTermVtxCount : m_ui.helloVertCount();
 
     // UI RT pass (traditional mode only).
     if (m_mode == RenderMode::Traditional) {
