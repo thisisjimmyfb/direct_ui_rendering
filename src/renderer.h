@@ -72,6 +72,9 @@ public:
     VkCommandPool getCommandPool() const { return m_cmdPool; }
     VkQueue       getGraphicsQueue() const { return m_graphicsQueue; }
 
+    // Returns the total bytes currently allocated through VMA (for metrics overlay).
+    uint64_t getTotalAllocatedBytes() const;
+
     bool isHeadless() const { return m_headless; }
 
     // Canvas / rendering constants

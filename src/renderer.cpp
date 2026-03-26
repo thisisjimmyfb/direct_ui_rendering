@@ -5,6 +5,8 @@
 #include "renderer.h"
 #include "vk_utils.h"
 
+#include <GLFW/glfw3.h>
+#include <cstdio>
 #include <cstring>
 #include <stdexcept>
 #include <vector>
@@ -37,11 +39,33 @@ void Renderer::cleanup()
 {
     if (m_device) vkDeviceWaitIdle(m_device);
 
-    // TODO: destroy all resources in reverse creation order
+    // TODO: destroy pipelines, render passes, descriptor pool, UBO buffers,
+    //       shadow resources, UI RT resources, swapchain resources.
 
-    if (m_allocator)  { vmaDestroyAllocator(m_allocator);  m_allocator = VK_NULL_HANDLE; }
-    if (m_device)     { vkDestroyDevice(m_device, nullptr); m_device = VK_NULL_HANDLE; }
-    if (m_instance)   { vkDestroyInstance(m_instance, nullptr); m_instance = VK_NULL_HANDLE; }
+    if (m_cmdPool) {
+        vkDestroyCommandPool(m_device, m_cmdPool, nullptr);
+        m_cmdPool = VK_NULL_HANDLE;
+    }
+    if (m_allocator) {
+        vmaDestroyAllocator(m_allocator);
+        m_allocator = VK_NULL_HANDLE;
+    }
+    if (m_device) {
+        vkDestroyDevice(m_device, nullptr);
+        m_device = VK_NULL_HANDLE;
+    }
+#ifdef ENABLE_VALIDATION_LAYERS
+    if (m_debugMessenger) {
+        auto fn = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+            vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT"));
+        if (fn) fn(m_instance, m_debugMessenger, nullptr);
+        m_debugMessenger = VK_NULL_HANDLE;
+    }
+#endif
+    if (m_instance) {
+        vkDestroyInstance(m_instance, nullptr);
+        m_instance = VK_NULL_HANDLE;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -64,6 +88,18 @@ void Renderer::updateSurfaceUBO(const SurfaceUBO& data)
     vmaMapMemory(m_allocator, m_surfaceUBOAlloc, &mapped);
     memcpy(mapped, &data, sizeof(data));
     vmaUnmapMemory(m_allocator, m_surfaceUBOAlloc);
+}
+
+// ---------------------------------------------------------------------------
+// VMA stats
+// ---------------------------------------------------------------------------
+
+uint64_t Renderer::getTotalAllocatedBytes() const
+{
+    if (!m_allocator) return 0;
+    VmaTotalStatistics stats{};
+    vmaCalculateStatistics(m_allocator, &stats);
+    return static_cast<uint64_t>(stats.total.statistics.allocationBytes);
 }
 
 // ---------------------------------------------------------------------------
@@ -111,38 +147,183 @@ void Renderer::presentSwapchainImage(uint32_t /*imageIndex*/)
 }
 
 // ---------------------------------------------------------------------------
-// Private helpers (stubs)
+// createInstance — VkInstance with optional validation layers + debug messenger
 // ---------------------------------------------------------------------------
 
 bool Renderer::createInstance()
 {
-    // TODO: fill VkApplicationInfo, VkInstanceCreateInfo, enable validation in Debug
-    return false;
+    VkApplicationInfo appInfo{VK_STRUCTURE_TYPE_APPLICATION_INFO};
+    appInfo.pApplicationName   = "direct_ui_rendering";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName        = "direct_ui_rendering";
+    appInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion         = VK_API_VERSION_1_3;
+
+    // Collect required instance extensions.
+    std::vector<const char*> extensions;
+    if (!m_headless) {
+        uint32_t glfwCount = 0;
+        const char** glfwExts = glfwGetRequiredInstanceExtensions(&glfwCount);
+        for (uint32_t i = 0; i < glfwCount; ++i)
+            extensions.push_back(glfwExts[i]);
+    }
+#ifdef ENABLE_VALIDATION_LAYERS
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
+
+#ifdef ENABLE_VALIDATION_LAYERS
+    // Debug messenger config — reused for pNext (catches instance create/destroy issues)
+    // and for creating the persistent messenger after the instance exists.
+    VkDebugUtilsMessengerCreateInfoEXT dbgInfo{
+        VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+    dbgInfo.messageSeverity =
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    dbgInfo.messageType =
+        VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    dbgInfo.pfnUserCallback = [](VkDebugUtilsMessageSeverityFlagBitsEXT,
+                                 VkDebugUtilsMessageTypeFlagsEXT,
+                                 const VkDebugUtilsMessengerCallbackDataEXT* pData,
+                                 void*) -> VkBool32 {
+        fprintf(stderr, "[VK] %s\n", pData->pMessage);
+        return VK_FALSE;
+    };
+    const char* validationLayer = "VK_LAYER_KHRONOS_validation";
+#endif
+
+    VkInstanceCreateInfo ci{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+    ci.pApplicationInfo        = &appInfo;
+    ci.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
+    ci.ppEnabledExtensionNames = extensions.data();
+#ifdef ENABLE_VALIDATION_LAYERS
+    ci.enabledLayerCount   = 1;
+    ci.ppEnabledLayerNames = &validationLayer;
+    ci.pNext               = &dbgInfo;
+#endif
+
+    if (vkCreateInstance(&ci, nullptr, &m_instance) != VK_SUCCESS)
+        return false;
+
+#ifdef ENABLE_VALIDATION_LAYERS
+    auto vkCreateDebugUtilsMessengerEXT_ =
+        reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+            vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT"));
+    if (vkCreateDebugUtilsMessengerEXT_)
+        vkCreateDebugUtilsMessengerEXT_(m_instance, &dbgInfo, nullptr, &m_debugMessenger);
+#endif
+
+    return true;
 }
+
+// ---------------------------------------------------------------------------
+// selectPhysicalDevice — prefer discrete GPU, fall back to first available
+// ---------------------------------------------------------------------------
 
 bool Renderer::selectPhysicalDevice()
 {
-    // TODO: enumerate physical devices, pick first discrete GPU
-    return false;
+    uint32_t count = 0;
+    vkEnumeratePhysicalDevices(m_instance, &count, nullptr);
+    if (count == 0) return false;
+
+    std::vector<VkPhysicalDevice> devices(count);
+    vkEnumeratePhysicalDevices(m_instance, &count, devices.data());
+
+    // Prefer discrete GPU.
+    for (auto d : devices) {
+        VkPhysicalDeviceProperties props;
+        vkGetPhysicalDeviceProperties(d, &props);
+        if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+            m_physDevice = d;
+            return true;
+        }
+    }
+
+    // Fallback: accept the first device (e.g. integrated GPU or software renderer).
+    m_physDevice = devices[0];
+    return true;
 }
+
+// ---------------------------------------------------------------------------
+// createLogicalDevice — graphics queue; swapchain extension when not headless
+// ---------------------------------------------------------------------------
 
 bool Renderer::createLogicalDevice()
 {
-    // TODO: create VkDevice with graphics queue
-    return false;
+    // Find a queue family with graphics support.
+    uint32_t qfCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(m_physDevice, &qfCount, nullptr);
+    std::vector<VkQueueFamilyProperties> qfProps(qfCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(m_physDevice, &qfCount, qfProps.data());
+
+    m_graphicsQueueFamily = UINT32_MAX;
+    for (uint32_t i = 0; i < qfCount; ++i) {
+        if (qfProps[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            m_graphicsQueueFamily = i;
+            break;
+        }
+    }
+    if (m_graphicsQueueFamily == UINT32_MAX) return false;
+
+    const float priority = 1.0f;
+    VkDeviceQueueCreateInfo qci{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+    qci.queueFamilyIndex = m_graphicsQueueFamily;
+    qci.queueCount       = 1;
+    qci.pQueuePriorities = &priority;
+
+    std::vector<const char*> devExts;
+    if (!m_headless)
+        devExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+    VkPhysicalDeviceFeatures features{};
+
+    VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+    dci.queueCreateInfoCount    = 1;
+    dci.pQueueCreateInfos       = &qci;
+    dci.enabledExtensionCount   = static_cast<uint32_t>(devExts.size());
+    dci.ppEnabledExtensionNames = devExts.data();
+    dci.pEnabledFeatures        = &features;
+
+    if (vkCreateDevice(m_physDevice, &dci, nullptr, &m_device) != VK_SUCCESS)
+        return false;
+
+    vkGetDeviceQueue(m_device, m_graphicsQueueFamily, 0, &m_graphicsQueue);
+    m_presentQueue = m_graphicsQueue;  // same family for present (covers most hardware)
+    return true;
 }
+
+// ---------------------------------------------------------------------------
+// createAllocator — VMA allocator tied to the selected device
+// ---------------------------------------------------------------------------
 
 bool Renderer::createAllocator()
 {
-    // TODO: fill VmaAllocatorCreateInfo and call vmaCreateAllocator
-    return false;
+    VmaAllocatorCreateInfo info{};
+    info.physicalDevice   = m_physDevice;
+    info.device           = m_device;
+    info.instance         = m_instance;
+    info.vulkanApiVersion = VK_API_VERSION_1_3;
+
+    return vmaCreateAllocator(&info, &m_allocator) == VK_SUCCESS;
 }
+
+// ---------------------------------------------------------------------------
+// createCommandPool — resettable pool on the graphics queue family
+// ---------------------------------------------------------------------------
 
 bool Renderer::createCommandPool()
 {
-    // TODO: vkCreateCommandPool on graphics queue family
-    return false;
+    VkCommandPoolCreateInfo ci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+    ci.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    ci.queueFamilyIndex = m_graphicsQueueFamily;
+
+    return vkCreateCommandPool(m_device, &ci, nullptr, &m_cmdPool) == VK_SUCCESS;
 }
+
+// ---------------------------------------------------------------------------
+// Remaining private helpers (stubs)
+// ---------------------------------------------------------------------------
 
 bool Renderer::createSwapchain(VkSurfaceKHR /*surface*/,
                                uint32_t     /*width*/,

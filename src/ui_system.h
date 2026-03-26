@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <string_view>
+#include <vector>
 
 // UI canvas constants
 static constexpr uint32_t W_UI       = 512;

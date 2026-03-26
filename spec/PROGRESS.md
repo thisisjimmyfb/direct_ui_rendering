@@ -15,8 +15,8 @@ Find the most important unmarked task from the following list and implement it. 
 - [ ] Clip planes: four inward-facing world-space planes from surface edges (left, right, top, bottom)
 
 ## Vulkan Device & Memory
-- [ ] Vulkan instance, debug messenger, physical device selection, logical device, graphics/present queues
-- [ ] VMA allocator init; expose total allocated bytes for metrics reporting
+- [x] Vulkan instance, debug messenger, physical device selection, logical device, graphics/present queues
+- [x] VMA allocator init; expose total allocated bytes for metrics reporting
 - [ ] Image memory barrier helper and one-shot staging buffer upload helper (vk_utils.h)
 
 ## Window, Swapchain & Presentation
