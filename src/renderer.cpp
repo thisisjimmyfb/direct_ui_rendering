@@ -17,18 +17,33 @@
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-bool Renderer::init(bool headless)
+bool Renderer::init(bool headless, GLFWwindow* window)
 {
     m_headless = headless;
-    // Headless mode uses a known format; non-headless will be updated by createSwapchain().
+    // Headless mode uses a known format; non-headless format is set by createSwapchain().
     if (m_headless) m_colorFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
-    if (!createInstance())             return false;
+    if (!createInstance())       return false;
+
+    // Create the Vulkan surface from the GLFW window before device selection so
+    // that present-queue compatibility can be checked if needed.
+    if (!m_headless && window) {
+        if (glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface) != VK_SUCCESS)
+            return false;
+    }
+
     if (!selectPhysicalDevice())       return false;
     if (!createLogicalDevice())        return false;
     if (!createAllocator())            return false;
     if (!createCommandPool())          return false;
-    if (!createRenderPasses())         return false;
+
+    // Build the swapchain (sets m_colorFormat / m_swapFormat / m_swapExtent /
+    // m_swapImages / m_swapImageViews and creates per-frame sync objects).
+    if (!m_headless && m_surface) {
+        if (!createSwapchain()) return false;
+    }
+
+    if (!createRenderPasses())         return false;  // uses m_colorFormat
     if (!createDescriptorSetLayouts()) return false;  // also creates m_pipelineLayout
     if (!createDescriptorPool())       return false;
     if (!allocateDescriptorSets())     return false;
@@ -178,16 +193,31 @@ void Renderer::recordMetricsPass(VkCommandBuffer /*cmd*/, RenderTarget& /*rt*/)
 
 bool Renderer::acquireSwapchainImage(uint32_t& imageIndex)
 {
-    if (m_headless) return false;
-    // TODO: vkAcquireNextImageKHR
-    imageIndex = 0;
-    return false;
+    if (m_headless || !m_swapchain) return false;
+
+    // Wait for the previous frame to finish before reusing command buffers / UBOs.
+    vkWaitForFences(m_device, 1, &m_inFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences  (m_device, 1, &m_inFlightFence);
+
+    VkResult result = vkAcquireNextImageKHR(
+        m_device, m_swapchain, UINT64_MAX,
+        m_imageAvailable, VK_NULL_HANDLE, &imageIndex);
+
+    return result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR;
 }
 
-void Renderer::presentSwapchainImage(uint32_t /*imageIndex*/)
+void Renderer::presentSwapchainImage(uint32_t imageIndex)
 {
-    if (m_headless) return;
-    // TODO: vkQueuePresentKHR
+    if (m_headless || !m_swapchain) return;
+
+    VkPresentInfoKHR presentInfo{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores    = &m_renderFinished;
+    presentInfo.swapchainCount     = 1;
+    presentInfo.pSwapchains        = &m_swapchain;
+    presentInfo.pImageIndices      = &imageIndex;
+
+    vkQueuePresentKHR(m_presentQueue, &presentInfo);
 }
 
 // ---------------------------------------------------------------------------
@@ -370,12 +400,102 @@ bool Renderer::createCommandPool()
 // Remaining private helpers
 // ---------------------------------------------------------------------------
 
-bool Renderer::createSwapchain(VkSurfaceKHR /*surface*/,
-                               uint32_t     /*width*/,
-                               uint32_t     /*height*/)
+bool Renderer::createSwapchain()
 {
-    // TODO: query surface capabilities, create VkSwapchainKHR, retrieve images + views
-    return false;
+    // --- Surface capabilities ---
+    VkSurfaceCapabilitiesKHR caps{};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physDevice, m_surface, &caps);
+
+    // --- Choose surface format (prefer BGRA8_SRGB / SRGB_NONLINEAR) ---
+    uint32_t formatCount = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physDevice, m_surface, &formatCount, nullptr);
+    std::vector<VkSurfaceFormatKHR> formats(formatCount);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physDevice, m_surface, &formatCount, formats.data());
+
+    VkSurfaceFormatKHR chosenFormat = formats[0];
+    for (const auto& f : formats) {
+        if (f.format == VK_FORMAT_B8G8R8A8_SRGB &&
+            f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            chosenFormat = f;
+            break;
+        }
+    }
+    m_swapFormat  = chosenFormat.format;
+    m_colorFormat = chosenFormat.format;
+
+    // --- Choose present mode (prefer MAILBOX for low-latency triple buffering) ---
+    uint32_t modeCount = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physDevice, m_surface, &modeCount, nullptr);
+    std::vector<VkPresentModeKHR> presentModes(modeCount);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physDevice, m_surface, &modeCount, presentModes.data());
+
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR; // guaranteed available
+    for (auto mode : presentModes) {
+        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) { presentMode = mode; break; }
+    }
+
+    // --- Choose swap extent ---
+    if (caps.currentExtent.width != UINT32_MAX) {
+        m_swapExtent = caps.currentExtent;
+    } else {
+        // Surface lets us pick freely; clamp a sensible default.
+        m_swapExtent.width  = std::max(caps.minImageExtent.width,
+                              std::min(caps.maxImageExtent.width,  1280u));
+        m_swapExtent.height = std::max(caps.minImageExtent.height,
+                              std::min(caps.maxImageExtent.height, 720u));
+    }
+
+    // --- Image count: one more than minimum, up to the hardware maximum ---
+    uint32_t imageCount = caps.minImageCount + 1;
+    if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount)
+        imageCount = caps.maxImageCount;
+
+    // --- Create VkSwapchainKHR ---
+    VkSwapchainCreateInfoKHR sci{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
+    sci.surface          = m_surface;
+    sci.minImageCount    = imageCount;
+    sci.imageFormat      = chosenFormat.format;
+    sci.imageColorSpace  = chosenFormat.colorSpace;
+    sci.imageExtent      = m_swapExtent;
+    sci.imageArrayLayers = 1;
+    sci.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    sci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // graphics == present queue family
+    sci.preTransform     = caps.currentTransform;
+    sci.compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    sci.presentMode      = presentMode;
+    sci.clipped          = VK_TRUE;
+
+    if (vkCreateSwapchainKHR(m_device, &sci, nullptr, &m_swapchain) != VK_SUCCESS)
+        return false;
+
+    // --- Retrieve swapchain images ---
+    uint32_t swapImgCount = 0;
+    vkGetSwapchainImagesKHR(m_device, m_swapchain, &swapImgCount, nullptr);
+    m_swapImages.resize(swapImgCount);
+    vkGetSwapchainImagesKHR(m_device, m_swapchain, &swapImgCount, m_swapImages.data());
+
+    // --- Create one image view per swapchain image ---
+    m_swapImageViews.resize(swapImgCount);
+    for (uint32_t i = 0; i < swapImgCount; ++i) {
+        VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewInfo.image    = m_swapImages[i];
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format   = m_swapFormat;
+        viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        if (vkCreateImageView(m_device, &viewInfo, nullptr, &m_swapImageViews[i]) != VK_SUCCESS)
+            return false;
+    }
+
+    // --- Per-frame sync objects ---
+    VkSemaphoreCreateInfo semCI{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    VkFenceCreateInfo fenceCI{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    fenceCI.flags = VK_FENCE_CREATE_SIGNALED_BIT; // start signalled so first frame doesn't block
+
+    if (vkCreateSemaphore(m_device, &semCI,   nullptr, &m_imageAvailable) != VK_SUCCESS) return false;
+    if (vkCreateSemaphore(m_device, &semCI,   nullptr, &m_renderFinished) != VK_SUCCESS) return false;
+    if (vkCreateFence    (m_device, &fenceCI, nullptr, &m_inFlightFence)  != VK_SUCCESS) return false;
+
+    return true;
 }
 
 // ---------------------------------------------------------------------------

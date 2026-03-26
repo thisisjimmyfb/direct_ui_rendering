@@ -40,6 +40,9 @@ struct RenderTarget {
     bool          isSwapchain{false};
 };
 
+// Forward-declare GLFWwindow so callers don't need to include GLFW.
+struct GLFWwindow;
+
 // ---------------------------------------------------------------------------
 // Renderer — Vulkan device, pipelines, render passes, per-frame recording.
 // init(headless=true) skips GLFW surface and swapchain setup but initialises
@@ -48,7 +51,9 @@ struct RenderTarget {
 class Renderer {
 public:
     // Lifecycle
-    bool init(bool headless = false);
+    // In non-headless mode, pass the GLFW window so the renderer can create
+    // the Vulkan surface and swapchain.
+    bool init(bool headless = false, GLFWwindow* window = nullptr);
     void cleanup();
 
     // UBO updates (call once per frame before recording)
@@ -72,6 +77,14 @@ public:
     VkCommandPool getCommandPool() const { return m_cmdPool; }
     VkQueue       getGraphicsQueue() const { return m_graphicsQueue; }
 
+    // Swapchain accessors (non-headless only)
+    VkExtent2D                      getSwapExtent()      const { return m_swapExtent; }
+    uint32_t                        getSwapImageCount()  const { return static_cast<uint32_t>(m_swapImages.size()); }
+    const std::vector<VkImageView>& getSwapImageViews()  const { return m_swapImageViews; }
+    VkFormat                        getSwapFormat()      const { return m_swapFormat; }
+    VkSemaphore                     getRenderFinishedSemaphore() const { return m_renderFinished; }
+    VkFence                         getInFlightFence()   const { return m_inFlightFence; }
+
     // Returns the total bytes currently allocated through VMA (for metrics overlay).
     uint64_t getTotalAllocatedBytes() const;
 
@@ -89,7 +102,7 @@ private:
     bool createLogicalDevice();
     bool createAllocator();
     bool createCommandPool();
-    bool createSwapchain(VkSurfaceKHR surface, uint32_t width, uint32_t height);
+    bool createSwapchain();   // uses m_surface, sets m_swapFormat/m_swapExtent/m_swapImages/Views + sync objects
     bool createRenderPasses();
     bool createDescriptorSetLayouts();
     bool createPipelines();

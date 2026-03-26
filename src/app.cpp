@@ -39,7 +39,7 @@ bool App::initWindow()
 
 bool App::initSubsystems()
 {
-    if (!m_renderer.init(/*headless=*/false)) return false;
+    if (!m_renderer.init(/*headless=*/false, m_window)) return false;
 
     m_scene.init();
 

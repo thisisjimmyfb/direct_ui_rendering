@@ -20,7 +20,7 @@ Find the most important unmarked task from the following list and implement it. 
 - [x] Image memory barrier helper and one-shot staging buffer upload helper (vk_utils.h)
 
 ## Window, Swapchain & Presentation
-- [ ] GLFW window creation, Vulkan surface, swapchain with image views
+- [x] GLFW window creation, Vulkan surface, swapchain with image views
 - [ ] RenderTarget abstraction: wraps VkImage+VkImageView; swapchain image in normal mode, plain VkImage in headless
 - [ ] Renderer::init(headless=true): skip GLFW surface/swapchain; all pipelines and passes init identically
 
