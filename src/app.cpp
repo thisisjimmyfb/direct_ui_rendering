@@ -77,6 +77,7 @@ bool App::initWindow()
     glfwSetKeyCallback(m_window, keyCallback);
     glfwSetCursorPosCallback(m_window, cursorPosCallback);
     glfwSetMouseButtonCallback(m_window, mouseButtonCallback);
+    glfwSetCharCallback(m_window, charCallback);
     return true;
 }
 
@@ -113,6 +114,21 @@ bool App::initSubsystems()
 
         if (vmaCreateBuffer(m_renderer.getAllocator(), &bci, &aci,
                             &m_hudVtxBuf, &m_hudVtxAlloc, nullptr) != VK_SUCCESS)
+            return false;
+    }
+
+    // Allocate host-visible terminal text vertex buffer (max 1536 UIVertex = 256 chars * 6)
+    {
+        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bci.size        = sizeof(UIVertex) * 1536;
+        bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo aci{};
+        aci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+        if (vmaCreateBuffer(m_renderer.getAllocator(), &bci, &aci,
+                            &m_uiTermVtxBuf, &m_uiTermVtxAlloc, nullptr) != VK_SUCCESS)
             return false;
     }
 
@@ -176,11 +192,13 @@ void App::drawFrame()
         std::sin(m_camPitch),
         std::sin(m_camYaw) * std::cos(m_camPitch));
     glm::vec3 camRight = glm::normalize(glm::cross(camFront, glm::vec3(0, 1, 0)));
-    const float camSpeed = 3.0f * dt;
-    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) m_camPos += camFront * camSpeed;
-    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) m_camPos -= camFront * camSpeed;
-    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) m_camPos -= camRight * camSpeed;
-    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) m_camPos += camRight * camSpeed;
+    if (m_inputMode == InputMode::Camera) {
+        const float camSpeed = 3.0f * dt;
+        if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) m_camPos += camFront * camSpeed;
+        if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) m_camPos -= camFront * camSpeed;
+        if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) m_camPos -= camRight * camSpeed;
+        if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) m_camPos += camRight * camSpeed;
+    }
 
     // Compute world-space surface corners for this frame.
     glm::vec3 P_00, P_10, P_01, P_11;
@@ -222,6 +240,13 @@ void App::drawFrame()
     // Tessellate HUD and upload to GPU buffer.
     m_hudVerts.clear();
     uint32_t hudVtxCount = m_metrics.tessellateHUD(m_ui, m_mode, 4, m_hudVerts);
+    // Append input mode indicator line to HUD
+    {
+        const char* inputModeStr = (m_inputMode == InputMode::UITerminal)
+            ? "Input: TERMINAL  [Tab]" : "Input: CAMERA  [Tab]";
+        m_ui.tessellateString(inputModeStr, 8.0f, GLYPH_CELL * 4.0f, m_hudVerts);
+        hudVtxCount = static_cast<uint32_t>(m_hudVerts.size());
+    }
     if (hudVtxCount > 0 && m_hudVtxBuf != VK_NULL_HANDLE) {
         void* mapped = nullptr;
         vmaMapMemory(m_renderer.getAllocator(), m_hudVtxAlloc, &mapped);
@@ -245,19 +270,39 @@ void App::drawFrame()
     // Shadow pre-pass.
     m_renderer.recordShadowPass(m_cmd);
 
+    // Update terminal text vertex buffer each frame.
+    if (m_uiTermVtxBuf != VK_NULL_HANDLE) {
+        std::vector<UIVertex> termVerts;
+        std::string displayText = m_terminalText;
+        if (m_inputMode == InputMode::UITerminal) displayText += '|';
+        if (!displayText.empty()) {
+            m_uiTermVtxCount = m_ui.tessellateString(displayText, 8.0f, 8.0f, termVerts);
+            if (m_uiTermVtxCount > 0) {
+                void* mapped = nullptr;
+                vmaMapMemory(m_renderer.getAllocator(), m_uiTermVtxAlloc, &mapped);
+                memcpy(mapped, termVerts.data(), sizeof(UIVertex) * m_uiTermVtxCount);
+                vmaUnmapMemory(m_renderer.getAllocator(), m_uiTermVtxAlloc);
+            }
+        } else {
+            m_uiTermVtxCount = 0;
+        }
+    }
+
+    // Select UI vertex buffer: terminal text in UITerminal mode, else Hello World.
+    VkBuffer uiVtxBuf   = (m_inputMode == InputMode::UITerminal && m_uiTermVtxBuf != VK_NULL_HANDLE)
+                          ? m_uiTermVtxBuf : m_ui.helloVertBuffer();
+    uint32_t uiVtxCount = (m_inputMode == InputMode::UITerminal)
+                          ? m_uiTermVtxCount : m_ui.helloVertCount();
+
     // UI RT pass (traditional mode only).
     if (m_mode == RenderMode::Traditional) {
         glm::mat4 uiOrtho = glm::ortho(0.0f, (float)W_UI, 0.0f, (float)H_UI, -1.0f, 1.0f);
-        m_renderer.recordUIRTPass(m_cmd,
-                                  m_ui.helloVertBuffer(), m_ui.helloVertCount(),
-                                  uiOrtho);
+        m_renderer.recordUIRTPass(m_cmd, uiVtxBuf, uiVtxCount, uiOrtho);
     }
 
     // Main scene pass: room + UI (direct) or surface composite (traditional).
     auto& rt = m_renderer.getSwapchainRT(imgIdx);
-    m_renderer.recordMainPass(m_cmd, rt,
-                              m_mode == RenderMode::Direct,
-                              m_ui.helloVertBuffer(), m_ui.helloVertCount());
+    m_renderer.recordMainPass(m_cmd, rt, m_mode == RenderMode::Direct, uiVtxBuf, uiVtxCount);
 
     // Pipeline barrier: ensure main pass color writes are visible to the metrics pass.
     vku::imageBarrier(m_cmd, rt.image,
@@ -315,6 +360,36 @@ void App::onKey(int key, int action)
 {
     if (action != GLFW_PRESS && action != GLFW_REPEAT) return;
 
+    // Tab toggles between camera and UI terminal input modes.
+    if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
+        if (m_inputMode == InputMode::Camera) {
+            m_inputMode = InputMode::UITerminal;
+            // Release mouse capture when entering terminal mode.
+            if (m_mouseCapture) {
+                m_mouseCapture = false;
+                m_firstMouse   = true;
+                glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            }
+            printf("Input mode: UITerminal (Tab to switch back)\n");
+        } else {
+            m_inputMode = InputMode::Camera;
+            printf("Input mode: Camera (Tab to switch)\n");
+        }
+        return;
+    }
+
+    // In UITerminal mode only handle backspace and Escape.
+    if (m_inputMode == InputMode::UITerminal) {
+        if (key == GLFW_KEY_BACKSPACE && !m_terminalText.empty()) {
+            m_terminalText.pop_back();
+        } else if (key == GLFW_KEY_ESCAPE) {
+            m_inputMode = InputMode::Camera;
+            printf("Input mode: Camera (Tab to switch)\n");
+        }
+        return;
+    }
+
+    // Camera mode key handling.
     if (key == GLFW_KEY_SPACE) {
         m_pendingModeToggle = true;
     } else if (key == GLFW_KEY_EQUAL || key == GLFW_KEY_KP_ADD) {
@@ -371,6 +446,20 @@ void App::onMouseButton(int button, int action)
     }
 }
 
+void App::charCallback(GLFWwindow* win, unsigned int codepoint)
+{
+    auto* app = static_cast<App*>(glfwGetWindowUserPointer(win));
+    app->onChar(codepoint);
+}
+
+void App::onChar(unsigned int codepoint)
+{
+    if (m_inputMode != InputMode::UITerminal) return;
+    if (m_terminalText.size() >= 255) return;
+    if (codepoint >= 32 && codepoint <= 126)
+        m_terminalText += static_cast<char>(codepoint);
+}
+
 // ---------------------------------------------------------------------------
 // Cleanup
 // ---------------------------------------------------------------------------
@@ -387,6 +476,10 @@ void App::cleanup()
     if (m_hudVtxBuf != VK_NULL_HANDLE) {
         vmaDestroyBuffer(m_renderer.getAllocator(), m_hudVtxBuf, m_hudVtxAlloc);
         m_hudVtxBuf = VK_NULL_HANDLE;
+    }
+    if (m_uiTermVtxBuf != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(m_renderer.getAllocator(), m_uiTermVtxBuf, m_uiTermVtxAlloc);
+        m_uiTermVtxBuf = VK_NULL_HANDLE;
     }
 
     m_ui.cleanup();

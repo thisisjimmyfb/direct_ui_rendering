@@ -12,6 +12,8 @@
 #include <vector>
 #include <chrono>
 
+enum class InputMode { Camera, UITerminal };
+
 // App owns the window, renderer, scene, UI system, and metrics.
 // It drives the frame loop and handles keyboard input.
 class App {
@@ -35,6 +37,8 @@ private:
     void onKey(int key, int action);
     void onMouseMove(double x, double y);
     void onMouseButton(int button, int action);
+    static void charCallback(GLFWwindow* win, unsigned int codepoint);
+    void onChar(unsigned int codepoint);
 
     void drawFrame();
 
@@ -58,6 +62,12 @@ private:
     double    m_lastMouseY{0.0};
     bool      m_firstMouse{true};
     bool      m_mouseCapture{false};
+    InputMode  m_inputMode{InputMode::Camera};
+    std::string m_terminalText;   // up to 255 chars, shown on floating quad
+
+    VkBuffer      m_uiTermVtxBuf{VK_NULL_HANDLE};
+    VmaAllocation m_uiTermVtxAlloc{VK_NULL_HANDLE};
+    uint32_t      m_uiTermVtxCount{0};
     std::chrono::steady_clock::time_point m_lastFrameTime{};
 
     VkCommandBuffer m_cmd{VK_NULL_HANDLE};
