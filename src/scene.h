@@ -21,10 +21,10 @@ struct RoomMesh {
 // UI surface quad in local space.  Corner naming:
 //   P_00 = top-left, P_10 = top-right, P_01 = bottom-left, P_11 = bottom-right
 struct UISurface {
-    glm::vec3 P_00_local{-0.5f,  0.5f, 0.0f};
-    glm::vec3 P_10_local{ 0.5f,  0.5f, 0.0f};
-    glm::vec3 P_01_local{-0.5f, -0.5f, 0.0f};
-    glm::vec3 P_11_local{ 0.5f, -0.5f, 0.0f};
+    glm::vec3 P_00_local{-1.5f,  0.75f, 0.0f};
+    glm::vec3 P_10_local{ 1.5f,  0.75f, 0.0f};
+    glm::vec3 P_01_local{-1.5f, -0.75f, 0.0f};
+    glm::vec3 P_11_local{ 1.5f, -0.75f, 0.0f};
 };
 
 // Directional light parameters.
