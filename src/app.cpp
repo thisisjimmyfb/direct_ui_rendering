@@ -199,7 +199,7 @@ void App::drawFrame()
 
     // UI RT pass (traditional mode only).
     if (m_mode == RenderMode::Traditional) {
-        glm::mat4 uiOrtho = glm::ortho(0.0f, (float)W_UI, (float)H_UI, 0.0f, -1.0f, 1.0f);
+        glm::mat4 uiOrtho = glm::ortho(0.0f, (float)W_UI, 0.0f, (float)H_UI, -1.0f, 1.0f);
         m_renderer.recordUIRTPass(m_cmd,
                                   m_ui.helloVertBuffer(), m_ui.helloVertCount(),
                                   uiOrtho);
@@ -222,7 +222,7 @@ void App::drawFrame()
 
     // Metrics overlay pass.
     glm::mat4 hudOrtho = glm::ortho(0.0f, (float)WINDOW_WIDTH,
-                                    (float)WINDOW_HEIGHT, 0.0f, -1.0f, 1.0f);
+                                    0.0f, (float)WINDOW_HEIGHT, -1.0f, 1.0f);
     m_renderer.recordMetricsPass(m_cmd, rt,
                                  m_hudVtxBuf, hudVtxCount,
                                  hudOrtho);
