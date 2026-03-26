@@ -1,5 +1,9 @@
 #version 450
 
+// Fragment shader for the opaque teal UI surface quad.
+// Renders the moving world-space quad as solid teal with PCF shadow.
+// Used in direct mode: UI geometry is drawn on top of this quad.
+
 layout(set = 0, binding = 0) uniform SceneUBO {
     mat4 view;
     mat4 proj;
@@ -10,14 +14,12 @@ layout(set = 0, binding = 0) uniform SceneUBO {
 };
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
-layout(set = 2, binding = 1) uniform sampler2D uiRT;
 
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) in vec4 inShadowCoord;
 
 layout(location = 0) out vec4 outColor;
 
-// 2x2 PCF tap — matches room.frag shadow quality.
 float sampleShadowPCF(vec4 shadowCoord) {
     vec3 proj = shadowCoord.xyz / shadowCoord.w;
     float shadow = 0.0;
@@ -32,13 +34,8 @@ float sampleShadowPCF(vec4 shadowCoord) {
 }
 
 void main() {
-    vec4  uiColor = texture(uiRT, inTexCoord);
-    float shadow  = sampleShadowPCF(inShadowCoord);
-    vec3  lit     = clamp(ambientColor.rgb + shadow * lightColor.rgb, 0.0, 1.0);
-
-    // Teal base color; premul-alpha blend the UI texture on top.
-    // uiColor.rgb is premultiplied, so: out = ui.rgb + teal * (1 - ui.a)
+    float shadow = sampleShadowPCF(inShadowCoord);
     vec3 teal = vec3(0.0, 0.5, 0.5);
-    vec3 composited = uiColor.rgb + teal * (1.0 - uiColor.a);
-    outColor = vec4(composited * lit, 1.0);
+    vec3 lit   = clamp(ambientColor.rgb + shadow * lightColor.rgb, 0.0, 1.0);
+    outColor   = vec4(teal * lit, 1.0);
 }

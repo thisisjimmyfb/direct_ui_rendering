@@ -67,6 +67,7 @@ void Renderer::cleanup()
     if (m_pipeUIDirect)  { vkDestroyPipeline(m_device, m_pipeUIDirect,  nullptr); m_pipeUIDirect  = VK_NULL_HANDLE; }
     if (m_pipeUIRT)      { vkDestroyPipeline(m_device, m_pipeUIRT,      nullptr); m_pipeUIRT      = VK_NULL_HANDLE; }
     if (m_pipeComposite) { vkDestroyPipeline(m_device, m_pipeComposite, nullptr); m_pipeComposite = VK_NULL_HANDLE; }
+    if (m_pipeSurface)   { vkDestroyPipeline(m_device, m_pipeSurface,   nullptr); m_pipeSurface   = VK_NULL_HANDLE; }
     if (m_pipeMetrics)   { vkDestroyPipeline(m_device, m_pipeMetrics,   nullptr); m_pipeMetrics   = VK_NULL_HANDLE; }
 
     // Uniform buffers
@@ -290,7 +291,16 @@ void Renderer::recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool direct
     }
 
     if (directMode) {
-        // Direct mode: render glyph quads with M_total transform + clip distances
+        // Direct mode: draw opaque teal quad first, then UI geometry on top.
+        if (m_pipeSurface != VK_NULL_HANDLE && m_surfaceQuadBuf != VK_NULL_HANDLE) {
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeSurface);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                    0, 1, &m_set0, 0, nullptr);
+            VkDeviceSize offset = 0;
+            vkCmdBindVertexBuffers(cmd, 0, 1, &m_surfaceQuadBuf, &offset);
+            vkCmdDraw(cmd, 6, 1, 0, 0);
+        }
+        // UI geometry rendered directly into world space using M_total (clip-space offset).
         if (m_pipeUIDirect != VK_NULL_HANDLE && uiVtxCount > 0 && uiVtxBuf != VK_NULL_HANDLE) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeUIDirect);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
@@ -302,7 +312,7 @@ void Renderer::recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool direct
             vkCmdDraw(cmd, uiVtxCount, 1, 0, 0);
         }
     } else {
-        // Traditional mode: composite the offscreen UI RT onto the animated surface quad
+        // Traditional mode: composite the offscreen UI RT onto the teal surface quad.
         if (m_pipeComposite != VK_NULL_HANDLE && m_surfaceQuadBuf != VK_NULL_HANDLE) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeComposite);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
@@ -997,16 +1007,17 @@ bool Renderer::createPipelines()
     VkShaderModule vsUIOrtho     = loadShaderModule("ui_ortho.vert.spv");
     VkShaderModule fsUI          = loadShaderModule("ui.frag.spv");
     VkShaderModule fsComposite   = loadShaderModule("composite.frag.spv");
+    VkShaderModule fsSurface     = loadShaderModule("surface.frag.spv");
     VkShaderModule vsQuad        = loadShaderModule("quad.vert.spv");
     VkShaderModule vsShadow      = loadShaderModule("shadow.vert.spv");
 
     auto destroyModules = [&]() {
         auto d = [&](VkShaderModule m) { if (m) vkDestroyShaderModule(m_device, m, nullptr); };
         d(vsRoom); d(fsRoom); d(vsUIDirect); d(fsUIDirect); d(vsUIOrtho);
-        d(fsUI); d(fsComposite); d(vsQuad); d(vsShadow);
+        d(fsUI); d(fsComposite); d(fsSurface); d(vsQuad); d(vsShadow);
     };
 
-    if (!vsRoom || !fsRoom || !vsUIDirect || !fsUIDirect || !vsUIOrtho || !fsUI || !fsComposite || !vsQuad || !vsShadow) {
+    if (!vsRoom || !fsRoom || !vsUIDirect || !fsUIDirect || !vsUIOrtho || !fsUI || !fsComposite || !fsSurface || !vsQuad || !vsShadow) {
         destroyModules();
         return false;
     }
@@ -1279,7 +1290,7 @@ bool Renderer::createPipelines()
         }
     }
 
-    // --- 4. pipe_composite: surface quad sampling offscreen RT, depth read, 4x MSAA ---
+    // --- 4. pipe_composite: surface quad; teal base + UI RT blended on top, 4x MSAA ---
     {
         VkPipelineShaderStageCreateInfo stages[2]{};
         stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
@@ -1301,7 +1312,7 @@ bool Renderer::createPipelines()
         VkPipelineDepthStencilStateCreateInfo depth{
             VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
         depth.depthTestEnable  = VK_TRUE;
-        depth.depthWriteEnable = VK_FALSE;
+        depth.depthWriteEnable = VK_TRUE;   // opaque — write depth
         depth.depthCompareOp   = VK_COMPARE_OP_LESS;
 
         VkGraphicsPipelineCreateInfo pci{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
@@ -1313,12 +1324,58 @@ bool Renderer::createPipelines()
         pci.pRasterizationState = &raster;
         pci.pMultisampleState   = &msaa;
         pci.pDepthStencilState  = &depth;
-        pci.pColorBlendState    = &premulBlendState;
+        pci.pColorBlendState    = &opaqueBlendState;  // shader outputs alpha=1
         pci.pDynamicState       = &dynState;
         pci.layout              = m_pipelineLayout;
         pci.renderPass          = m_mainPass;
 
         if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pci, nullptr, &m_pipeComposite)
+                != VK_SUCCESS) {
+            destroyModules();
+            return false;
+        }
+    }
+
+    // --- 4b. pipe_surface: opaque teal quad for direct mode (UI renders on top) ---
+    {
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_VERTEX_BIT,   vsQuad,    "main", nullptr};
+        stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_FRAGMENT_BIT, fsSurface, "main", nullptr};
+
+        VkPipelineRasterizationStateCreateInfo raster{
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        raster.polygonMode = VK_POLYGON_MODE_FILL;
+        raster.cullMode    = VK_CULL_MODE_NONE;
+        raster.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        raster.lineWidth   = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo msaa{
+            VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        msaa.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depth{
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+        depth.depthTestEnable  = VK_TRUE;
+        depth.depthWriteEnable = VK_TRUE;
+        depth.depthCompareOp   = VK_COMPARE_OP_LESS;
+
+        VkGraphicsPipelineCreateInfo pci{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        pci.stageCount          = 2;
+        pci.pStages             = stages;
+        pci.pVertexInputState   = &quadVertexInput;
+        pci.pInputAssemblyState = &inputAssembly;
+        pci.pViewportState      = &viewportState;
+        pci.pRasterizationState = &raster;
+        pci.pMultisampleState   = &msaa;
+        pci.pDepthStencilState  = &depth;
+        pci.pColorBlendState    = &opaqueBlendState;
+        pci.pDynamicState       = &dynState;
+        pci.layout              = m_pipelineLayout;
+        pci.renderPass          = m_mainPass;
+
+        if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pci, nullptr, &m_pipeSurface)
                 != VK_SUCCESS) {
             destroyModules();
             return false;

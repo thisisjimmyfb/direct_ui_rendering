@@ -1,5 +1,7 @@
 ## Progress History
 
+- **2026-03-26 18:30**: Made the moving world-space quad an opaque teal color in both rendering modes. In traditional mode, `composite.frag` now blends the UI RT texture on top of a teal background using premultiplied-alpha compositing (`out = ui.rgb + teal*(1-ui.a)`), so the UI appears texture-mapped onto the teal quad. In direct mode, a new `surface.frag` shader and `pipeSurface` pipeline draw the teal quad first (with depth-write enabled and PCF shadow), then the existing `pipeUIDirect` renders the UI geometry on top via the clip-space offset (depth bias). The composite pipeline was updated to use `opaqueBlendState` with `depthWriteEnable=VK_TRUE` for consistency. `surface.frag` added to shader build list in CMakeLists.txt. Iterate loop: 17/17 tests pass, build clean, app exits code 0 after 10s timeout.
+
 - **2026-03-26 18:00**: Fixed UI atlas path to resolve relative to executable directory. Used `GetModuleFileNameA` (Windows) / `readlink /proc/self/exe` (Linux) in `app.cpp` to derive `exeDir()`, replacing the hardcoded relative `"assets/atlas.png"` path so the app finds its atlas regardless of the working directory when launched. 17/17 tests pass, build clean, app exits code 0 after 10s timeout. No new issues found.
 
 - **2026-03-26 17:00**: Iterate loop run — no pending tasks. 17/17 tests pass, Debug build clean, app exits code 0 after 10s timeout. No issues found.

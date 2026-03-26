@@ -200,6 +200,7 @@ private:
     VkPipeline       m_pipeUIDirect{VK_NULL_HANDLE};
     VkPipeline       m_pipeUIRT{VK_NULL_HANDLE};
     VkPipeline       m_pipeComposite{VK_NULL_HANDLE};
+    VkPipeline       m_pipeSurface{VK_NULL_HANDLE};   // opaque teal quad (direct mode)
     VkPipeline       m_pipeMetrics{VK_NULL_HANDLE};
     VkPipelineLayout m_pipelineLayout{VK_NULL_HANDLE};
 
