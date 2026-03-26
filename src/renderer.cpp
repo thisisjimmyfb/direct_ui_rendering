@@ -4,6 +4,8 @@
 
 #include "renderer.h"
 #include "vk_utils.h"
+#include "scene.h"
+#include "ui_system.h"
 
 #include <GLFW/glfw3.h>
 #include <cstdio>
@@ -40,6 +42,13 @@ bool Renderer::init(bool headless)
 void Renderer::cleanup()
 {
     if (m_device) vkDeviceWaitIdle(m_device);
+
+    // Pipelines
+    if (m_pipeRoom)      { vkDestroyPipeline(m_device, m_pipeRoom,      nullptr); m_pipeRoom      = VK_NULL_HANDLE; }
+    if (m_pipeUIDirect)  { vkDestroyPipeline(m_device, m_pipeUIDirect,  nullptr); m_pipeUIDirect  = VK_NULL_HANDLE; }
+    if (m_pipeUIRT)      { vkDestroyPipeline(m_device, m_pipeUIRT,      nullptr); m_pipeUIRT      = VK_NULL_HANDLE; }
+    if (m_pipeComposite) { vkDestroyPipeline(m_device, m_pipeComposite, nullptr); m_pipeComposite = VK_NULL_HANDLE; }
+    if (m_pipeMetrics)   { vkDestroyPipeline(m_device, m_pipeMetrics,   nullptr); m_pipeMetrics   = VK_NULL_HANDLE; }
 
     // Uniform buffers
     if (m_sceneUBOBuf)   { vmaDestroyBuffer(m_allocator, m_sceneUBOBuf,   m_sceneUBOAlloc);   m_sceneUBOBuf   = VK_NULL_HANDLE; }
@@ -293,6 +302,7 @@ bool Renderer::createLogicalDevice()
         devExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
     VkPhysicalDeviceFeatures features{};
+    features.shaderClipDistance = VK_TRUE;
 
     VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     dci.queueCreateInfoCount    = 1;
@@ -636,8 +646,355 @@ bool Renderer::createDescriptorSetLayouts()
 
 bool Renderer::createPipelines()
 {
-    // TODO: load SPIR-V, create all 5 pipelines using m_pipelineLayout
-    return false;
+    // Helper: read a .spv file and create a VkShaderModule.
+    auto loadShaderModule = [&](const char* relName) -> VkShaderModule {
+        std::string path = std::string(SHADER_DIR) + relName;
+        FILE* f = fopen(path.c_str(), "rb");
+        if (!f) {
+            fprintf(stderr, "Renderer: cannot open shader: %s\n", path.c_str());
+            return VK_NULL_HANDLE;
+        }
+        fseek(f, 0, SEEK_END);
+        long sz = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        std::vector<char> buf(sz);
+        fread(buf.data(), 1, static_cast<size_t>(sz), f);
+        fclose(f);
+
+        VkShaderModuleCreateInfo ci{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
+        ci.codeSize = static_cast<size_t>(sz);
+        ci.pCode    = reinterpret_cast<const uint32_t*>(buf.data());
+        VkShaderModule mod{VK_NULL_HANDLE};
+        vkCreateShaderModule(m_device, &ci, nullptr, &mod);
+        return mod;
+    };
+
+    VkShaderModule vsRoom      = loadShaderModule("room.vert.spv");
+    VkShaderModule fsRoom      = loadShaderModule("room.frag.spv");
+    VkShaderModule vsUIDirect  = loadShaderModule("ui_direct.vert.spv");
+    VkShaderModule vsUIOrtho   = loadShaderModule("ui_ortho.vert.spv");
+    VkShaderModule fsUI        = loadShaderModule("ui.frag.spv");
+    VkShaderModule fsComposite = loadShaderModule("composite.frag.spv");
+    VkShaderModule vsQuad      = loadShaderModule("quad.vert.spv");
+
+    auto destroyModules = [&]() {
+        auto d = [&](VkShaderModule m) { if (m) vkDestroyShaderModule(m_device, m, nullptr); };
+        d(vsRoom); d(fsRoom); d(vsUIDirect); d(vsUIOrtho);
+        d(fsUI); d(fsComposite); d(vsQuad);
+    };
+
+    if (!vsRoom || !fsRoom || !vsUIDirect || !vsUIOrtho || !fsUI || !fsComposite || !vsQuad) {
+        destroyModules();
+        return false;
+    }
+
+    // Common state shared across all pipelines.
+    VkDynamicState dynStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dynState{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+    dynState.dynamicStateCount = 2;
+    dynState.pDynamicStates    = dynStates;
+
+    VkPipelineViewportStateCreateInfo viewportState{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount  = 1;
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{
+        VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+    // Pre-multiplied alpha blend state (used by all UI pipelines).
+    VkPipelineColorBlendAttachmentState premulBlend{};
+    premulBlend.blendEnable         = VK_TRUE;
+    premulBlend.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    premulBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    premulBlend.colorBlendOp        = VK_BLEND_OP_ADD;
+    premulBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    premulBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    premulBlend.alphaBlendOp        = VK_BLEND_OP_ADD;
+    premulBlend.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+    VkPipelineColorBlendStateCreateInfo premulBlendState{
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+    premulBlendState.attachmentCount = 1;
+    premulBlendState.pAttachments    = &premulBlend;
+
+    // Opaque blend (room geometry).
+    VkPipelineColorBlendAttachmentState opaqueBlend{};
+    opaqueBlend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                 VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    VkPipelineColorBlendStateCreateInfo opaqueBlendState{
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+    opaqueBlendState.attachmentCount = 1;
+    opaqueBlendState.pAttachments    = &opaqueBlend;
+
+    // Vertex input: room geometry (Vertex: pos:vec3, normal:vec3, uv:vec2 = 32 bytes).
+    VkVertexInputBindingDescription roomBinding{0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX};
+    VkVertexInputAttributeDescription roomAttrs[3]{
+        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)},
+        {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal)},
+        {2, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, uv)},
+    };
+    VkPipelineVertexInputStateCreateInfo roomVertexInput{
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+    roomVertexInput.vertexBindingDescriptionCount   = 1;
+    roomVertexInput.pVertexBindingDescriptions      = &roomBinding;
+    roomVertexInput.vertexAttributeDescriptionCount = 3;
+    roomVertexInput.pVertexAttributeDescriptions    = roomAttrs;
+
+    // Vertex input: UI (UIVertex: pos:vec2, uv:vec2 = 16 bytes).
+    VkVertexInputBindingDescription uiBinding{0, sizeof(UIVertex), VK_VERTEX_INPUT_RATE_VERTEX};
+    VkVertexInputAttributeDescription uiAttrs[2]{
+        {0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(UIVertex, pos)},
+        {1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(UIVertex, uv)},
+    };
+    VkPipelineVertexInputStateCreateInfo uiVertexInput{
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+    uiVertexInput.vertexBindingDescriptionCount   = 1;
+    uiVertexInput.pVertexBindingDescriptions      = &uiBinding;
+    uiVertexInput.vertexAttributeDescriptionCount = 2;
+    uiVertexInput.pVertexAttributeDescriptions    = uiAttrs;
+
+    // Vertex input: composite quad (pos:vec3, uv:vec2 = 20 bytes).
+    struct QuadVertex { glm::vec3 pos; glm::vec2 uv; };
+    VkVertexInputBindingDescription quadBinding{0, sizeof(QuadVertex), VK_VERTEX_INPUT_RATE_VERTEX};
+    VkVertexInputAttributeDescription quadAttrs[2]{
+        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(QuadVertex, pos)},
+        {1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(QuadVertex, uv)},
+    };
+    VkPipelineVertexInputStateCreateInfo quadVertexInput{
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+    quadVertexInput.vertexBindingDescriptionCount   = 1;
+    quadVertexInput.pVertexBindingDescriptions      = &quadBinding;
+    quadVertexInput.vertexAttributeDescriptionCount = 2;
+    quadVertexInput.pVertexAttributeDescriptions    = quadAttrs;
+
+    // --- 1. pipe_room: Blinn-Phong room geometry, depth test+write, 4x MSAA ---
+    {
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_VERTEX_BIT,   vsRoom, "main", nullptr};
+        stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_FRAGMENT_BIT, fsRoom, "main", nullptr};
+
+        VkPipelineRasterizationStateCreateInfo raster{
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        raster.polygonMode = VK_POLYGON_MODE_FILL;
+        raster.cullMode    = VK_CULL_MODE_BACK_BIT;
+        raster.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        raster.lineWidth   = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo msaa{
+            VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        msaa.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depth{
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+        depth.depthTestEnable  = VK_TRUE;
+        depth.depthWriteEnable = VK_TRUE;
+        depth.depthCompareOp   = VK_COMPARE_OP_LESS;
+
+        VkGraphicsPipelineCreateInfo pci{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        pci.stageCount          = 2;
+        pci.pStages             = stages;
+        pci.pVertexInputState   = &roomVertexInput;
+        pci.pInputAssemblyState = &inputAssembly;
+        pci.pViewportState      = &viewportState;
+        pci.pRasterizationState = &raster;
+        pci.pMultisampleState   = &msaa;
+        pci.pDepthStencilState  = &depth;
+        pci.pColorBlendState    = &opaqueBlendState;
+        pci.pDynamicState       = &dynState;
+        pci.layout              = m_pipelineLayout;
+        pci.renderPass          = m_mainPass;
+
+        if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pci, nullptr, &m_pipeRoom)
+                != VK_SUCCESS) {
+            destroyModules();
+            return false;
+        }
+    }
+
+    // --- 2. pipe_ui_direct: UI in world space, clip distances, pre-multiplied alpha, 4x MSAA ---
+    {
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_VERTEX_BIT,   vsUIDirect, "main", nullptr};
+        stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_FRAGMENT_BIT, fsUI,       "main", nullptr};
+
+        VkPipelineRasterizationStateCreateInfo raster{
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        raster.polygonMode = VK_POLYGON_MODE_FILL;
+        raster.cullMode    = VK_CULL_MODE_NONE;
+        raster.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        raster.lineWidth   = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo msaa{
+            VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        msaa.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depth{
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+        depth.depthTestEnable  = VK_TRUE;
+        depth.depthWriteEnable = VK_FALSE;
+        depth.depthCompareOp   = VK_COMPARE_OP_LESS;
+
+        VkGraphicsPipelineCreateInfo pci{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        pci.stageCount          = 2;
+        pci.pStages             = stages;
+        pci.pVertexInputState   = &uiVertexInput;
+        pci.pInputAssemblyState = &inputAssembly;
+        pci.pViewportState      = &viewportState;
+        pci.pRasterizationState = &raster;
+        pci.pMultisampleState   = &msaa;
+        pci.pDepthStencilState  = &depth;
+        pci.pColorBlendState    = &premulBlendState;
+        pci.pDynamicState       = &dynState;
+        pci.layout              = m_pipelineLayout;
+        pci.renderPass          = m_mainPass;
+
+        if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pci, nullptr, &m_pipeUIDirect)
+                != VK_SUCCESS) {
+            destroyModules();
+            return false;
+        }
+    }
+
+    // --- 3. pipe_ui_rt: orthographic UI into offscreen RT, 1x MSAA, alpha blend ---
+    {
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_VERTEX_BIT,   vsUIOrtho, "main", nullptr};
+        stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_FRAGMENT_BIT, fsUI,      "main", nullptr};
+
+        VkPipelineRasterizationStateCreateInfo raster{
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        raster.polygonMode = VK_POLYGON_MODE_FILL;
+        raster.cullMode    = VK_CULL_MODE_NONE;
+        raster.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        raster.lineWidth   = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo msaa{
+            VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        msaa.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depth{
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+
+        VkGraphicsPipelineCreateInfo pci{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        pci.stageCount          = 2;
+        pci.pStages             = stages;
+        pci.pVertexInputState   = &uiVertexInput;
+        pci.pInputAssemblyState = &inputAssembly;
+        pci.pViewportState      = &viewportState;
+        pci.pRasterizationState = &raster;
+        pci.pMultisampleState   = &msaa;
+        pci.pDepthStencilState  = &depth;
+        pci.pColorBlendState    = &premulBlendState;
+        pci.pDynamicState       = &dynState;
+        pci.layout              = m_pipelineLayout;
+        pci.renderPass          = m_uiRTPass;
+
+        if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pci, nullptr, &m_pipeUIRT)
+                != VK_SUCCESS) {
+            destroyModules();
+            return false;
+        }
+    }
+
+    // --- 4. pipe_composite: surface quad sampling offscreen RT, depth read, 4x MSAA ---
+    {
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_VERTEX_BIT,   vsQuad,      "main", nullptr};
+        stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_FRAGMENT_BIT, fsComposite, "main", nullptr};
+
+        VkPipelineRasterizationStateCreateInfo raster{
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        raster.polygonMode = VK_POLYGON_MODE_FILL;
+        raster.cullMode    = VK_CULL_MODE_NONE;
+        raster.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        raster.lineWidth   = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo msaa{
+            VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        msaa.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depth{
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+        depth.depthTestEnable  = VK_TRUE;
+        depth.depthWriteEnable = VK_FALSE;
+        depth.depthCompareOp   = VK_COMPARE_OP_LESS;
+
+        VkGraphicsPipelineCreateInfo pci{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        pci.stageCount          = 2;
+        pci.pStages             = stages;
+        pci.pVertexInputState   = &quadVertexInput;
+        pci.pInputAssemblyState = &inputAssembly;
+        pci.pViewportState      = &viewportState;
+        pci.pRasterizationState = &raster;
+        pci.pMultisampleState   = &msaa;
+        pci.pDepthStencilState  = &depth;
+        pci.pColorBlendState    = &premulBlendState;
+        pci.pDynamicState       = &dynState;
+        pci.layout              = m_pipelineLayout;
+        pci.renderPass          = m_mainPass;
+
+        if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pci, nullptr, &m_pipeComposite)
+                != VK_SUCCESS) {
+            destroyModules();
+            return false;
+        }
+    }
+
+    // --- 5. pipe_metrics: orthographic HUD overlay, 1x MSAA, alpha blend ---
+    {
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_VERTEX_BIT,   vsUIOrtho, "main", nullptr};
+        stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+                     VK_SHADER_STAGE_FRAGMENT_BIT, fsUI,      "main", nullptr};
+
+        VkPipelineRasterizationStateCreateInfo raster{
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        raster.polygonMode = VK_POLYGON_MODE_FILL;
+        raster.cullMode    = VK_CULL_MODE_NONE;
+        raster.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        raster.lineWidth   = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo msaa{
+            VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        msaa.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depth{
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+
+        VkGraphicsPipelineCreateInfo pci{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        pci.stageCount          = 2;
+        pci.pStages             = stages;
+        pci.pVertexInputState   = &uiVertexInput;
+        pci.pInputAssemblyState = &inputAssembly;
+        pci.pViewportState      = &viewportState;
+        pci.pRasterizationState = &raster;
+        pci.pMultisampleState   = &msaa;
+        pci.pDepthStencilState  = &depth;
+        pci.pColorBlendState    = &premulBlendState;
+        pci.pDynamicState       = &dynState;
+        pci.layout              = m_pipelineLayout;
+        pci.renderPass          = m_metricsPass;
+
+        if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pci, nullptr, &m_pipeMetrics)
+                != VK_SUCCESS) {
+            destroyModules();
+            return false;
+        }
+    }
+
+    destroyModules();
+    return true;
 }
 
 // ---------------------------------------------------------------------------

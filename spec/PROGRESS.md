@@ -51,11 +51,11 @@ Find the most important unmarked task from the following list and implement it. 
 - [x] Descriptor set layouts for sets 0/1/2 per spec §6.3; descriptor pool and allocation
 - [x] MSAA main scene pass: 4x color + depth attachments with resolve-to-swapchain subpass
 - [x] Metrics overlay pass: render pass targeting swapchain image, no depth attachment
-- [ ] pipe_room: Blinn-Phong room geometry with depth test
-- [ ] pipe_ui_direct: direct-mode UI with clip distance enable and pre-multiplied alpha blend
-- [ ] pipe_ui_rt: orthographic UI into offscreen RT (1x MSAA, alpha blend)
-- [ ] pipe_composite: samples offscreen RT onto surface quad with alpha blend
-- [ ] pipe_metrics: orthographic HUD reusing ui_ortho.vert / ui.frag
+- [x] pipe_room: Blinn-Phong room geometry with depth test
+- [x] pipe_ui_direct: direct-mode UI with clip distance enable and pre-multiplied alpha blend
+- [x] pipe_ui_rt: orthographic UI into offscreen RT (1x MSAA, alpha blend)
+- [x] pipe_composite: samples offscreen RT onto surface quad with alpha blend
+- [x] pipe_metrics: orthographic HUD reusing ui_ortho.vert / ui.frag
 
 ## Traditional Rendering Mode
 - [ ] Offscreen UI RT: RGBA8 512×128 VkImage, allocated lazily on first toggle to traditional mode
