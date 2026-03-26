@@ -97,13 +97,20 @@ while true; do
     echo "└─ iteration $iteration complete ────────────────────────────────────────────"
     echo ""
 
-    printf "  commit work to github? [Y/n] "
-    read -r COMMIT_REPLY
-    if [[ "${COMMIT_REPLY,,}" != "n" ]]; then
+    if $AUTO; then
         git add -A
         git commit -m "ralph: iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')" || echo "  (nothing to commit)"
         git push
         echo ""
+    else
+        printf "  commit work to github? [Y/n] "
+        read -r COMMIT_REPLY
+        if [[ "${COMMIT_REPLY,,}" != "n" ]]; then
+            git add -A
+            git commit -m "ralph: iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')" || echo "  (nothing to commit)"
+            git push
+            echo ""
+        fi
     fi
 
     if ! $AUTO; then

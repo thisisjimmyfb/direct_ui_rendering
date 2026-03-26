@@ -111,6 +111,9 @@ private:
     // Memory
     VmaAllocator m_allocator{VK_NULL_HANDLE};
 
+    // Color format used by render passes (R8G8B8A8_UNORM in headless; swapchain format otherwise)
+    VkFormat m_colorFormat{VK_FORMAT_R8G8B8A8_UNORM};
+
     // Surface / swapchain (non-headless only)
     VkSurfaceKHR             m_surface{VK_NULL_HANDLE};
     VkSwapchainKHR           m_swapchain{VK_NULL_HANDLE};

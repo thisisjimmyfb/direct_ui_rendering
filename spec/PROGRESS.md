@@ -6,18 +6,18 @@ Find the most important unmarked task from the following list and implement it. 
 - [x] CMakeLists.txt: direct_ui_rendering_lib static library + app executable; glslc shader compilation via add_custom_command
 - [x] tests/CMakeLists.txt: tests_unit and tests_render targets linking direct_ui_rendering_lib; tests_render compiles shaders with -DUI_TEST_COLOR
 - [x] Source file stubs for all files listed in spec §12
-- [ ] Build scripts to build and test the project
+- [x] Build scripts to build and test the project
 
 ## Core Transform Math
-- [ ] M_us: scale matrix mapping UI canvas [0,W_ui]×[0,H_ui] to normalized surface space [0,1]×[0,1]
-- [ ] M_sw: affine matrix from surface corners P_00/P_10/P_01 mapping normalized surface space to world space
-- [ ] M_total = M_wc * M_sw * M_us and M_world = M_sw * M_us (per-frame, given view-projection)
-- [ ] Clip planes: four inward-facing world-space planes from surface edges (left, right, top, bottom)
+- [x] M_us: scale matrix mapping UI canvas [0,W_ui]×[0,H_ui] to normalized surface space [0,1]×[0,1]
+- [x] M_sw: affine matrix from surface corners P_00/P_10/P_01 mapping normalized surface space to world space
+- [x] M_total = M_wc * M_sw * M_us and M_world = M_sw * M_us (per-frame, given view-projection)
+- [x] Clip planes: four inward-facing world-space planes from surface edges (left, right, top, bottom)
 
 ## Vulkan Device & Memory
 - [x] Vulkan instance, debug messenger, physical device selection, logical device, graphics/present queues
 - [x] VMA allocator init; expose total allocated bytes for metrics reporting
-- [ ] Image memory barrier helper and one-shot staging buffer upload helper (vk_utils.h)
+- [x] Image memory barrier helper and one-shot staging buffer upload helper (vk_utils.h)
 
 ## Window, Swapchain & Presentation
 - [ ] GLFW window creation, Vulkan surface, swapchain with image views
@@ -47,10 +47,10 @@ Find the most important unmarked task from the following list and implement it. 
 - [ ] quad.vert: passthrough with UVs for composite draw
 
 ## Render Passes & Pipelines
-- [ ] SceneUBO and SurfaceUBO struct definitions and per-frame host-visible buffer allocation
-- [ ] Descriptor set layouts for sets 0/1/2 per spec §6.3; descriptor pool and allocation
-- [ ] MSAA main scene pass: 4x color + depth attachments with resolve-to-swapchain subpass
-- [ ] Metrics overlay pass: render pass targeting swapchain image, no depth attachment
+- [x] SceneUBO and SurfaceUBO struct definitions and per-frame host-visible buffer allocation
+- [x] Descriptor set layouts for sets 0/1/2 per spec §6.3; descriptor pool and allocation
+- [x] MSAA main scene pass: 4x color + depth attachments with resolve-to-swapchain subpass
+- [x] Metrics overlay pass: render pass targeting swapchain image, no depth attachment
 - [ ] pipe_room: Blinn-Phong room geometry with depth test
 - [ ] pipe_ui_direct: direct-mode UI with clip distance enable and pre-multiplied alpha blend
 - [ ] pipe_ui_rt: orthographic UI into offscreen RT (1x MSAA, alpha blend)
@@ -82,7 +82,7 @@ Find the most important unmarked task from the following list and implement it. 
 
 ## Testing
 - [ ] tests/perf_reference.h: TBD placeholder values for GPU mem and frame time in both modes
-- [ ] test_math.cpp: M_us, M_sw, M_total map corners to expected world positions (identity VP)
-- [ ] test_math.cpp: clip plane signs — inside points all ≥ 0, outside ≥ 1 negative, boundary ~0 (±1e-5)
+- [x] test_math.cpp: M_us, M_sw, M_total map corners to expected world positions (identity VP)
+- [x] test_math.cpp: clip plane signs — inside points all ≥ 0, outside ≥ 1 negative, boundary ~0 (±1e-5)
 - [ ] test_perf.cpp: N headless frames; assert frame time and GPU mem ≤ reference × (1 + tolerance)
 - [ ] test_containment.cpp: one direct-mode headless frame; readback; all magenta pixels inside screen-space quad (2px margin)
