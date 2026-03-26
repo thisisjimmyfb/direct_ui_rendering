@@ -5,7 +5,7 @@
 # Each iteration retries the standard Claude endpoint.
 #
 # Usage:
-#   ./ralph.sh [spec.md] [options]
+#   ./ralph.sh [LOOP.md] [options]
 #
 # Options:
 #   --auto, -a                    Skip the between-iteration pause
@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # ── defaults ──────────────────────────────────────────────────────────────────
-SPEC="progress.md"
+LOOP="../spec/LOOP.md"
 AUTO=false
 SKIP_PERMISSIONS=true
 MODEL=""
@@ -60,15 +60,15 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
-            SPEC="$1"
+            LOOP="$1"
             shift
             ;;
     esac
 done
 
 # ── validate ──────────────────────────────────────────────────────────────────
-if [[ ! -f "$SPEC" ]]; then
-    echo "error: spec file '$SPEC' not found" >&2
+if [[ ! -f "$LOOP" ]]; then
+    echo "error: loop file '$LOOP' not found" >&2
     exit 1
 fi
 
@@ -87,10 +87,8 @@ trap 'echo ""; echo "ralph stopped after $iteration iteration(s)."; exit 0' INT 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 run_local_llm() {
-    local spec_content
-    spec_content=$(cat "$SPEC")
     export ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL" 
-	claude "${CLAUDE_FLAGS[@]}" < "$SPEC" 2>&1
+	claude "${CLAUDE_FLAGS[@]}" < "$LOOP" 2>&1
 	unset ANTHROPIC_BASE_URL
 }
 
@@ -118,7 +116,7 @@ commit_work() {
 iteration=0
 
 echo "ralph"
-echo "  spec : $SPEC"
+echo "  loop : $LOOP"
 echo "  mode : $( $AUTO && echo 'auto (ctrl+c to stop)' || echo 'manual (enter to advance)' )"
 $SKIP_PERMISSIONS && echo "  perms: bypassed"
 echo "  local llm: $OFFLINE_LLM_URL (fallback only)"
@@ -132,7 +130,7 @@ while true; do
 
     # Always try Claude first
     set +e  # Temporarily disable exit-on-error to capture claude output even on failure
-    output=$(claude "${CLAUDE_FLAGS[@]}" < "$SPEC" 2>&1)
+    output=$(claude "${CLAUDE_FLAGS[@]}" < "$LOOP" 2>&1)
     exit_code=$?
     set -e  # Re-enable exit-on-error
 	
