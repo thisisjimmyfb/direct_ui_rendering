@@ -5,11 +5,9 @@ include(GoogleTest)
 # ---------------------------------------------------------------------------
 # tests_unit — pure CPU math tests (no Vulkan context required)
 # Sources: test_math.cpp (matrix construction + clip plane signs)
-#          test_perf.cpp  (performance regression with skip-if-unset guards)
 # ---------------------------------------------------------------------------
 add_executable(tests_unit
     test_math.cpp
-    test_perf.cpp
 )
 
 target_link_libraries(tests_unit PRIVATE
@@ -61,11 +59,13 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 
 # ---------------------------------------------------------------------------
 # tests_render — headless Vulkan render tests
-# Source: test_containment.cpp (UI pixel containment check)
+# Sources: test_containment.cpp (UI pixel containment check)
+#          test_perf.cpp (performance regression with skip-if-unset guards)
 # Uses test shaders (UI_TEST_COLOR) so magenta pixels can be identified.
 # ---------------------------------------------------------------------------
 add_executable(tests_render
     test_containment.cpp
+    test_perf.cpp
 )
 
 add_dependencies(tests_render test_shaders)
