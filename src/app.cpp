@@ -211,7 +211,7 @@ void App::drawFrame()
 
     // Submit with semaphore synchronisation.
     VkSemaphore          waitSem   = m_renderer.getImageAvailableSemaphore();
-    VkSemaphore          signalSem = m_renderer.getRenderFinishedSemaphore();
+    VkSemaphore          signalSem = m_renderer.getRenderFinishedSemaphore(imgIdx);
     VkFence              fence     = m_renderer.getInFlightFence();
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 

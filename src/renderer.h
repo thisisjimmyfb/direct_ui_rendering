@@ -125,7 +125,7 @@ public:
     uint32_t                        getSwapImageCount()  const { return static_cast<uint32_t>(m_swapImages.size()); }
     const std::vector<VkImageView>& getSwapImageViews()  const { return m_swapImageViews; }
     VkFormat                        getSwapFormat()      const { return m_swapFormat; }
-    VkSemaphore                     getRenderFinishedSemaphore() const { return m_renderFinished; }
+    VkSemaphore                     getRenderFinishedSemaphore(uint32_t imageIndex) const { return m_renderFinished[imageIndex]; }
     VkFence                         getInFlightFence()   const { return m_inFlightFence; }
 
     // Returns the total bytes currently allocated through VMA (for metrics overlay).
@@ -255,9 +255,9 @@ private:
     VkSampler     m_uiRTSampler{VK_NULL_HANDLE};
 
     // Semaphores / sync (non-headless only)
-    VkSemaphore m_imageAvailable{VK_NULL_HANDLE};
-    VkSemaphore m_renderFinished{VK_NULL_HANDLE};
-    VkFence     m_inFlightFence{VK_NULL_HANDLE};
+    VkSemaphore              m_imageAvailable{VK_NULL_HANDLE};
+    std::vector<VkSemaphore> m_renderFinished; // one per swapchain image
+    VkFence                  m_inFlightFence{VK_NULL_HANDLE};
 
     bool m_headless{false};
 };

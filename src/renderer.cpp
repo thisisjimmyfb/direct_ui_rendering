@@ -102,7 +102,8 @@ void Renderer::cleanup()
 
     // Sync objects
     if (m_imageAvailable) { vkDestroySemaphore(m_device, m_imageAvailable, nullptr); m_imageAvailable = VK_NULL_HANDLE; }
-    if (m_renderFinished) { vkDestroySemaphore(m_device, m_renderFinished, nullptr); m_renderFinished = VK_NULL_HANDLE; }
+    for (auto& sem : m_renderFinished) if (sem) vkDestroySemaphore(m_device, sem, nullptr);
+    m_renderFinished.clear();
     if (m_inFlightFence)  { vkDestroyFence    (m_device, m_inFlightFence,  nullptr); m_inFlightFence  = VK_NULL_HANDLE; }
 
     // Render passes
@@ -375,7 +376,7 @@ void Renderer::presentSwapchainImage(uint32_t imageIndex)
 
     VkPresentInfoKHR presentInfo{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores    = &m_renderFinished;
+    presentInfo.pWaitSemaphores    = &m_renderFinished[imageIndex];
     presentInfo.swapchainCount     = 1;
     presentInfo.pSwapchains        = &m_swapchain;
     presentInfo.pImageIndices      = &imageIndex;
@@ -655,7 +656,9 @@ bool Renderer::createSwapchain()
     fenceCI.flags = VK_FENCE_CREATE_SIGNALED_BIT; // start signalled so first frame doesn't block
 
     if (vkCreateSemaphore(m_device, &semCI,   nullptr, &m_imageAvailable) != VK_SUCCESS) return false;
-    if (vkCreateSemaphore(m_device, &semCI,   nullptr, &m_renderFinished) != VK_SUCCESS) return false;
+    m_renderFinished.resize(swapImgCount);
+    for (uint32_t i = 0; i < swapImgCount; ++i)
+        if (vkCreateSemaphore(m_device, &semCI, nullptr, &m_renderFinished[i]) != VK_SUCCESS) return false;
     if (vkCreateFence    (m_device, &fenceCI, nullptr, &m_inFlightFence)  != VK_SUCCESS) return false;
 
     return true;
