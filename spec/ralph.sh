@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # ralph.sh — spec-driven development loop
 #
-# Feeds spec.md to claude each iteration, starting a fresh session every time.
-# Sessions are saved to disk by claude automatically.
+# Always tries Claude CLI first, falls back to local LLM only when token limit is reached.
+# Each iteration retries the standard Claude endpoint.
 #
 # Usage:
 #   ./ralph.sh [spec.md] [options]
 #
 # Options:
-#   --auto, -a                    Skip the between-iteration pause (run until ctrl+c)
-#   --dangerously-skip-permissions  Bypass all claude tool permission prompts
-#   --model <model>               Claude model to use (e.g. opus, sonnet)
+#   --auto, -a                    Skip the between-iteration pause
+#   --dangerously-skip-permissions  Bypass tool permission prompts
+#   --model <model>               Claude model to use
+#   --offline-url <url>           Local LLM endpoint (default: http://localhost:8088)
 #   --help, -h                    Show this help
 
 set -euo pipefail
@@ -20,6 +21,7 @@ SPEC="progress.md"
 AUTO=false
 SKIP_PERMISSIONS=true
 MODEL=""
+OFFLINE_LLM_URL="http://localhost:8088"
 
 # ── argument parsing ──────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -38,6 +40,14 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             MODEL="$2"
+            shift 2
+            ;;
+        --offline-url)
+            if [[ -z "${2:-}" ]]; then
+                echo "error: --offline-url requires an argument" >&2
+                exit 1
+            fi
+            OFFLINE_LLM_URL="$2"
             shift 2
             ;;
         --help|-h)
@@ -75,28 +85,43 @@ $SKIP_PERMISSIONS && CLAUDE_FLAGS+=("--dangerously-skip-permissions")
 # ── signal handling ───────────────────────────────────────────────────────────
 trap 'echo ""; echo "ralph stopped after $iteration iteration(s)."; exit 0' INT TERM
 
-# ── commit helper ─────────────────────────────────────────────────────────────
+# ── helpers ───────────────────────────────────────────────────────────────────
+run_local_llm() {
+    local spec_content
+    spec_content=$(cat "$SPEC")
+    export ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL" 
+	claude "${CLAUDE_FLAGS[@]}" < "$SPEC" 2>&1
+	unset ANTHROPIC_BASE_URL
+}
+
+is_token_limit_error() {
+    local output="$1"
+    echo "$output" | grep -qi "token\|rate.*limit\|too.*many.*requests\|429"
+}
+
 commit_work() {
     local iteration="$1"
     git add -A
     local commit_msg
-    commit_msg=$(git diff --cached --quiet && echo "" || git diff --cached --stat | head -20 | claude -p "Generate a concise commit message for these git changes. Output only the message, no quotes or prefixes.")
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    commit_msg=$(git diff --cached --quiet && echo "" || git diff --cached --stat | head -20 | claude -p "Generate a concise commit message. Output only the message, no quotes.")
     if [[ -n "$commit_msg" ]]; then
-        git commit -m "$commit_msg" -m "ralph: iteration $iteration" || echo "  (nothing to commit)"
+        git commit -m "$commit_msg" -m "ralph: $timestamp" || echo "  (nothing to commit)"
     else
-        git commit -m "ralph: iteration $iteration" || echo "  (nothing to commit)"
+        git commit -m "ralph: $timestamp" || echo "  (nothing to commit)"
     fi
     git push
 }
 
-# ── loop ──────────────────────────────────────────────────────────────────────
+# ── main loop ─────────────────────────────────────────────────────────────────
 iteration=0
 
 echo "ralph"
 echo "  spec : $SPEC"
-echo "  mode : $( $AUTO && echo "auto (ctrl+c to stop)" || echo "manual (enter to advance, ctrl+c to stop)" )"
+echo "  mode : $( $AUTO && echo 'auto (ctrl+c to stop)' || echo 'manual (enter to advance)' )"
 $SKIP_PERMISSIONS && echo "  perms: bypassed"
-[[ -n "$MODEL" ]] && echo "  model: $MODEL"
+echo "  local llm: $OFFLINE_LLM_URL (fallback only)"
 echo ""
 
 while true; do
@@ -105,16 +130,28 @@ while true; do
     echo "┌─ iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S') ──────────────────────────────"
     echo ""
 
-    claude "${CLAUDE_FLAGS[@]}" < "$SPEC"
+    # Always try Claude first
+    set +e  # Temporarily disable exit-on-error to capture claude output even on failure
+    output=$(claude "${CLAUDE_FLAGS[@]}" < "$SPEC" 2>&1)
+    exit_code=$?
+    set -e  # Re-enable exit-on-error
+	
+    if [[ $exit_code -ne 0 ]] || is_token_limit_error "$output"; then
+        echo "⚠ Token limit hit, using local LLM for this iteration" >&2
+        echo ""
+        run_local_llm
+    else
+        echo "$output"
+    fi
 
     echo ""
     echo "└─ iteration $iteration complete ────────────────────────────────────────────"
     echo ""
 
-	if ! $AUTO; then
-		printf "  commit work to github? [Y/n] "
-		read -r COMMIT_REPLY
-	fi
+    if ! $AUTO; then
+        printf "  commit work to github? [Y/n] "
+        read -r COMMIT_REPLY
+    fi
     if ! $AUTO || [[ "${COMMIT_REPLY,,}" != "n" ]]; then
         commit_work "$iteration"
         echo ""
