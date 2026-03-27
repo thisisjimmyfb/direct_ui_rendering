@@ -142,6 +142,12 @@ while true; do
     echo "└─ iteration $iteration complete ────────────────────────────────────────────"
     echo ""
 
+    if [[ -z "$(git status --porcelain)" ]]; then
+        echo "  no file changes produced — stopping."
+        echo ""
+        exit 0
+    fi
+
     if ! $AUTO; then
         printf "  commit work to github? [Y/n] "
         read -r COMMIT_REPLY

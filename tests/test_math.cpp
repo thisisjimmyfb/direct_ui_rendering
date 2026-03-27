@@ -534,6 +534,38 @@ TEST_F(LightFrustumTest, FrustumHalfExtentsTighterThanOldFixedBound)
     EXPECT_LT(halfY, 4.0f) << "Light-view Y half-extent=" << halfY << " is not tighter than old ±5m bound";
 }
 
+TEST_F(LightFrustumTest, ZMonotonicity_CloserPointHasSmallerNdcZ)
+{
+    // Two points along the light direction: P_closer is one unit toward the
+    // light source, P_farther is one unit away.  After projection through
+    // lightViewProj the closer point must have a strictly smaller NDC Z than
+    // the farther point.
+    //
+    // Why this matters: shadow comparisons in room.frag evaluate
+    //   fragDepth < shadowMapDepth
+    // If near/far are swapped, or the view matrix has a sign error, the depth
+    // ordering inverts and every fragment is either always in shadow or always
+    // lit, regardless of actual visibility.  This test catches that silently.
+    glm::vec3 dir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.5f)); // light-to-scene
+    glm::vec3 sceneCenter{0.0f, 1.5f, 0.0f};  // middle of room (H=3)
+    float delta = 1.0f;
+
+    glm::vec3 P_closer  = sceneCenter - dir * delta;  // one unit toward the light
+    glm::vec3 P_farther = sceneCenter + dir * delta;  // one unit away from the light
+
+    glm::vec4 clip_near = lvp * glm::vec4(P_closer,  1.0f);
+    glm::vec4 clip_far  = lvp * glm::vec4(P_farther, 1.0f);
+
+    float ndcZ_near = clip_near.z / clip_near.w;
+    float ndcZ_far  = clip_far.z  / clip_far.w;
+
+    EXPECT_LT(ndcZ_near, ndcZ_far)
+        << "Z monotonicity violated: ndcZ_near=" << ndcZ_near
+        << " >= ndcZ_far=" << ndcZ_far
+        << ".  An inverted near/far or sign error in the light view matrix "
+        << "would cause all shadow comparisons to use the wrong depth ordering.";
+}
+
 // ---------------------------------------------------------------------------
 // SceneInit — mesh integrity checks (pure CPU, no Vulkan context)
 // ---------------------------------------------------------------------------
