@@ -545,7 +545,7 @@ direct_ui_rendering/
 │   ├── test_math.cpp                # tests_unit: matrix construction, clip plane signs, SDF constants
 │   ├── test_perf.cpp                # tests_render: performance regression
 │   ├── test_containment.cpp         # tests_render: UI pixel containment check (UI_TEST_COLOR shaders)
-│   └── test_sdf.cpp                 # tests_sdf: SDF threshold render test (production shaders, real atlas)
+│   └── test_sdf.cpp                 # tests_sdf: SDF threshold/render tests (production shaders, real atlas)
 └── CMakeLists.txt
 ```
 
