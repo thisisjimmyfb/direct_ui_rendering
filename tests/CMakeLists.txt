@@ -38,6 +38,7 @@ set(TEST_SHADER_SOURCES
     ${RENDER_SHADER_DIR}/ui_ortho.vert
     ${RENDER_SHADER_DIR}/ui.frag
     ${RENDER_SHADER_DIR}/composite.frag
+    ${RENDER_SHADER_DIR}/surface.frag
     ${RENDER_SHADER_DIR}/quad.vert
     ${RENDER_SHADER_DIR}/shadow.vert
 )

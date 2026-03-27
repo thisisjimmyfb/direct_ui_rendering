@@ -32,7 +32,14 @@ float sampleShadowPCF(vec4 shadowCoord) {
 }
 
 void main() {
-    vec4  uiColor = texture(uiRT, inTexCoord);
+    vec4 uiColor = texture(uiRT, inTexCoord);
+
+#ifdef UI_TEST_COLOR
+    // Skip lighting in test mode so the raw UI color (e.g. magenta from the
+    // test shader) reaches the readback buffer unmodified and is detectable
+    // by the isMagenta() check in test_containment.cpp.
+    outColor = uiColor;
+#else
     float shadow  = sampleShadowPCF(inShadowCoord);
     vec3  lit     = clamp(ambientColor.rgb + shadow * lightColor.rgb, 0.0, 1.0);
 
@@ -41,4 +48,5 @@ void main() {
     vec3 teal = vec3(0.0, 0.5, 0.5);
     vec3 composited = uiColor.rgb + teal * (1.0 - uiColor.a);
     outColor = vec4(composited * lit, 1.0);
+#endif
 }

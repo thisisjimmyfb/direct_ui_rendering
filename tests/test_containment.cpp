@@ -4,6 +4,7 @@
 #include "ui_surface.h"
 #include "ui_system.h"
 #include "vk_utils.h"
+#include <array>
 
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
@@ -36,10 +37,14 @@ static bool insideConvexQuad(glm::vec2 p,
                              float margin = 2.0f)
 {
     for (int i = 0; i < 4; ++i) {
-        glm::vec2 a = quad[i];
-        glm::vec2 b = quad[(i + 1) % 4];
+        glm::vec2 a    = quad[i];
+        glm::vec2 b    = quad[(i + 1) % 4];
         glm::vec2 edge = b - a;
-        glm::vec2 perp = {-edge.y, edge.x};  // inward normal (CCW winding)
+        float len = glm::length(edge);
+        if (len < 1e-6f) continue;  // degenerate edge
+        // Normalised inward normal (CCW winding in screen space).
+        // Dividing by len gives d in units of pixels, so margin is truly in pixels.
+        glm::vec2 perp = glm::vec2{-edge.y, edge.x} / len;
         float d = glm::dot(p - a, perp);
         if (d < -margin) return false;
     }
@@ -78,7 +83,7 @@ protected:
     HeadlessRenderTarget hrt{};
 
     void SetUp() override {
-        ASSERT_TRUE(renderer.init(/*headless=*/true))
+        ASSERT_TRUE(renderer.init(/*headless=*/true, nullptr, TEST_SHADER_DIR))
             << "Headless renderer init failed";
         scene.init();
         ASSERT_TRUE(renderer.uploadSceneGeometry(scene));
@@ -245,6 +250,17 @@ protected:
         return pixels;
     }
 
+    // Count how many pixels in the readback image are magenta.
+    int countMagentaPixels(const std::vector<uint8_t>& pixels) const {
+        int count = 0;
+        for (uint32_t y = 0; y < FB_HEIGHT; ++y)
+            for (uint32_t x = 0; x < FB_WIDTH; ++x) {
+                const uint8_t* px = pixels.data() + (y * FB_WIDTH + x) * 4;
+                if (isMagenta(px[0], px[1], px[2])) ++count;
+            }
+        return count;
+    }
+
     // Assert that all magenta pixels in a readback image lie inside the screen-space
     // projection of the given four world-space corners.
     void assertMagentaContained(const std::vector<uint8_t>& pixels,
@@ -373,6 +389,15 @@ TEST_F(ContainmentTest, TraditionalMode_MagentaPixels_InsideSurfaceQuad)
                                    -1.0f, 1.0f);
 
     auto pixels = renderAndReadback(/*directMode=*/false, uiOrtho);
+
+    // Ensure the composited UI RT actually produced magenta pixels in the
+    // readback — a vacuous containment pass would occur if the surface quad
+    // were off-screen or misconfigured and no magenta pixels were present.
+    int magentaCount = countMagentaPixels(pixels);
+    EXPECT_GT(magentaCount, 0)
+        << "No magenta pixels found in traditional-mode readback — "
+        << "surface quad may be off-screen or the composite pass is not executing";
+
     assertMagentaContained(pixels, vp, P00, P10, P11, P01);
 }
 
@@ -428,4 +453,69 @@ TEST_F(ContainmentTest, ExtremeAngle_DirectMode_MagentaPixels_InsideSurfaceQuad)
     // amplifies MSAA edge-blending effects relative to a face-on view.
     auto pixels = renderAndReadback(/*directMode=*/true);
     assertMagentaContained(pixels, vp, P00, P10, P11, P01, /*margin=*/4.0f);
+}
+
+// ---------------------------------------------------------------------------
+// Test 4: Multi-frame animation — direct mode follows the animated surface.
+//
+// The Scene animates the UI surface with M_anim(t).  This test renders three
+// separate frames (t=0, t=1, t=2), recomputing worldCorners() and the full
+// transform chain each time.  For each frame it asserts:
+//   (a) at least one magenta pixel is present (surface is on-screen),
+//   (b) all magenta pixels lie within the screen-space projection of the
+//       updated surface quad (clip planes track the moving surface).
+// ---------------------------------------------------------------------------
+
+TEST_F(ContainmentTest, DirectMode_AnimationFrames_MagentaContained)
+{
+    // Camera positioned inside the room (z < 3) looking toward the back wall
+    // where the animated surface oscillates near z=-2.5, y≈1.5.
+    // Using z=2.5 keeps the camera inside the room so the front wall (z=3)
+    // does not occlude the surface.
+    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.5f, 2.5f),
+                                 glm::vec3(0.0f, 1.5f, -2.5f),
+                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f),
+                                      static_cast<float>(FB_WIDTH) / FB_HEIGHT,
+                                      0.1f, 100.0f);
+    proj[1][1] *= -1.0f;
+    glm::mat4 vp = proj * view;
+
+    SceneUBO sceneUBO{};
+    sceneUBO.view          = view;
+    sceneUBO.proj          = proj;
+    sceneUBO.lightViewProj = scene.lightViewProj();
+    sceneUBO.lightDir      = glm::vec4(scene.light().direction, 0.0f);
+    sceneUBO.lightColor    = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
+    renderer.updateSceneUBO(sceneUBO);
+
+    for (float t : {0.0f, 1.0f, 2.0f}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+
+        glm::vec3 P00, P10, P01, P11;
+        scene.worldCorners(t, P00, P10, P01, P11);
+
+        auto transforms = computeSurfaceTransforms(P00, P10, P01,
+                                                   static_cast<float>(Renderer::W_UI),
+                                                   static_cast<float>(Renderer::H_UI), vp);
+        auto clipPlanes = computeClipPlanes(P00, P10, P01);
+
+        SurfaceUBO surfaceUBO{};
+        surfaceUBO.totalMatrix = transforms.M_total;
+        surfaceUBO.worldMatrix = transforms.M_world;
+        for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
+        surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
+        renderer.updateSurfaceUBO(surfaceUBO);
+
+        auto pixels = renderAndReadback(/*directMode=*/true);
+
+        // (a) Non-vacuous: at least one magenta pixel must be present.
+        EXPECT_GT(countMagentaPixels(pixels), 0)
+            << "No magenta pixels at t=" << t
+            << " — surface may be off-screen or M_total is degenerate";
+
+        // (b) All magenta pixels must lie within the projected quad boundary.
+        assertMagentaContained(pixels, vp, P00, P10, P11, P01);
+    }
 }

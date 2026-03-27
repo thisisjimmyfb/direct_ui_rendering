@@ -78,7 +78,7 @@ if ! command -v claude &>/dev/null; then
 fi
 
 # ── build claude flags ────────────────────────────────────────────────────────
-CLAUDE_FLAGS=("-p" "--verbose")
+CLAUDE_FLAGS=("-p" "--output-format stream-json")
 $SKIP_PERMISSIONS && CLAUDE_FLAGS+=("--dangerously-skip-permissions")
 [[ -n "$MODEL" ]] && CLAUDE_FLAGS+=("--model" "$MODEL")
 
@@ -130,13 +130,11 @@ while true; do
 
     # Always try Claude first
     set +e
-	(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}") & 
-	CLAUDE_PID=$!
-	wait $CLAUDE_PID
-	exit_code=$?
+	output=$(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}")
+    exit_code=$?
     set -e
 
-    if [[ $exit_code -ne 0 ]]; then
+    if [[ $exit_code -ne 0 ]] || is_token_limit_error "$output"; then
         echo "⚠ Token limit hit, using local LLM for this iteration" >&2
         echo ""
         run_local_llm

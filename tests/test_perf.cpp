@@ -44,7 +44,7 @@ protected:
     VkCommandBuffer cmd{VK_NULL_HANDLE};
 
     void SetUp() override {
-        ASSERT_TRUE(renderer.init(/*headless=*/true))
+        ASSERT_TRUE(renderer.init(/*headless=*/true, nullptr, TEST_SHADER_DIR))
             << "Headless renderer init failed";
         scene.init();
         ASSERT_TRUE(renderer.uploadSceneGeometry(scene));
@@ -313,4 +313,35 @@ TEST_F(PerfTest, MemoryStable_After300Frames_DirectMode)
     EXPECT_LE(memAfterExtended, limit)
         << "GPU memory grew from " << memAfterWarmup << " B (after 60 frames) to "
         << memAfterExtended << " B (after 300 frames), suggesting a per-frame leak";
+}
+
+// ---------------------------------------------------------------------------
+// Memory stability test — traditional mode mirrors the direct-mode test above.
+// The offscreen UI RT is allocated on the first frame and must be reused (not
+// reallocated) on every subsequent frame.  A leak here would typically indicate
+// that the RT or its associated resources are being recreated per-frame.
+// The 5% tolerance absorbs VMA internal bookkeeping jitter.
+// ---------------------------------------------------------------------------
+
+TEST_F(PerfTest, MemoryStable_After300Frames_TraditionalMode)
+{
+    Metrics m;
+
+    // Warm-up: the offscreen RT is allocated on the first traditional-mode frame.
+    // After ~60 frames the working set should be stable.
+    for (int i = 0; i < 60; ++i) renderOneFrame(/*directMode=*/false);
+    m.updateGPUMem(renderer.getAllocator());
+    uint64_t memAfterWarmup = m.gpuAllocatedBytes();
+
+    // Extended run: 240 additional frames (total 300).
+    for (int i = 0; i < 240; ++i) renderOneFrame(/*directMode=*/false);
+    m.updateGPUMem(renderer.getAllocator());
+    uint64_t memAfterExtended = m.gpuAllocatedBytes();
+
+    // Memory must not have grown by more than 5% after warmup stabilises.
+    uint64_t limit = static_cast<uint64_t>(static_cast<double>(memAfterWarmup) * 1.05);
+    EXPECT_LE(memAfterExtended, limit)
+        << "GPU memory grew from " << memAfterWarmup << " B (after 60 frames) to "
+        << memAfterExtended << " B (after 300 frames) in traditional mode, "
+        << "suggesting a per-frame RT or resource leak";
 }

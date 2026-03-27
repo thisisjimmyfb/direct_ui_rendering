@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
+#include <string>
 #include <vector>
 #include <cstdint>
 
@@ -76,7 +77,8 @@ public:
     // Lifecycle
     // In non-headless mode, pass the GLFW window so the renderer can create
     // the Vulkan surface and swapchain.
-    bool init(bool headless = false, GLFWwindow* window = nullptr);
+    bool init(bool headless = false, GLFWwindow* window = nullptr,
+              const char* shaderDir = nullptr);
     void cleanup();
 
     // UBO updates (call once per frame before recording)
@@ -261,4 +263,5 @@ private:
     VkFence                  m_inFlightFence{VK_NULL_HANDLE};
 
     bool m_headless{false};
+    std::string m_shaderDir;  // resolved at init() time from shaderDir arg or SHADER_DIR
 };

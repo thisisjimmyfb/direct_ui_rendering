@@ -17,9 +17,10 @@
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-bool Renderer::init(bool headless, GLFWwindow* window)
+bool Renderer::init(bool headless, GLFWwindow* window, const char* shaderDir)
 {
-    m_headless = headless;
+    m_headless   = headless;
+    m_shaderDir  = shaderDir ? shaderDir : SHADER_DIR;
     // Headless mode uses a known format; non-headless format is set by createSwapchain().
     if (m_headless) m_colorFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
@@ -981,12 +982,7 @@ bool Renderer::createPipelines()
 {
     // Helper: read a .spv file and create a VkShaderModule.
     auto loadShaderModule = [&](const char* relName) -> VkShaderModule {
-#ifdef TEST_SHADER_DIR
-        const char* activeShaderDir = TEST_SHADER_DIR;
-#else
-        const char* activeShaderDir = SHADER_DIR;
-#endif
-        std::string path = std::string(activeShaderDir) + relName;
+        std::string path = m_shaderDir + relName;
         FILE* f = fopen(path.c_str(), "rb");
         if (!f) {
             fprintf(stderr, "Renderer: cannot open shader: %s\n", path.c_str());
