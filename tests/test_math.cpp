@@ -646,3 +646,27 @@ TEST_F(SceneAnimationTest, AtT0_TranslationMatchesBaseOffset)
     EXPECT_NEAR(M[3][2], -2.5f, 1e-5f) << "translation Z";
     EXPECT_NEAR(M[3][3], 1.0f,  1e-5f) << "homogeneous W";
 }
+
+TEST_F(SceneAnimationTest, NonTrivialAngle_RotationSubmatrixMatchesGlmRotate)
+{
+    // At t = 2π: t * 0.25 = π/2, so sin(t * 0.25) = 1.0.
+    // Expected rotation angle = 15° * 1.0 = 15° — the maximum rotation value.
+    // This is a non-trivial angle that exercises the rotation sub-matrix fully
+    // (cos(15°) ≠ 1, sin(15°) ≠ 0), complementing the t=0 base-case test.
+    const float pi  = std::acos(-1.0f);
+    const float t   = 2.0f * pi;   // t * 0.25 = π/2 → sin = 1.0
+
+    const float expectedAngle = glm::radians(15.0f) * std::sin(t * 0.25f);
+
+    glm::mat4 M      = scene.animationMatrix(t);
+    glm::mat4 refRot = glm::rotate(glm::mat4(1.0f), expectedAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+
+    // The animation matrix is T * R; the upper-left 3×3 is R's sub-matrix.
+    for (int col = 0; col < 3; ++col) {
+        for (int row = 0; row < 3; ++row) {
+            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-5f)
+                << "rotation sub-matrix mismatch at col=" << col << " row=" << row
+                << " (t=" << t << ", expectedAngle=" << expectedAngle << " rad)";
+        }
+    }
+}
