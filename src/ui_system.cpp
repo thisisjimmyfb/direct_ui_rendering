@@ -87,9 +87,13 @@ bool UISystem::init(VmaAllocator allocator,
             if (sdfBmp) {
                 int destX = col * CELL;
                 int destY = row * CELL;
+                // stbtt_GetCodepointSDF returns SDF with origin at bottom-left.
+                // Vulkan texture coordinates have (0,0) at top-left, so we write
+                // the SDF with its bottom at destY + CELL - h to preserve orientation.
+                int startY = destY + CELL - h;
                 for (int y = 0; y < h && y < CELL; ++y) {
                     for (int x = 0; x < w && x < CELL; ++x) {
-                        atlasData[(destY + y) * ATLAS_SIZE + (destX + x)]
+                        atlasData[(startY + y) * ATLAS_SIZE + (destX + x)]
                             = sdfBmp[y * w + x];
                     }
                 }

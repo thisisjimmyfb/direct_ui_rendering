@@ -103,7 +103,7 @@ commit_work() {
     local commit_msg
     local timestamp
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    commit_msg=$(git diff --cached --quiet && echo "" || git diff --cached --stat | head -20 | claude -p "Generate a concise commit message. Output only the message, no quotes.")
+    commit_msg=$(git diff --cached --quiet && echo "" || git diff --cached --stat | head -20 | claude -p "Generate a concise commit message. Output only the message, no quotes." 2>/dev/null)
     if [[ -n "$commit_msg" ]]; then
         git commit -m "$commit_msg" -m "ralph: $timestamp" || echo "  (nothing to commit)"
     else
@@ -129,10 +129,8 @@ while true; do
     echo ""
 
     # Always try Claude first
-    set +e
-	output=$(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}")
+	output=$(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}" 2>/dev/null)
     exit_code=$?
-    set -e
 
     if [[ $exit_code -ne 0 ]] || is_token_limit_error "$output"; then
         echo "⚠ Token limit hit, using local LLM for this iteration" >&2
