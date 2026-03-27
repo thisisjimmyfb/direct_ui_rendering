@@ -488,3 +488,97 @@ TEST_F(LightFrustumTest, FrustumHalfExtentsTighterThanOldFixedBound)
     EXPECT_LT(halfX, 4.0f) << "Light-view X half-extent=" << halfX << " is not tighter than old ±5m bound";
     EXPECT_LT(halfY, 4.0f) << "Light-view Y half-extent=" << halfY << " is not tighter than old ±5m bound";
 }
+
+// ---------------------------------------------------------------------------
+// SceneInit — mesh integrity checks (pure CPU, no Vulkan context)
+// ---------------------------------------------------------------------------
+
+class SceneInitTest : public ::testing::Test {
+protected:
+    Scene scene;
+
+    void SetUp() override {
+        scene.init();
+    }
+};
+
+TEST_F(SceneInitTest, VertexBufferNonEmpty)
+{
+    EXPECT_GT(scene.roomMesh().vertices.size(), 0u);
+}
+
+TEST_F(SceneInitTest, IndexBufferNonEmpty)
+{
+    EXPECT_GT(scene.roomMesh().indices.size(), 0u);
+}
+
+TEST_F(SceneInitTest, AllNormalsUnitLength)
+{
+    for (const auto& v : scene.roomMesh().vertices) {
+        float len = glm::length(v.normal);
+        EXPECT_NEAR(len, 1.0f, 0.001f)
+            << "normal (" << v.normal.x << "," << v.normal.y << "," << v.normal.z << ") length=" << len;
+    }
+}
+
+TEST_F(SceneInitTest, AllIndicesInBounds)
+{
+    const auto& mesh = scene.roomMesh();
+    uint32_t vertCount = static_cast<uint32_t>(mesh.vertices.size());
+    for (uint32_t idx : mesh.indices) {
+        EXPECT_LT(idx, vertCount) << "index " << idx << " out of range [0, " << vertCount << ")";
+    }
+}
+
+TEST_F(SceneInitTest, TriangleCountEquals12)
+{
+    // 6 quads × 2 triangles = 12 triangles → 36 indices
+    EXPECT_EQ(scene.roomMesh().indices.size(), 36u);
+}
+
+// ---------------------------------------------------------------------------
+// WorldCorners — parallelogram identity and transform chain
+// ---------------------------------------------------------------------------
+
+class WorldCornersTest : public ::testing::Test {
+protected:
+    Scene scene;
+
+    void SetUp() override {
+        scene.init();
+    }
+};
+
+TEST_F(WorldCornersTest, ParallelogramIdentity)
+{
+    // At any time t the four corners must satisfy:
+    //   P_11 = P_00 + (P_10 - P_00) + (P_01 - P_00)
+    for (float t : {0.0f, 1.0f, 2.5f}) {
+        glm::vec3 P00, P10, P01, P11;
+        scene.worldCorners(t, P00, P10, P01, P11);
+
+        glm::vec3 expected = P00 + (P10 - P00) + (P01 - P00);
+        EXPECT_NEAR(glm::length(P11 - expected), 0.0f, 1e-5f)
+            << "parallelogram identity failed at t=" << t;
+    }
+}
+
+TEST_F(WorldCornersTest, CornersMatchAnimationMatrixAtT0)
+{
+    // At t=0.0 the world corners must equal M_anim(0) applied to the local corners.
+    glm::mat4 M = scene.animationMatrix(0.0f);
+
+    const auto& surf = scene.uiSurface();
+    glm::vec3 expected00 = glm::vec3(M * glm::vec4(surf.P_00_local, 1.0f));
+    glm::vec3 expected10 = glm::vec3(M * glm::vec4(surf.P_10_local, 1.0f));
+    glm::vec3 expected01 = glm::vec3(M * glm::vec4(surf.P_01_local, 1.0f));
+    glm::vec3 expected11 = glm::vec3(M * glm::vec4(surf.P_11_local, 1.0f));
+
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11);
+
+    EXPECT_NEAR(glm::length(P00 - expected00), 0.0f, 1e-5f) << "P_00 mismatch";
+    EXPECT_NEAR(glm::length(P10 - expected10), 0.0f, 1e-5f) << "P_10 mismatch";
+    EXPECT_NEAR(glm::length(P01 - expected01), 0.0f, 1e-5f) << "P_01 mismatch";
+    EXPECT_NEAR(glm::length(P11 - expected11), 0.0f, 1e-5f) << "P_11 mismatch";
+}
