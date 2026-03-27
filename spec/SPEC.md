@@ -188,6 +188,7 @@ The same quad list is rendered with the composite matrix `M_total` (Section 4.5)
 | `pipe_ui_rt` | `ui_ortho.vert` | `ui.frag` | Orthographic, for RT pass |
 | `pipe_ui_direct` | `ui_direct.vert` | `ui.frag` | M_total transform, clip distances |
 | `pipe_composite` | `quad.vert` | `composite.frag` | Samples offscreen RT onto quad |
+| `pipe_surface` | `quad.vert` | `surface.frag` | Opaque teal quad drawn before direct-mode UI geometry |
 | `pipe_metrics` | `ui_ortho.vert` | `ui.frag` | Reuses UI pipeline for HUD |
 
 ### 6.3 Descriptor Sets
@@ -384,7 +385,7 @@ Both targets link against the same app library (`direct_ui_rendering_lib`) and c
 
 The `Renderer` class must cleanly separate the **device/pipeline layer** from the **swapchain/presentation layer**:
 
-- `Renderer::init(headless: bool)` — when `true`, skips GLFW surface creation and swapchain setup. All pipelines, render passes, descriptor layouts, and VMA allocator are initialized identically.
+- `Renderer::init(headless: bool, shaderDir: const char*)` — when `headless` is `true`, skips GLFW surface creation and swapchain setup. All pipelines, render passes, descriptor layouts, and VMA allocator are initialized identically. The `shaderDir` parameter specifies the directory path where test shaders are located; tests must pass `TEST_SHADER_DIR` at runtime so the library resolves test shaders rather than defaulting to the production `SHADER_DIR`.
 - The output render target is abstracted behind a `RenderTarget` handle. In normal mode this wraps the swapchain image; in headless mode it wraps a plain `VkImage` allocated by the test.
 - All render functions (`drawScene`, `drawUI`, etc.) accept a `RenderTarget&` and are unaware of whether it is a swapchain image or an offscreen image.
 
@@ -540,9 +541,9 @@ direct_ui_rendering/
 ├── tests/
 │   ├── CMakeLists.txt
 │   ├── perf_reference.h             # Hardcoded performance regression baselines
+│   ├── test_containment.cpp         # tests_render: UI pixel containment check (UI_TEST_COLOR shaders)
 │   ├── test_math.cpp                # tests_unit: matrix construction, clip plane signs, SDF constants
 │   ├── test_perf.cpp                # tests_render: performance regression
-│   ├── test_containment.cpp         # tests_render: UI pixel containment check (UI_TEST_COLOR shaders)
 │   └── test_sdf.cpp                 # tests_sdf: SDF threshold/render tests (production shaders, real atlas)
 └── CMakeLists.txt
 ```

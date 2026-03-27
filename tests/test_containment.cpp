@@ -452,6 +452,14 @@ TEST_F(ContainmentTest, ExtremeAngle_DirectMode_MagentaPixels_InsideSurfaceQuad)
     // Use a larger margin (4 px) for the edge-on case: the thin projected sliver
     // amplifies MSAA edge-blending effects relative to a face-on view.
     auto pixels = renderAndReadback(/*directMode=*/true);
+
+    // Ensure the test is non-vacuous: at least one magenta pixel must be present.
+    // In the extreme angle case, the projected sliver may be very thin, so we need
+    // to verify that magenta pixels were actually rendered.
+    EXPECT_GT(countMagentaPixels(pixels), 0)
+        << "No magenta pixels found in extreme-angle direct-mode readback — "
+        << "surface may be off-screen or the direct-mode pass is not executing";
+
     assertMagentaContained(pixels, vp, P00, P10, P11, P01, /*margin=*/4.0f);
 }
 

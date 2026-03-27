@@ -78,7 +78,7 @@ if ! command -v claude &>/dev/null; then
 fi
 
 # ── build claude flags ────────────────────────────────────────────────────────
-CLAUDE_FLAGS=("-p" "--output-format stream-json")
+CLAUDE_FLAGS=("-p" "--verbose")
 $SKIP_PERMISSIONS && CLAUDE_FLAGS+=("--dangerously-skip-permissions")
 [[ -n "$MODEL" ]] && CLAUDE_FLAGS+=("--model" "$MODEL")
 
