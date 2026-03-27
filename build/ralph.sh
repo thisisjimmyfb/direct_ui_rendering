@@ -130,16 +130,17 @@ while true; do
 
     # Always try Claude first
     set +e  # Temporarily disable exit-on-error to capture claude output even on failure
-    output=$(claude "${CLAUDE_FLAGS[@]}" < "$LOOP" 2>&1)
-    exit_code=$?
+    tmpfile=$(mktemp)
+    claude "${CLAUDE_FLAGS[@]}" < "$LOOP" 2>&1 | tee "$tmpfile"
+    exit_code=${PIPESTATUS[0]}
+    output=$(cat "$tmpfile")
+    rm -f "$tmpfile"
     set -e  # Re-enable exit-on-error
-	
+
     if [[ $exit_code -ne 0 ]] || is_token_limit_error "$output"; then
         echo "⚠ Token limit hit, using local LLM for this iteration" >&2
         echo ""
         run_local_llm
-    else
-        echo "$output"
     fi
 
     echo ""
