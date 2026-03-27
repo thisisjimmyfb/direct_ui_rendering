@@ -88,3 +88,26 @@ target_compile_definitions(tests_render PRIVATE
 )
 
 gtest_discover_tests(tests_render)
+
+# ---------------------------------------------------------------------------
+# tests_sdf — headless Vulkan SDF threshold render test
+# Uses production shaders (no UI_TEST_COLOR) so the real atlas-sampling and
+# SDF smoothstep logic in ui_direct.frag is exercised.
+# SHADER_DIR is inherited from direct_ui_rendering_lib compile definitions.
+# ---------------------------------------------------------------------------
+add_executable(tests_sdf
+    test_sdf.cpp
+)
+
+add_dependencies(tests_sdf shaders)
+
+target_link_libraries(tests_sdf PRIVATE
+    direct_ui_rendering_lib
+    GTest::gtest_main
+)
+
+target_include_directories(tests_sdf PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+gtest_discover_tests(tests_sdf)

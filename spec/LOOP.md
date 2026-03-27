@@ -9,10 +9,9 @@ Find the most important task from the following list and implement it. After tas
 	- Add performance test with longer animation duration to detect memory leaks
 - Add SDF Tests
 	- Add render test for SDF mode: verify non-zero alpha pixels exist in expected text area of the atlas
-- Strengthen SDF Coverage
-	- Add unit test verifying SDF_PIXEL_DIST_SCALE is positive and within reasonable range (1–100)
-	- Add unit test verifying SDF_GLYPH_PADDING is positive (required for valid SDF bleed beyond glyph outline)
-	- Add render test verifying sdfThreshold=0.0 vs sdfThreshold=0.5 produces different pixel outputs when using a real SDF atlas
+- Strengthen SDF Coverage (tests_sdf framework)
+	- Add render test: SDF on-edge atlas (all pixels R=SDF_ON_EDGE_VALUE/255) with sdfThreshold=0.5 should produce non-zero alpha pixels (verifies smoothstep straddles the threshold)
+	- Add render test: traditional mode (recordUIRTPass) with sdfThreshold=0.0 vs sdfThreshold=0.5 on the same synthetic atlas produces different readback pixels (exercises the RT-pass SDF path)
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section

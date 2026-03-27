@@ -379,3 +379,19 @@ TEST(SDFConstants, SdfThresholdReturnsZeroWhenNotSDF)
     EXPECT_FALSE(sys.isSDF());
     EXPECT_FLOAT_EQ(sys.sdfThreshold(), 0.0f);
 }
+
+TEST(SDFConstants, PixelDistScale_IsPositiveAndInRange)
+{
+    // SDF_PIXEL_DIST_SCALE must be positive and within a sane range so the
+    // distance field has meaningful per-pixel resolution.
+    EXPECT_GT(SDF_PIXEL_DIST_SCALE, 0.0f);
+    EXPECT_GE(SDF_PIXEL_DIST_SCALE, 1.0f);
+    EXPECT_LE(SDF_PIXEL_DIST_SCALE, 100.0f);
+}
+
+TEST(SDFConstants, GlyphPadding_IsPositive)
+{
+    // SDF_GLYPH_PADDING must be at least 1 so the distance field can bleed
+    // beyond the glyph outline and produce correct smoothstep transitions.
+    EXPECT_GT(SDF_GLYPH_PADDING, 0);
+}
