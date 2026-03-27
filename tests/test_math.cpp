@@ -670,3 +670,39 @@ TEST_F(SceneAnimationTest, NonTrivialAngle_RotationSubmatrixMatchesGlmRotate)
         }
     }
 }
+
+TEST_F(SceneAnimationTest, AtSinPi_LateralXNearZero_YFollowsFormula)
+{
+    // t = π / 0.18  →  t * 0.18 = π  →  sin(π) ≈ 0  →  lateralX ≈ 0.
+    // Exercises the zero-crossing of the lateral oscillation (sin changes sign here).
+    const float pi = std::acos(-1.0f);
+    const float t  = pi / 0.18f;
+
+    glm::mat4 M = scene.animationMatrix(t);
+
+    float expectedX = 1.2f * std::sin(t * 0.18f);
+    float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f);
+
+    EXPECT_NEAR(M[3][0], expectedX, 1e-5f) << "translation X at t=π/0.18";
+    EXPECT_NEAR(M[3][1], expectedY, 1e-5f) << "translation Y at t=π/0.18";
+    EXPECT_NEAR(M[3][2], -2.5f,    1e-5f) << "translation Z unchanged";
+}
+
+TEST_F(SceneAnimationTest, AtSinPiOver2_LateralXIsMax_YFollowsFormula)
+{
+    // t = (π/2) / 0.18  →  t * 0.18 = π/2  →  sin(π/2) = 1  →  lateralX = 1.2 exactly.
+    // Exercises the peak of the lateral oscillation.
+    const float pi = std::acos(-1.0f);
+    const float t  = (pi * 0.5f) / 0.18f;
+
+    glm::mat4 M = scene.animationMatrix(t);
+
+    float expectedX = 1.2f * std::sin(t * 0.18f);  // = 1.2 * 1.0 = 1.2
+    float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f);
+
+    EXPECT_NEAR(M[3][0], expectedX, 1e-5f) << "translation X at t=(π/2)/0.18";
+    EXPECT_NEAR(M[3][1], expectedY, 1e-5f) << "translation Y at t=(π/2)/0.18";
+    EXPECT_NEAR(M[3][2], -2.5f,    1e-5f) << "translation Z unchanged";
+    // Confirm the peak value is close to 1.2 (within float precision).
+    EXPECT_NEAR(M[3][0], 1.2f, 1e-4f) << "peak lateralX should be ≈1.2 m";
+}
