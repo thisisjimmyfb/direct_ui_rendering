@@ -10,8 +10,8 @@ Find the most important task from the following list and implement it. After tas
 - Add SDF Tests
 	- Add render test for SDF mode: verify non-zero alpha pixels exist in expected text area of the atlas
 - Strengthen SDF Coverage (tests_sdf framework)
-	- Add render test: SDF on-edge atlas (all pixels R=SDF_ON_EDGE_VALUE/255) with sdfThreshold=0.5 should produce non-zero alpha pixels (verifies smoothstep straddles the threshold)
-	- Add render test: traditional mode (recordUIRTPass) with sdfThreshold=0.0 vs sdfThreshold=0.5 on the same synthetic atlas produces different readback pixels (exercises the RT-pass SDF path)
+	- Add render test: SDF above-threshold atlas (all pixels R=220, well above sdfThreshold+spread=0.57) with sdfThreshold=0.5 should produce full-alpha pixels (alpha≈1.0), verifying smoothstep saturates at the high end (complements the on-edge and below-threshold tests)
+	- Add render test: traditional mode on-edge atlas (R=SDF_ON_EDGE_VALUE) with sdfThreshold=0.5 via recordUIRTPass produces different composited output than a fully-zero atlas (exercises RT-pass SDF path at the threshold boundary)
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
