@@ -582,3 +582,67 @@ TEST_F(WorldCornersTest, CornersMatchAnimationMatrixAtT0)
     EXPECT_NEAR(glm::length(P01 - expected01), 0.0f, 1e-5f) << "P_01 mismatch";
     EXPECT_NEAR(glm::length(P11 - expected11), 0.0f, 1e-5f) << "P_11 mismatch";
 }
+
+TEST_F(WorldCornersTest, PlanarityPreservedAtMultipleTimes)
+{
+    // Since M_anim(t) is a rigid-body transform, all four world corners must
+    // remain coplanar at every t.  Verify by computing the surface normal from
+    // three corners and asserting |dot(normal, P11 - P00)| < 1e-4.
+    for (float t : {0.0f, 0.5f, 1.0f, 2.5f, 5.0f}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        glm::vec3 P00, P10, P01, P11;
+        scene.worldCorners(t, P00, P10, P01, P11);
+
+        glm::vec3 normal = glm::normalize(glm::cross(P10 - P00, P01 - P00));
+        float deviation = std::abs(glm::dot(normal, P11 - P00));
+        EXPECT_LT(deviation, 1e-4f)
+            << "P11 deviates from the plane of P00/P10/P01 by " << deviation
+            << " at t=" << t;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SceneAnimation — animationMatrix(0) base-case purity
+// ---------------------------------------------------------------------------
+
+class SceneAnimationTest : public ::testing::Test {
+protected:
+    Scene scene;
+
+    void SetUp() override {
+        scene.init();
+    }
+};
+
+TEST_F(SceneAnimationTest, AtT0_RotationSubmatrixIsIdentity)
+{
+    // At t=0 sin(0)=0 so the rotation angle is 0. The upper-left 3×3 rotation
+    // sub-matrix of M_anim(0) must be identity (all diagonal entries = 1,
+    // off-diagonal rotation entries = 0).
+    glm::mat4 M = scene.animationMatrix(0.0f);
+
+    // Column-major: M[col][row]
+    EXPECT_NEAR(M[0][0], 1.0f, 1e-5f) << "M[0][0] (X scale)";
+    EXPECT_NEAR(M[1][1], 1.0f, 1e-5f) << "M[1][1] (Y scale)";
+    EXPECT_NEAR(M[2][2], 1.0f, 1e-5f) << "M[2][2] (Z scale)";
+
+    // Off-diagonal rotation entries must be zero.
+    EXPECT_NEAR(M[0][1], 0.0f, 1e-5f) << "M[0][1]";
+    EXPECT_NEAR(M[0][2], 0.0f, 1e-5f) << "M[0][2]";
+    EXPECT_NEAR(M[1][0], 0.0f, 1e-5f) << "M[1][0]";
+    EXPECT_NEAR(M[1][2], 0.0f, 1e-5f) << "M[1][2]";
+    EXPECT_NEAR(M[2][0], 0.0f, 1e-5f) << "M[2][0]";
+    EXPECT_NEAR(M[2][1], 0.0f, 1e-5f) << "M[2][1]";
+}
+
+TEST_F(SceneAnimationTest, AtT0_TranslationMatchesBaseOffset)
+{
+    // At t=0 lateralX=sin(0)=0 and lateralY=sin(0)=0, so the translation
+    // column must be exactly (0, 1.5, -2.5, 1).
+    glm::mat4 M = scene.animationMatrix(0.0f);
+
+    EXPECT_NEAR(M[3][0], 0.0f,  1e-5f) << "translation X";
+    EXPECT_NEAR(M[3][1], 1.5f,  1e-5f) << "translation Y";
+    EXPECT_NEAR(M[3][2], -2.5f, 1e-5f) << "translation Z";
+    EXPECT_NEAR(M[3][3], 1.0f,  1e-5f) << "homogeneous W";
+}
