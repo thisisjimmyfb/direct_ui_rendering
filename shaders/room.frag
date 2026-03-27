@@ -18,9 +18,13 @@ layout(location = 3) in vec2 inUV;
 
 layout(location = 0) out vec4 outColor;
 
-// 2x2 PCF tap over the shadow map.
-float sampleShadowPCF(vec4 shadowCoord) {
+// 2x2 PCF tap over the shadow map with slope-scaled depth bias to prevent
+// shadow acne. The bias is larger for surfaces nearly perpendicular to the
+// light (low N·L), matching the slope of the shadow-map depth gradient.
+float sampleShadowPCF(vec4 shadowCoord, vec3 N, vec3 L) {
     vec3 proj = shadowCoord.xyz / shadowCoord.w;
+    float bias = max(0.005 * (1.0 - dot(N, L)), 0.001);
+    proj.z -= bias;
     float shadow = 0.0;
     vec2 texelSize = vec2(1.0 / 1024.0);
     for (int x = 0; x <= 1; ++x) {
@@ -38,7 +42,7 @@ void main() {
 
     // Blinn-Phong diffuse
     float diff   = max(dot(N, L), 0.0);
-    float shadow = sampleShadowPCF(inShadowCoord);
+    float shadow = sampleShadowPCF(inShadowCoord, N, L);
 
     vec3 ambient = ambientColor.rgb;
     vec3 diffuse = diff * shadow * lightColor.rgb;
