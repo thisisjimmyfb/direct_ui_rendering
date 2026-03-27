@@ -106,7 +106,37 @@ glm::mat4 Scene::lightViewProj() const
     glm::vec3 lightPos = -m_light.direction * 10.0f;
     glm::mat4 view = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
 
-    // Orthographic projection covering the room bounds.
-    glm::mat4 proj = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 30.0f);
+    // Tight orthographic frustum: transform all 8 room corners into light view
+    // space and derive the axis-aligned bounding box.  The room occupies
+    // ±2 m (X), 0–3 m (Y), ±3 m (Z) — matching Scene::init() constants.
+    constexpr float W = 2.0f, H = 3.0f, D = 3.0f;
+    const glm::vec3 corners[8] = {
+        {-W, 0, -D}, { W, 0, -D}, {-W, H, -D}, { W, H, -D},
+        {-W, 0,  D}, { W, 0,  D}, {-W, H,  D}, { W, H,  D},
+    };
+
+    float minX =  1e9f, maxX = -1e9f;
+    float minY =  1e9f, maxY = -1e9f;
+    float minZ =  1e9f, maxZ = -1e9f;
+    for (const auto& c : corners) {
+        glm::vec4 lv = view * glm::vec4(c, 1.0f);
+        if (lv.x < minX) minX = lv.x;  if (lv.x > maxX) maxX = lv.x;
+        if (lv.y < minY) minY = lv.y;  if (lv.y > maxY) maxY = lv.y;
+        if (lv.z < minZ) minZ = lv.z;  if (lv.z > maxZ) maxZ = lv.z;
+    }
+
+    // GLM ortho near/far are positive distances along -Z from the light camera.
+    // View-space Z is negative for objects in front of the camera, so:
+    //   near = -maxZ (closest corner), far = -minZ (farthest corner).
+    // A small margin keeps all geometry clear of the clip planes.
+    constexpr float kMargin = 0.25f;
+    float nearZ = std::max(0.1f, -maxZ - kMargin);
+    float farZ  = -minZ + kMargin;
+
+    glm::mat4 proj = glm::ortho(
+        minX - kMargin, maxX + kMargin,
+        minY - kMargin, maxY + kMargin,
+        nearZ, farZ
+    );
     return proj * view;
 }
