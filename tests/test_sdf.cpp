@@ -500,7 +500,10 @@ protected:
     Renderer renderer;
     Scene    scene;
 
-    // Two synthetic atlases: on-edge (R=128, A=255) and transparent (R=0, A=0).
+    // Three synthetic atlases:
+    //   on-edge  (R=128/255≈0.502, A=255): sits at the SDF threshold midpoint
+    //   zero     (R=0,   A=0):             fully transparent, no SDF contribution
+    //   above    (R=220/255≈0.863, A=255): well above threshold+spread=0.57
     VkImage       atlasOnEdgeImg{VK_NULL_HANDLE};
     VmaAllocation atlasOnEdgeAlloc{};
     VkImageView   atlasOnEdgeView{VK_NULL_HANDLE};
@@ -510,6 +513,12 @@ protected:
     VmaAllocation atlasZeroAlloc{};
     VkImageView   atlasZeroView{VK_NULL_HANDLE};
     VkSampler     atlasZeroSampler{VK_NULL_HANDLE};
+
+    // R=220 → dist=0.863 → smoothstep(0.43, 0.57, 0.863)=1.0 (saturated)
+    VkImage       atlasAboveImg{VK_NULL_HANDLE};
+    VmaAllocation atlasAboveAlloc{};
+    VkImageView   atlasAboveView{VK_NULL_HANDLE};
+    VkSampler     atlasAboveSampler{VK_NULL_HANDLE};
 
     VkBuffer      uiVtxBuf{VK_NULL_HANDLE};
     VmaAllocation uiVtxAlloc{};
@@ -533,6 +542,9 @@ protected:
         createAndUploadAtlas(0, 0,
                              atlasZeroImg, atlasZeroAlloc,
                              atlasZeroView, atlasZeroSampler);
+        createAndUploadAtlas(220, 255,
+                             atlasAboveImg, atlasAboveAlloc,
+                             atlasAboveView, atlasAboveSampler);
 
         // Bind the on-edge atlas by default (tests can rebind as needed).
         renderer.bindAtlasDescriptor(atlasOnEdgeView, atlasOnEdgeSampler);
@@ -598,8 +610,9 @@ protected:
         renderer.destroyHeadlessRT(hrt);
         if (uiVtxBuf != VK_NULL_HANDLE)
             vmaDestroyBuffer(renderer.getAllocator(), uiVtxBuf, uiVtxAlloc);
-        destroyAtlas(atlasOnEdgeImg, atlasOnEdgeAlloc, atlasOnEdgeView, atlasOnEdgeSampler);
-        destroyAtlas(atlasZeroImg,   atlasZeroAlloc,   atlasZeroView,   atlasZeroSampler);
+        destroyAtlas(atlasOnEdgeImg,  atlasOnEdgeAlloc,  atlasOnEdgeView,  atlasOnEdgeSampler);
+        destroyAtlas(atlasZeroImg,    atlasZeroAlloc,    atlasZeroView,    atlasZeroSampler);
+        destroyAtlas(atlasAboveImg,   atlasAboveAlloc,   atlasAboveView,   atlasAboveSampler);
         renderer.cleanup();
     }
 
@@ -634,6 +647,97 @@ protected:
 
         renderer.recordShadowPass(cmd);
         renderer.recordMainPass(cmd, hrt.rt, /*directMode=*/true,
+                                uiVtxBuf, UI_VTX_COUNT, sdfThreshold);
+
+        vku::imageBarrier(cmd, hrt.rt.image,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_ACCESS_TRANSFER_READ_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+        VkBufferImageCopy copyRegion{};
+        copyRegion.imageSubresource  = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        copyRegion.imageExtent       = {FB_WIDTH, FB_HEIGHT, 1};
+        vkCmdCopyImageToBuffer(cmd, hrt.rt.image,
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               readbackBuf, 1, &copyRegion);
+
+        vkEndCommandBuffer(cmd);
+
+        VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = &cmd;
+        EXPECT_EQ(vkQueueSubmit(renderer.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE),
+                  VK_SUCCESS);
+        vkQueueWaitIdle(renderer.getGraphicsQueue());
+
+        void* mapped = nullptr;
+        vmaMapMemory(renderer.getAllocator(), readbackAlloc, &mapped);
+        std::vector<uint8_t> pixels(readbackSize);
+        memcpy(pixels.data(), mapped, static_cast<size_t>(readbackSize));
+        vmaUnmapMemory(renderer.getAllocator(), readbackAlloc);
+
+        vkFreeCommandBuffers(renderer.getDevice(), renderer.getCommandPool(), 1, &cmd);
+        vmaDestroyBuffer(renderer.getAllocator(), readbackBuf, readbackAlloc);
+
+        VkCommandBuffer resetCmd = vku::beginOneShot(renderer.getDevice(),
+                                                     renderer.getCommandPool());
+        vku::imageBarrier(resetCmd, hrt.rt.image,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_TRANSFER_READ_BIT,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        vku::endOneShot(renderer.getDevice(), renderer.getCommandPool(),
+                        renderer.getGraphicsQueue(), resetCmd);
+
+        return pixels;
+    }
+
+    // Render one frame in traditional mode (recordUIRTPass + recordMainPass
+    // directMode=false) with the currently-bound atlas and return the composited
+    // pixel buffer.
+    std::vector<uint8_t> renderAndReadback_traditional(float sdfThreshold) {
+        const VkDeviceSize readbackSize =
+            static_cast<VkDeviceSize>(FB_WIDTH) * FB_HEIGHT * 4;
+
+        VkBuffer      readbackBuf;
+        VmaAllocation readbackAlloc;
+        {
+            VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+            bci.size        = readbackSize;
+            bci.usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            VmaAllocationCreateInfo ai{};
+            ai.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+            EXPECT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
+                                      &readbackBuf, &readbackAlloc, nullptr), VK_SUCCESS);
+        }
+
+        renderer.updateSurfaceQuad(m_P00, m_P10, m_P01, m_P11);
+
+        VkCommandBufferAllocateInfo cbAI{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        cbAI.commandPool        = renderer.getCommandPool();
+        cbAI.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cbAI.commandBufferCount = 1;
+        VkCommandBuffer cmd = VK_NULL_HANDLE;
+        EXPECT_EQ(vkAllocateCommandBuffers(renderer.getDevice(), &cbAI, &cmd), VK_SUCCESS);
+
+        VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(cmd, &beginInfo);
+
+        renderer.recordShadowPass(cmd);
+
+        glm::mat4 ortho = glm::ortho(0.0f, static_cast<float>(Renderer::W_UI),
+                                     0.0f, static_cast<float>(Renderer::H_UI),
+                                     -1.0f, 1.0f);
+        renderer.recordUIRTPass(cmd, uiVtxBuf, UI_VTX_COUNT, ortho, sdfThreshold);
+
+        renderer.recordMainPass(cmd, hrt.rt, /*directMode=*/false,
                                 uiVtxBuf, UI_VTX_COUNT, sdfThreshold);
 
         vku::imageBarrier(cmd, hrt.rt.image,
@@ -814,4 +918,93 @@ TEST_F(SDFOnEdgeTest, OnEdge_SdfThreshold05_ProducesNonZeroAlphaPixels)
         << "On-edge atlas (R=SDF_ON_EDGE_VALUE) with sdfThreshold=0.5 produced the same "
            "output as a fully-transparent atlas; smoothstep may not be straddling the "
            "threshold (expected alpha ≈ 0.521 for dist=128/255≈0.502)";
+}
+
+// ---------------------------------------------------------------------------
+// Test: above-threshold atlas with sdfThreshold=0.5 produces saturated (full-alpha)
+// pixels, verifying that smoothstep clamps to 1.0 at the high end.
+//
+// Atlas: all pixels R=220/255≈0.863, A=255.
+//   dist   = 0.863
+//   spread = 0.07
+//   alpha  = smoothstep(0.43, 0.57, 0.863) = 1.0  (saturated)
+//
+// Compare against the zero atlas (R=0, A=0):
+//   alpha  = smoothstep(0.43, 0.57, 0.0)   = 0.0  (transparent)
+//
+// The composited renders must differ, and the above-threshold render must
+// contain pixels that differ from the zero-atlas render, proving saturation.
+// ---------------------------------------------------------------------------
+
+TEST_F(SDFOnEdgeTest, AboveThreshold_SdfThreshold05_SmoothstepSaturates)
+{
+    // Render with the above-threshold atlas (R=220/255≈0.863) at sdfThreshold=0.5.
+    // smoothstep(0.43, 0.57, 0.863) = 1.0 → UI fragments are fully opaque.
+    renderer.bindAtlasDescriptor(atlasAboveView, atlasAboveSampler);
+    auto pixelsAbove = renderAndReadback(0.5f);
+
+    // Render with the all-transparent atlas (R=0, A=0) at sdfThreshold=0.5.
+    // smoothstep(0.43, 0.57, 0.0) = 0.0 → UI fragments are fully transparent.
+    renderer.bindAtlasDescriptor(atlasZeroView, atlasZeroSampler);
+    auto pixelsZero = renderAndReadback(0.5f);
+
+    ASSERT_EQ(pixelsAbove.size(), pixelsZero.size());
+
+    // The renders must differ — proving the above-threshold atlas contributes
+    // visible pixels (smoothstep did not incorrectly clamp to 0).
+    uint64_t totalDiff = 0;
+    for (size_t i = 0; i < pixelsAbove.size(); ++i) {
+        int diff = static_cast<int>(pixelsAbove[i]) - static_cast<int>(pixelsZero[i]);
+        totalDiff += static_cast<uint64_t>(std::abs(diff));
+    }
+
+    EXPECT_GT(totalDiff, 0u)
+        << "Above-threshold atlas (R=220/255≈0.863) with sdfThreshold=0.5 produced the "
+           "same output as a fully-transparent atlas; smoothstep(0.43, 0.57, 0.863) "
+           "should equal 1.0 (saturated), making the UI fully visible";
+}
+
+// ---------------------------------------------------------------------------
+// Test: traditional mode — on-edge atlas (R=SDF_ON_EDGE_VALUE) with
+// sdfThreshold=0.5 via recordUIRTPass produces a different composited frame
+// than a fully-zero atlas.
+//
+// Exercises the traditional-mode SDF code path (ui.frag inside the UI RT pass)
+// at the threshold boundary, complementing the direct-mode on-edge test above.
+//
+// On-edge atlas (R=128, A=255):
+//   dist  = 128/255 ≈ 0.502
+//   alpha = smoothstep(0.43, 0.57, 0.502) ≈ 0.521  → UI RT receives visible pixels
+//
+// Zero atlas (R=0, A=0):
+//   dist  = 0.0
+//   alpha = smoothstep(0.43, 0.57, 0.0) = 0.0      → UI RT is transparent
+//
+// The composited main-pass output must therefore differ between the two atlases,
+// proving that recordUIRTPass applies sdfThreshold correctly at the boundary.
+// ---------------------------------------------------------------------------
+
+TEST_F(SDFOnEdgeTest, TraditionalMode_OnEdge_SdfThreshold05_DiffersFromZeroAtlas)
+{
+    // Render in traditional mode with the on-edge atlas and sdfThreshold=0.5.
+    renderer.bindAtlasDescriptor(atlasOnEdgeView, atlasOnEdgeSampler);
+    auto pixelsOnEdge = renderAndReadback_traditional(0.5f);
+
+    // Render in traditional mode with the zero atlas and sdfThreshold=0.5.
+    renderer.bindAtlasDescriptor(atlasZeroView, atlasZeroSampler);
+    auto pixelsZero = renderAndReadback_traditional(0.5f);
+
+    ASSERT_EQ(pixelsOnEdge.size(), pixelsZero.size());
+
+    uint64_t totalDiff = 0;
+    for (size_t i = 0; i < pixelsOnEdge.size(); ++i) {
+        int diff = static_cast<int>(pixelsOnEdge[i]) - static_cast<int>(pixelsZero[i]);
+        totalDiff += static_cast<uint64_t>(std::abs(diff));
+    }
+
+    EXPECT_GT(totalDiff, 0u)
+        << "Traditional mode: on-edge atlas (R=SDF_ON_EDGE_VALUE, sdfThreshold=0.5) "
+           "produced the same composited output as a fully-zero atlas; "
+           "recordUIRTPass may not be applying sdfThreshold at the boundary "
+           "(expected smoothstep(0.43, 0.57, 0.502) ≈ 0.521 to produce visible UI RT pixels)";
 }

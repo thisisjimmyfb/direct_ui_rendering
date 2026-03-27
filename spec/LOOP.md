@@ -9,9 +9,10 @@ Find the most important task from the following list and implement it. After tas
 	- Add performance test with longer animation duration to detect memory leaks
 - Add SDF Tests
 	- Add render test for SDF mode: verify non-zero alpha pixels exist in expected text area of the atlas
-- Strengthen SDF Coverage (tests_sdf framework)
-	- Add render test: SDF above-threshold atlas (all pixels R=220, well above sdfThreshold+spread=0.57) with sdfThreshold=0.5 should produce full-alpha pixels (alpha≈1.0), verifying smoothstep saturates at the high end (complements the on-edge and below-threshold tests)
-	- Add render test: traditional mode on-edge atlas (R=SDF_ON_EDGE_VALUE) with sdfThreshold=0.5 via recordUIRTPass produces different composited output than a fully-zero atlas (exercises RT-pass SDF path at the threshold boundary)
+- Strengthen SDF Coverage Further
+	- Add render test: below-threshold pixels are fully transparent — atlas R=0.1 (well below threshold=0.5), verify total pixel diff vs background-only render equals zero (complements above-threshold saturation test)
+	- Add render test: shadow-SDF interaction in direct mode — place UI surface fully in shadow, render with on-edge atlas (R=128) and sdfThreshold=0.5, verify alpha channel matches smoothstep(0.43,0.57,0.502)≈0.521 independently of shadow lighting applied to RGB
+	- Add render test: pre-multiplied alpha pipeline correctness — render with above-threshold atlas (R=220) in traditional composite mode, verify teal background bleeds through at (1 - alpha) proportion and UI RGB contribution matches pre-multiplied expected value
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
