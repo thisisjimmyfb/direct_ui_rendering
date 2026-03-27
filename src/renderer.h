@@ -87,12 +87,12 @@ public:
     void recordShadowPass(VkCommandBuffer cmd);
     void recordUIRTPass(VkCommandBuffer cmd,
                         VkBuffer uiVtxBuf, uint32_t uiVtxCount,
-                        const glm::mat4& ortho);
+                        const glm::mat4& ortho, float sdfThreshold = 0.0f);
     void recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool directMode,
-                        VkBuffer uiVtxBuf, uint32_t uiVtxCount);
+                        VkBuffer uiVtxBuf, uint32_t uiVtxCount, float sdfThreshold = 0.0f);
     void recordMetricsPass(VkCommandBuffer cmd, RenderTarget& rt,
                            VkBuffer hudVtxBuf, uint32_t hudVtxCount,
-                           const glm::mat4& ortho);
+                           const glm::mat4& ortho, float sdfThreshold = 0.0f);
 
     // Frame helpers (non-headless only)
     bool acquireSwapchainImage(uint32_t& imageIndex);

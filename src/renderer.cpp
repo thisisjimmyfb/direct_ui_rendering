@@ -220,7 +220,7 @@ void Renderer::recordShadowPass(VkCommandBuffer cmd)
 
 void Renderer::recordUIRTPass(VkCommandBuffer cmd,
                               VkBuffer uiVtxBuf, uint32_t uiVtxCount,
-                              const glm::mat4& ortho)
+                              const glm::mat4& ortho, float sdfThreshold)
 {
     if (!ensureUIRTAllocated()) return;
 
@@ -246,8 +246,10 @@ void Renderer::recordUIRTPass(VkCommandBuffer cmd,
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
                                 2, 1, &m_set2, 0, nullptr);
-        vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-                           0, sizeof(glm::mat4), &ortho);
+        struct { glm::mat4 orthoMatrix; float sdfThreshold; float _pad[3]; } pc{ortho, sdfThreshold, {}};
+        vkCmdPushConstants(cmd, m_pipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0, 80, &pc);
 
         VkDeviceSize offset = 0;
         vkCmdBindVertexBuffers(cmd, 0, 1, &uiVtxBuf, &offset);
@@ -258,7 +260,7 @@ void Renderer::recordUIRTPass(VkCommandBuffer cmd,
 }
 
 void Renderer::recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool directMode,
-                              VkBuffer uiVtxBuf, uint32_t uiVtxCount)
+                              VkBuffer uiVtxBuf, uint32_t uiVtxCount, float sdfThreshold)
 {
     VkClearValue clearValues[3]{};
     clearValues[0].color        = {{0.1f, 0.1f, 0.15f, 1.0f}};  // MSAA color clear
@@ -302,6 +304,9 @@ void Renderer::recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool direct
         }
         // UI geometry rendered directly into world space using M_total (clip-space offset).
         if (m_pipeUIDirect != VK_NULL_HANDLE && uiVtxCount > 0 && uiVtxBuf != VK_NULL_HANDLE) {
+            vkCmdPushConstants(cmd, m_pipelineLayout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                               64, sizeof(float), &sdfThreshold);
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeUIDirect);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
                                     1, 1, &m_set1, 0, nullptr);
@@ -330,7 +335,7 @@ void Renderer::recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool direct
 
 void Renderer::recordMetricsPass(VkCommandBuffer cmd, RenderTarget& rt,
                                  VkBuffer hudVtxBuf, uint32_t hudVtxCount,
-                                 const glm::mat4& ortho)
+                                 const glm::mat4& ortho, float sdfThreshold)
 {
     VkRenderPassBeginInfo rpBI{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rpBI.renderPass      = m_metricsPass;
@@ -350,8 +355,10 @@ void Renderer::recordMetricsPass(VkCommandBuffer cmd, RenderTarget& rt,
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
                                 2, 1, &m_set2, 0, nullptr);
-        vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-                           0, sizeof(glm::mat4), &ortho);
+        struct { glm::mat4 orthoMatrix; float sdfThreshold; float _pad[3]; } pc{ortho, sdfThreshold, {}};
+        vkCmdPushConstants(cmd, m_pipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0, 80, &pc);
 
         VkDeviceSize offset = 0;
         vkCmdBindVertexBuffers(cmd, 0, 1, &hudVtxBuf, &offset);
@@ -951,9 +958,9 @@ bool Renderer::createDescriptorSetLayouts()
     // Pipeline layout: 3 descriptor sets + one push constant (mat4 ortho, VS only)
     {
         VkPushConstantRange pushRange{};
-        pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushRange.offset     = 0;
-        pushRange.size       = 64; // sizeof(mat4)
+        pushRange.size       = 80; // sizeof(mat4)=64 + sizeof(float)=4 + 12 pad
 
         VkDescriptorSetLayout dsLayouts[3] = {m_setLayout0, m_setLayout1, m_setLayout2};
 

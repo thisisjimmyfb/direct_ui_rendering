@@ -293,12 +293,12 @@ void App::drawFrame()
     // UI RT pass (traditional mode only).
     if (m_mode == RenderMode::Traditional) {
         glm::mat4 uiOrtho = glm::ortho(0.0f, (float)W_UI, 0.0f, (float)H_UI, -1.0f, 1.0f);
-        m_renderer.recordUIRTPass(m_cmd, uiVtxBuf, uiVtxCount, uiOrtho);
+        m_renderer.recordUIRTPass(m_cmd, uiVtxBuf, uiVtxCount, uiOrtho, m_ui.sdfThreshold());
     }
 
     // Main scene pass: room + UI (direct) or surface composite (traditional).
     auto& rt = m_renderer.getSwapchainRT(imgIdx);
-    m_renderer.recordMainPass(m_cmd, rt, m_mode == RenderMode::Direct, uiVtxBuf, uiVtxCount);
+    m_renderer.recordMainPass(m_cmd, rt, m_mode == RenderMode::Direct, uiVtxBuf, uiVtxCount, m_ui.sdfThreshold());
 
     // Pipeline barrier: ensure main pass color writes are visible to the metrics pass.
     vku::imageBarrier(m_cmd, rt.image,
@@ -314,7 +314,7 @@ void App::drawFrame()
                                     0.0f, (float)WINDOW_HEIGHT, -1.0f, 1.0f);
     m_renderer.recordMetricsPass(m_cmd, rt,
                                  m_hudVtxBuf, hudVtxCount,
-                                 hudOrtho);
+                                 hudOrtho, m_ui.sdfThreshold());
 
     vkEndCommandBuffer(m_cmd);
 

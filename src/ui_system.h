@@ -14,6 +14,12 @@ static constexpr uint32_t H_UI       = 128;
 static constexpr uint32_t ATLAS_SIZE = 512;
 static constexpr uint32_t GLYPH_CELL = 32;
 
+// SDF atlas constants
+static constexpr uint8_t SDF_ON_EDGE_VALUE    = 128;   // distance field edge value
+static constexpr float   SDF_PIXEL_DIST_SCALE = 16.0f; // pixels per SDF distance unit
+static constexpr int     SDF_GLYPH_PADDING    = 4;     // border around each glyph for SDF bleed
+static constexpr float   SDF_THRESHOLD_DEFAULT = 0.5f; // normalized threshold = 128/255
+
 // A single UI vertex: 2D UI-space position + UV into glyph atlas.
 struct UIVertex {
     glm::vec2 pos;   // UI-space pixels, origin top-left
@@ -49,6 +55,8 @@ public:
     VkSampler    atlasSampler()   const { return m_atlasSampler; }
     VkBuffer     helloVertBuffer() const { return m_helloVtxBuf; }
     uint32_t     helloVertCount() const { return m_helloVertCount; }
+    bool         isSDF()          const { return m_sdfMode; }
+    float        sdfThreshold()   const { return m_sdfMode ? SDF_THRESHOLD_DEFAULT : 0.0f; }
 
 private:
     GlyphRect uvForChar(char c) const;
@@ -69,4 +77,6 @@ private:
 
     // ASCII UV lookup: index = (char - 32), covers printable ASCII [32..126]
     std::array<GlyphRect, 95> m_glyphTable{};
+
+    bool m_sdfMode{false};
 };

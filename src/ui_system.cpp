@@ -5,6 +5,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include <stb_truetype.h>
+
 #include <vector>
 #include <cstring>
 
@@ -38,96 +41,233 @@ bool UISystem::init(VmaAllocator allocator,
         };
     }
 
-    // Load atlas PNG.
-    int w, h, ch;
-    stbi_uc* pixels = stbi_load(atlasPath, &w, &h, &ch, STBI_rgb_alpha);
-    if (!pixels) {
-        // Atlas not found — create a 1x1 placeholder so the app can still link.
-        static stbi_uc dummy[4] = {255, 255, 255, 255};
-        pixels = dummy;
-        w = h = 1;
-    }
-    VkDeviceSize imageSize = static_cast<VkDeviceSize>(w) * h * 4;
+    // Try system fonts for SDF generation
+    const char* fontPaths[] = {
+        "C:/Windows/Fonts/arial.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/TTF/LiberationSans-Regular.ttf",
+        nullptr
+    };
 
-    // Create device-local image.
-    VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageInfo.format        = VK_FORMAT_R8G8B8A8_UNORM;
-    imageInfo.extent        = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
-    imageInfo.mipLevels     = 1;
-    imageInfo.arrayLayers   = 1;
-    imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-    vmaCreateImage(allocator, &imageInfo, &allocInfo, &m_atlasImage, &m_atlasAlloc, nullptr);
-
-    // Upload via staging buffer.
-    // (Create staging buffer, copy pixels, issue copy command)
-    VkBufferCreateInfo stagingBufInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    stagingBufInfo.size  = imageSize;
-    stagingBufInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-    VmaAllocationCreateInfo stagingAllocInfo{};
-    stagingAllocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-
-    VkBuffer stagingBuf{VK_NULL_HANDLE};
-    VmaAllocation stagingAlloc{VK_NULL_HANDLE};
-    vmaCreateBuffer(allocator, &stagingBufInfo, &stagingAllocInfo,
-                    &stagingBuf, &stagingAlloc, nullptr);
-
-    void* mapped{nullptr};
-    vmaMapMemory(allocator, stagingAlloc, &mapped);
-    memcpy(mapped, pixels, imageSize);
-    vmaUnmapMemory(allocator, stagingAlloc);
-
-    if (pixels != reinterpret_cast<stbi_uc*>(nullptr) + 0) {
-        // Only free if stbi allocated it (not our dummy).
-        // (Simple check: if w*h > 1 stbi allocated it)
-        if (w * h > 1) stbi_image_free(pixels);
+    std::vector<uint8_t> fontData;
+    for (int fi = 0; fontPaths[fi]; ++fi) {
+        FILE* ff = fopen(fontPaths[fi], "rb");
+        if (!ff) continue;
+        fseek(ff, 0, SEEK_END);
+        long fsz = ftell(ff);
+        fseek(ff, 0, SEEK_SET);
+        fontData.resize(fsz);
+        fread(fontData.data(), 1, fsz, ff);
+        fclose(ff);
+        break;
     }
 
-    VkCommandBuffer cmd = vku::beginOneShot(device, cmdPool);
+    stbtt_fontinfo fontInfo{};
+    if (!fontData.empty() && stbtt_InitFont(&fontInfo, fontData.data(), 0)) {
+        // Generate SDF atlas: 512x512, single channel, 16 glyphs/row, 32x32 cells
+        constexpr int CELL    = GLYPH_CELL;         // 32
+        constexpr int PADD    = SDF_GLYPH_PADDING;  // 4
+        constexpr int INNER   = CELL - 2 * PADD;    // 24 inner pixels
+        constexpr int COLS    = ATLAS_SIZE / CELL;   // 16
 
-    vku::imageBarrier(cmd, m_atlasImage,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        0, VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        float scale = stbtt_ScaleForPixelHeight(&fontInfo, static_cast<float>(INNER));
 
-    VkBufferImageCopy region{};
-    region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.imageExtent      = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
-    vkCmdCopyBufferToImage(cmd, stagingBuf, m_atlasImage,
-                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        std::vector<uint8_t> atlasData(ATLAS_SIZE * ATLAS_SIZE, 0);
 
-    vku::imageBarrier(cmd, m_atlasImage,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        for (int i = 0; i < 95; ++i) {
+            int cp  = 32 + i;   // ASCII codepoint
+            int col = i % COLS;
+            int row = i / COLS;
 
-    vku::endOneShot(device, cmdPool, queue, cmd);
-    vmaDestroyBuffer(allocator, stagingBuf, stagingAlloc);
+            int w = 0, h = 0, xoff = 0, yoff = 0;
+            uint8_t* sdfBmp = stbtt_GetCodepointSDF(&fontInfo, scale, cp,
+                PADD, SDF_ON_EDGE_VALUE, SDF_PIXEL_DIST_SCALE,
+                &w, &h, &xoff, &yoff);
+            if (sdfBmp) {
+                int destX = col * CELL;
+                int destY = row * CELL;
+                for (int y = 0; y < h && y < CELL; ++y) {
+                    for (int x = 0; x < w && x < CELL; ++x) {
+                        atlasData[(destY + y) * ATLAS_SIZE + (destX + x)]
+                            = sdfBmp[y * w + x];
+                    }
+                }
+                stbtt_FreeSDF(sdfBmp, nullptr);
+            }
+        }
 
-    // Image view
-    VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-    viewInfo.image    = m_atlasImage;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format   = VK_FORMAT_R8G8B8A8_UNORM;
-    viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    vkCreateImageView(device, &viewInfo, nullptr, &m_atlasView);
+        // Create R8_UNORM device-local image
+        VkDeviceSize imageSize = ATLAS_SIZE * ATLAS_SIZE;
 
-    // Sampler (linear, clamp to edge)
-    VkSamplerCreateInfo samplerInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    samplerInfo.magFilter  = VK_FILTER_LINEAR;
-    samplerInfo.minFilter  = VK_FILTER_LINEAR;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    vkCreateSampler(device, &samplerInfo, nullptr, &m_atlasSampler);
+        VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+        imageInfo.format        = VK_FORMAT_R8_UNORM;
+        imageInfo.extent        = {ATLAS_SIZE, ATLAS_SIZE, 1};
+        imageInfo.mipLevels     = 1;
+        imageInfo.arrayLayers   = 1;
+        imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VmaAllocationCreateInfo allocInfo{};
+        allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        vmaCreateImage(allocator, &imageInfo, &allocInfo, &m_atlasImage, &m_atlasAlloc, nullptr);
+
+        // Upload via staging buffer
+        VkBufferCreateInfo stagingBufInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        stagingBufInfo.size  = imageSize;
+        stagingBufInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+        VmaAllocationCreateInfo stagingAllocInfo{};
+        stagingAllocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+        VkBuffer stagingBuf{VK_NULL_HANDLE};
+        VmaAllocation stagingAlloc{VK_NULL_HANDLE};
+        vmaCreateBuffer(allocator, &stagingBufInfo, &stagingAllocInfo,
+                        &stagingBuf, &stagingAlloc, nullptr);
+
+        void* mapped{nullptr};
+        vmaMapMemory(allocator, stagingAlloc, &mapped);
+        memcpy(mapped, atlasData.data(), imageSize);
+        vmaUnmapMemory(allocator, stagingAlloc);
+
+        VkCommandBuffer cmd = vku::beginOneShot(device, cmdPool);
+
+        vku::imageBarrier(cmd, m_atlasImage,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+        VkBufferImageCopy region{};
+        region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        region.imageExtent      = {ATLAS_SIZE, ATLAS_SIZE, 1};
+        vkCmdCopyBufferToImage(cmd, stagingBuf, m_atlasImage,
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+        vku::imageBarrier(cmd, m_atlasImage,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+        vku::endOneShot(device, cmdPool, queue, cmd);
+        vmaDestroyBuffer(allocator, stagingBuf, stagingAlloc);
+
+        // Image view (R8_UNORM)
+        VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewInfo.image    = m_atlasImage;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format   = VK_FORMAT_R8_UNORM;
+        viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        vkCreateImageView(device, &viewInfo, nullptr, &m_atlasView);
+
+        // Sampler (linear, clamp to edge)
+        VkSamplerCreateInfo samplerInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        samplerInfo.magFilter  = VK_FILTER_LINEAR;
+        samplerInfo.minFilter  = VK_FILTER_LINEAR;
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        vkCreateSampler(device, &samplerInfo, nullptr, &m_atlasSampler);
+
+        m_sdfMode = true;
+        printf("UISystem: SDF atlas generated (font loaded from system)\n");
+    } else {
+        // Fall back to PNG bitmap atlas.
+        int w, h, ch;
+        stbi_uc* pixels = stbi_load(atlasPath, &w, &h, &ch, STBI_rgb_alpha);
+        if (!pixels) {
+            // Atlas not found — create a 1x1 placeholder so the app can still link.
+            static stbi_uc dummy[4] = {255, 255, 255, 255};
+            pixels = dummy;
+            w = h = 1;
+        }
+        VkDeviceSize imageSize = static_cast<VkDeviceSize>(w) * h * 4;
+
+        // Create device-local image.
+        VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+        imageInfo.format        = VK_FORMAT_R8G8B8A8_UNORM;
+        imageInfo.extent        = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
+        imageInfo.mipLevels     = 1;
+        imageInfo.arrayLayers   = 1;
+        imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VmaAllocationCreateInfo allocInfo{};
+        allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        vmaCreateImage(allocator, &imageInfo, &allocInfo, &m_atlasImage, &m_atlasAlloc, nullptr);
+
+        // Upload via staging buffer.
+        // (Create staging buffer, copy pixels, issue copy command)
+        VkBufferCreateInfo stagingBufInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        stagingBufInfo.size  = imageSize;
+        stagingBufInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+        VmaAllocationCreateInfo stagingAllocInfo{};
+        stagingAllocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+        VkBuffer stagingBuf{VK_NULL_HANDLE};
+        VmaAllocation stagingAlloc{VK_NULL_HANDLE};
+        vmaCreateBuffer(allocator, &stagingBufInfo, &stagingAllocInfo,
+                        &stagingBuf, &stagingAlloc, nullptr);
+
+        void* mapped{nullptr};
+        vmaMapMemory(allocator, stagingAlloc, &mapped);
+        memcpy(mapped, pixels, imageSize);
+        vmaUnmapMemory(allocator, stagingAlloc);
+
+        if (pixels != reinterpret_cast<stbi_uc*>(nullptr) + 0) {
+            // Only free if stbi allocated it (not our dummy).
+            // (Simple check: if w*h > 1 stbi allocated it)
+            if (w * h > 1) stbi_image_free(pixels);
+        }
+
+        VkCommandBuffer cmd = vku::beginOneShot(device, cmdPool);
+
+        vku::imageBarrier(cmd, m_atlasImage,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+        VkBufferImageCopy region{};
+        region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        region.imageExtent      = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
+        vkCmdCopyBufferToImage(cmd, stagingBuf, m_atlasImage,
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+        vku::imageBarrier(cmd, m_atlasImage,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+        vku::endOneShot(device, cmdPool, queue, cmd);
+        vmaDestroyBuffer(allocator, stagingBuf, stagingAlloc);
+
+        // Image view
+        VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewInfo.image    = m_atlasImage;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format   = VK_FORMAT_R8G8B8A8_UNORM;
+        viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        vkCreateImageView(device, &viewInfo, nullptr, &m_atlasView);
+
+        // Sampler (linear, clamp to edge)
+        VkSamplerCreateInfo samplerInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        samplerInfo.magFilter  = VK_FILTER_LINEAR;
+        samplerInfo.minFilter  = VK_FILTER_LINEAR;
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        vkCreateSampler(device, &samplerInfo, nullptr, &m_atlasSampler);
+
+        m_sdfMode = false;
+    }
 
     // Tessellate "Hello World" and upload to device-local vertex buffer.
     std::vector<UIVertex> helloVerts;
