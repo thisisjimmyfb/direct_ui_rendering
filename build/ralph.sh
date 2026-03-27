@@ -78,7 +78,7 @@ if ! command -v claude &>/dev/null; then
 fi
 
 # ── build claude flags ────────────────────────────────────────────────────────
-CLAUDE_FLAGS=("-p")
+CLAUDE_FLAGS=("-p" "--verbose")
 $SKIP_PERMISSIONS && CLAUDE_FLAGS+=("--dangerously-skip-permissions")
 [[ -n "$MODEL" ]] && CLAUDE_FLAGS+=("--model" "$MODEL")
 
@@ -87,7 +87,7 @@ trap 'echo ""; echo "ralph stopped after $iteration iteration(s)."; exit 0' INT 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 run_local_llm() {
-    export ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL" 
+    export ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL"
 	claude "${CLAUDE_FLAGS[@]}" < "$LOOP" 2>&1
 	unset ANTHROPIC_BASE_URL
 }
@@ -129,15 +129,14 @@ while true; do
     echo ""
 
     # Always try Claude first
-    set +e  # Temporarily disable exit-on-error to capture claude output even on failure
-    tmpfile=$(mktemp)
-    claude "${CLAUDE_FLAGS[@]}" < "$LOOP" 2>&1 | tee "$tmpfile"
-    exit_code=${PIPESTATUS[0]}
-    output=$(cat "$tmpfile")
-    rm -f "$tmpfile"
-    set -e  # Re-enable exit-on-error
+    set +e
+	(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}") & 
+	CLAUDE_PID=$!
+	wait $CLAUDE_PID
+	exit_code=$?
+    set -e
 
-    if [[ $exit_code -ne 0 ]] || is_token_limit_error "$output"; then
+    if [[ $exit_code -ne 0 ]]; then
         echo "⚠ Token limit hit, using local LLM for this iteration" >&2
         echo ""
         run_local_llm

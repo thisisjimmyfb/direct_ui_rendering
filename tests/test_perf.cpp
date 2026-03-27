@@ -286,3 +286,31 @@ TEST_F(PerfTest, TraditionalMode_GPUMem_WithinTolerance)
         << "Traditional mode GPU mem " << used << " B exceeds reference "
         << perf_ref::GPU_MEM_TRADITIONAL_BYTES << " B (+" << perf_ref::MEM_TOLERANCE * 100 << "%)";
 }
+
+// ---------------------------------------------------------------------------
+// Memory stability test — render 300 frames and assert GPU memory does not
+// grow between frame 60 and frame 300.  A leak would cause VMA allocations to
+// accumulate across frames; transient-per-frame allocations must be freed or
+// re-used each frame.  The 5% tolerance absorbs VMA internal bookkeeping jitter.
+// ---------------------------------------------------------------------------
+
+TEST_F(PerfTest, MemoryStable_After300Frames_DirectMode)
+{
+    Metrics m;
+
+    // Warm-up: let VMA reach a stable working set.
+    for (int i = 0; i < 60; ++i) renderOneFrame(/*directMode=*/true);
+    m.updateGPUMem(renderer.getAllocator());
+    uint64_t memAfterWarmup = m.gpuAllocatedBytes();
+
+    // Extended run: 240 additional frames (total 300).
+    for (int i = 0; i < 240; ++i) renderOneFrame(/*directMode=*/true);
+    m.updateGPUMem(renderer.getAllocator());
+    uint64_t memAfterExtended = m.gpuAllocatedBytes();
+
+    // Memory must not have grown by more than 5% after warmup stabilises.
+    uint64_t limit = static_cast<uint64_t>(static_cast<double>(memAfterWarmup) * 1.05);
+    EXPECT_LE(memAfterExtended, limit)
+        << "GPU memory grew from " << memAfterWarmup << " B (after 60 frames) to "
+        << memAfterExtended << " B (after 300 frames), suggesting a per-frame leak";
+}

@@ -499,13 +499,11 @@ Enabled in Debug builds: `VK_LAYER_KHRONOS_validation`. Disabled in Release.
 
 ```
 direct_ui_rendering/
-├── .github/
-│   └── workflows/
-│       └── cmake-multi-platform.yml # CI: build + test on Ubuntu and Windows
 ├── assets/
 │   └── atlas.png                    # Bitmap glyph atlas (fallback when no system font)
 ├── build/
 │   ├── build.sh                     # Build the project
+│   ├── ralph.sh                     # Automated iterate-loop runner (Ralph agent)
 │   ├── run.sh                       # Run the project
 │   └── test.sh                      # Run tests
 ├── spec/

@@ -4,9 +4,9 @@ Find the most important task from the following list and implement it. After tas
 
 ## Pending Tasks
 - Add More Tests
-	- Add render test for traditional mode (composite pass) UI containment
-	- Add render test for UI at extreme angles (near edge-on view)
-	- Add performance test with longer animation duration to detect memory leaks
+	- Add memory stability test for traditional mode (mirrors MemoryStable_After300Frames_DirectMode)
+	- Add non-empty pixel assertion to traditional mode containment test to prevent vacuous pass when surface quad is off-screen
+	- Add multi-frame animation containment test: compute worldCorners() at t=0, t=1, t=2 and verify direct-mode magenta pixels are contained at each frame
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
