@@ -511,8 +511,8 @@ direct_ui_rendering/
 ├── spec/
 │   ├── direct_ui_rendering.md       # Original math reference
 │   ├── LOOP.md                      # Iterate loop task list (active task tracking)
-│   ├── PROGRESS.md                  # Completed work log
 │   └── SPEC.md
+├── README.md                        # Project overview and math framework summary
 ├── src/
 │   ├── main.cpp                     # Entry point, window loop, input
 │   ├── app.h                        # Top-level app: init, frame loop, cleanup

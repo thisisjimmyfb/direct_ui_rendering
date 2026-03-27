@@ -27,8 +27,8 @@ float sampleShadowPCF(vec4 shadowCoord, vec3 N, vec3 L) {
     proj.z -= bias;
     float shadow = 0.0;
     vec2 texelSize = vec2(1.0 / 1024.0);
-    for (int x = 0; x <= 1; ++x) {
-        for (int y = 0; y <= 1; ++y) {
+    for (float x = -0.5; x <= 0.5; x += 1.0) {
+        for (float y = -0.5; y <= 0.5; y += 1.0) {
             shadow += texture(shadowMap,
                 vec3(proj.xy + vec2(x, y) * texelSize, proj.z));
         }
