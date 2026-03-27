@@ -476,6 +476,38 @@ TEST_F(LightFrustumTest, AllRoomCornersNDCZInVulkanDepthRange)
     }
 }
 
+TEST_F(LightFrustumTest, AllRoomCornersClipWIsOne)
+{
+    // An orthographic projection leaves W unchanged (equal to input W = 1.0).
+    // If the matrix accidentally becomes perspective, W varies per-vertex and
+    // shadow-map depth comparisons (which rely on NDC Z = clip.z / clip.w = clip.z
+    // for ortho) silently break.
+    for (const auto& c : roomCorners) {
+        glm::vec4 clip = lvp * glm::vec4(c, 1.0f);
+        EXPECT_NEAR(clip.w, 1.0f, 1e-4f)
+            << "corner (" << c.x << "," << c.y << "," << c.z << ") clip.w=" << clip.w
+            << " (expected 1.0 for orthographic projection)";
+    }
+}
+
+TEST_F(LightFrustumTest, NdcZSpreadExceedsHalf)
+{
+    // The tight orthographic frustum must utilise at least half of the [0,1]
+    // Vulkan depth range.  A loose frustum (e.g. nearZ≈0, farZ=100) packs all
+    // geometry into a tiny NDC-Z slice, which wastes depth-buffer precision and
+    // produces visible shadow acne.
+    float minZ =  1e9f, maxZ = -1e9f;
+    for (const auto& c : roomCorners) {
+        glm::vec4 clip = lvp * glm::vec4(c, 1.0f);
+        float ndcZ = clip.z / clip.w;
+        if (ndcZ < minZ) minZ = ndcZ;
+        if (ndcZ > maxZ) maxZ = ndcZ;
+    }
+    EXPECT_GT(maxZ - minZ, 0.5f)
+        << "NDC-Z range = " << (maxZ - minZ)
+        << " — frustum near/far planes are too loose; tighten them to improve shadow precision";
+}
+
 TEST_F(LightFrustumTest, FrustumHalfExtentsTighterThanOldFixedBound)
 {
     // Reconstruct the same light-view matrix used inside lightViewProj() so we
@@ -718,4 +750,23 @@ TEST_F(SceneAnimationTest, AtSinPiOver2_LateralXIsMax_YFollowsFormula)
     EXPECT_NEAR(M[3][2], -2.5f,    1e-5f) << "translation Z unchanged";
     // Confirm the peak value is close to 1.2 (within float precision).
     EXPECT_NEAR(M[3][0], 1.2f, 1e-4f) << "peak lateralX should be ≈1.2 m";
+}
+
+TEST_F(SceneAnimationTest, AtSin3PiOver2_LateralXIsNegativeMax_YFollowsFormula)
+{
+    // t = (3π/2) / 0.18  →  t * 0.18 = 3π/2  →  sin(3π/2) = -1  →  lateralX = -1.2 exactly.
+    // Covers the negative-peak oscillation branch (the mirror of AtSinPiOver2).
+    const float pi = std::acos(-1.0f);
+    const float t  = (3.0f * pi * 0.5f) / 0.18f;
+
+    glm::mat4 M = scene.animationMatrix(t);
+
+    float expectedX = 1.2f * std::sin(t * 0.18f);  // = 1.2 * (-1.0) = -1.2
+    float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f);
+
+    EXPECT_NEAR(M[3][0], expectedX, 1e-5f) << "translation X at t=(3π/2)/0.18";
+    EXPECT_NEAR(M[3][1], expectedY, 1e-5f) << "translation Y at t=(3π/2)/0.18";
+    EXPECT_NEAR(M[3][2], -2.5f,    1e-5f) << "translation Z unchanged";
+    // Confirm the trough value is close to -1.2 (within float precision).
+    EXPECT_NEAR(M[3][0], -1.2f, 1e-4f) << "trough lateralX should be ≈-1.2 m";
 }
