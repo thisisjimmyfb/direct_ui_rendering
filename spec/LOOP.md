@@ -18,4 +18,4 @@ Find the most important task from the following list and implement it. After tas
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
 - run build/build.sh and execute build/Debug/direct_ui_rendering.exe with a 10 second timeout, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
 - Investigate ways to strengthen testing based on staging changes. Add relevant tests from the investigation into the ['Pending Tasks'](#Pending-Tasks) section.
-- Update the ['File Structure'](SPEC.md/#File-Structure) section to reflect current project structure.
+- Update ['SPEC.md'](SPEC.md)'s ['File Structure'](SPEC.md/#File-Structure) section to reflect current project structure.
