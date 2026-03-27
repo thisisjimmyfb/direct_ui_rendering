@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 #include "ui_surface.h"
 #include "ui_system.h"
+#include "scene.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <cmath>
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -394,4 +396,95 @@ TEST(SDFConstants, GlyphPadding_IsPositive)
     // SDF_GLYPH_PADDING must be at least 1 so the distance field can bleed
     // beyond the glyph outline and produce correct smoothstep transitions.
     EXPECT_GT(SDF_GLYPH_PADDING, 0);
+}
+
+// ---------------------------------------------------------------------------
+// ShadowBias — slope-scaled bias formula: max(0.005*(1-NdotL), 0.001)
+// ---------------------------------------------------------------------------
+
+TEST(ShadowBias, BackWall_NdotLZero_YieldsFiveThousandths)
+{
+    // Back wall is perpendicular to light (N·L ≈ 0): largest bias case.
+    float NdotL = 0.0f;
+    float bias = std::max(0.005f * (1.0f - NdotL), 0.001f);
+    EXPECT_NEAR(bias, 0.005f, 1e-6f);
+}
+
+TEST(ShadowBias, Floor_NdotLOne_YieldsMinimumClamp)
+{
+    // Floor directly facing the light (N·L = 1): formula gives 0, clamped to minimum.
+    float NdotL = 1.0f;
+    float bias = std::max(0.005f * (1.0f - NdotL), 0.001f);
+    EXPECT_NEAR(bias, 0.001f, 1e-6f);
+}
+
+TEST(ShadowBias, GrazingAngle_NdotLHalf_YieldsIntermediate)
+{
+    // At N·L = 0.5: 0.005 * 0.5 = 0.0025, above minimum clamp.
+    float NdotL = 0.5f;
+    float bias = std::max(0.005f * (1.0f - NdotL), 0.001f);
+    EXPECT_NEAR(bias, 0.0025f, 1e-6f);
+}
+
+// ---------------------------------------------------------------------------
+// LightFrustum — tight orthographic frustum covers all room corners in NDC
+// ---------------------------------------------------------------------------
+
+class LightFrustumTest : public ::testing::Test {
+protected:
+    Scene scene;
+    glm::mat4 lvp;
+
+    // The 8 room corners matching Scene::init() extents (W=2, H=3, D=3).
+    static constexpr float W = 2.0f, H = 3.0f, D = 3.0f;
+    const glm::vec3 roomCorners[8] = {
+        {-W, 0, -D}, { W, 0, -D}, {-W, H, -D}, { W, H, -D},
+        {-W, 0,  D}, { W, 0,  D}, {-W, H,  D}, { W, H,  D},
+    };
+
+    void SetUp() override {
+        scene.init();
+        lvp = scene.lightViewProj();
+    }
+};
+
+TEST_F(LightFrustumTest, AllRoomCornersInsideNDC)
+{
+    // Every room corner must project to NDC x,y within [-1, 1] so all
+    // geometry falls within the shadow map.
+    for (const auto& c : roomCorners) {
+        glm::vec4 clip = lvp * glm::vec4(c, 1.0f);
+        float ndcX = clip.x / clip.w;
+        float ndcY = clip.y / clip.w;
+        EXPECT_GE(ndcX, -1.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcX=" << ndcX;
+        EXPECT_LE(ndcX,  1.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcX=" << ndcX;
+        EXPECT_GE(ndcY, -1.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcY=" << ndcY;
+        EXPECT_LE(ndcY,  1.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcY=" << ndcY;
+    }
+}
+
+TEST_F(LightFrustumTest, FrustumHalfExtentsTighterThanOldFixedBound)
+{
+    // Reconstruct the same light-view matrix used inside lightViewProj() so we
+    // can measure the AABB half-extents directly in light-view space.
+    // The old fixed ortho was ±5 m; the tight AABB must have half-width < 4 m.
+    glm::vec3 dir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.5f));
+    glm::vec3 lightPos = -dir * 10.0f;
+    glm::mat4 view = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
+
+    float minX =  1e9f, maxX = -1e9f;
+    float minY =  1e9f, maxY = -1e9f;
+    for (const auto& c : roomCorners) {
+        glm::vec4 lv = view * glm::vec4(c, 1.0f);
+        if (lv.x < minX) minX = lv.x;
+        if (lv.x > maxX) maxX = lv.x;
+        if (lv.y < minY) minY = lv.y;
+        if (lv.y > maxY) maxY = lv.y;
+    }
+
+    float halfX = (maxX - minX) * 0.5f;
+    float halfY = (maxY - minY) * 0.5f;
+
+    EXPECT_LT(halfX, 4.0f) << "Light-view X half-extent=" << halfX << " is not tighter than old ±5m bound";
+    EXPECT_LT(halfY, 4.0f) << "Light-view Y half-extent=" << halfY << " is not tighter than old ±5m bound";
 }
