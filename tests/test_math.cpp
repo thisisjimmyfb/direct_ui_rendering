@@ -820,3 +820,39 @@ TEST_F(LightFrustumTest, LightDirection_IsUnitVector)
         << " — it must be normalized (length == 1.0); "
         << "check that glm::normalize() is applied in the DirectionalLight initializer.";
 }
+
+TEST_F(LightFrustumTest, LightDirection_NotParallelToLookAtUpVector)
+{
+    // The shadow-map glm::lookAt call uses (0,1,0) as its up vector.  If the
+    // light direction is exactly (0,±1,0), the view direction and up vector are
+    // collinear, making lookAt degenerate — it produces a NaN matrix and all
+    // shadow-map comparisons return undefined results, making every fragment
+    // appear either permanently lit or permanently shadowed with no error.
+    //
+    // Assert: |dot(direction, (0,1,0))| < 1.0 - 1e-4
+    // i.e. the direction must differ from the Y axis by at least ~0.01°.
+    glm::vec3 dir = scene.light().direction;
+    float parallelness = std::abs(glm::dot(dir, glm::vec3(0.0f, 1.0f, 0.0f)));
+    EXPECT_LT(parallelness, 1.0f - 1e-4f)
+        << "light direction (" << dir.x << "," << dir.y << "," << dir.z << ") "
+        << "is nearly parallel to the lookAt up vector (0,1,0): |dot|=" << parallelness
+        << ".  A direction of (0,±1,0) makes glm::lookAt degenerate (NaN matrix), "
+        << "silently breaking all shadow-map depth comparisons.";
+}
+
+TEST_F(LightFrustumTest, LightColor_AllChannelsPositive)
+{
+    // All three RGB channels of the light color must be strictly positive.
+    // Zeroing any channel silently extinguishes that wavelength from every
+    // diffuse and specular contribution — e.g. color=(1,0,0) would remove all
+    // green and blue from every lit surface with no compile-time or runtime
+    // error, producing obviously wrong rendering that is nonetheless hard to
+    // diagnose without this explicit guard.
+    glm::vec3 col = scene.light().color;
+    EXPECT_GT(col.r, 0.0f)
+        << "light color red channel=" << col.r << " (must be > 0)";
+    EXPECT_GT(col.g, 0.0f)
+        << "light color green channel=" << col.g << " (must be > 0)";
+    EXPECT_GT(col.b, 0.0f)
+        << "light color blue channel=" << col.b << " (must be > 0)";
+}

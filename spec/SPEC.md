@@ -500,6 +500,9 @@ Enabled in Debug builds: `VK_LAYER_KHRONOS_validation`. Disabled in Release.
 
 ```
 direct_ui_rendering/
+├── .github/
+│   └── workflows/
+│       └── cmake-multi-platform.yml # CI: build + test on Ubuntu and Windows
 ├── assets/
 │   └── atlas.png                    # Bitmap glyph atlas (fallback when no system font)
 ├── build/
@@ -512,6 +515,7 @@ direct_ui_rendering/
 │   ├── direct_ui_rendering.md       # Original math reference
 │   ├── LOOP.md                      # Iterate loop task list (active task tracking)
 │   └── SPEC.md
+├── CLAUDE.md                        # Codebase instructions for Claude Code (read SPEC + direct_ui_rendering.md)
 ├── README.md                        # Project overview and math framework summary
 ├── src/
 │   ├── main.cpp                     # Entry point, window loop, input
