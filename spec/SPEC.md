@@ -504,6 +504,7 @@ direct_ui_rendering/
 │   └── atlas.png                    # Bitmap glyph atlas (fallback when no system font)
 ├── build/
 │   ├── build.sh                     # Build the project
+│   ├── commit.sh                    # Stage and commit changes with a generated message
 │   ├── ralph.sh                     # Automated iterate-loop runner (Ralph agent)
 │   ├── run.sh                       # Run the project
 │   └── test.sh                      # Run tests
