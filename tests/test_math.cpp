@@ -802,3 +802,21 @@ TEST_F(SceneAnimationTest, AtSin3PiOver2_LateralXIsNegativeMax_YFollowsFormula)
     // Confirm the trough value is close to -1.2 (within float precision).
     EXPECT_NEAR(M[3][0], -1.2f, 1e-4f) << "trough lateralX should be ≈-1.2 m";
 }
+
+// ---------------------------------------------------------------------------
+// LightDirection — directional light invariants
+// ---------------------------------------------------------------------------
+
+TEST_F(LightFrustumTest, LightDirection_IsUnitVector)
+{
+    // scene.light().direction must always be a unit vector.
+    // Accidental removal of glm::normalize(...) from the DirectionalLight
+    // default initializer would silently scale shadow map coverage and make
+    // the NdotL bias formula compute incorrect results, producing shadow acne
+    // on all surfaces without any compile-time or runtime error.
+    float len = glm::length(scene.light().direction);
+    EXPECT_NEAR(len, 1.0f, 1e-5f)
+        << "light direction length=" << len
+        << " — it must be normalized (length == 1.0); "
+        << "check that glm::normalize() is applied in the DirectionalLight initializer.";
+}
