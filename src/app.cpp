@@ -239,14 +239,9 @@ void App::drawFrame()
 
     // Tessellate HUD and upload to GPU buffer.
     m_hudVerts.clear();
-    uint32_t hudVtxCount = m_metrics.tessellateHUD(m_ui, m_mode, 4, m_hudVerts);
-    // Append input mode indicator line to HUD
-    {
-        const char* inputModeStr = (m_inputMode == InputMode::UITerminal)
-            ? "Input: TERMINAL  [Tab]" : "Input: CAMERA  [Tab]";
-        m_ui.tessellateString(inputModeStr, 8.0f, GLYPH_CELL * 4.0f, m_hudVerts);
-        hudVtxCount = static_cast<uint32_t>(m_hudVerts.size());
-    }
+    const char* inputModeStr = (m_inputMode == InputMode::UITerminal)
+        ? "Input: TERMINAL  [Tab]" : "Input: CAMERA  [Tab]";
+    uint32_t hudVtxCount = m_metrics.tessellateHUD(m_ui, m_mode, 4, m_hudVerts, inputModeStr);
     if (hudVtxCount > 0 && m_hudVtxBuf != VK_NULL_HANDLE) {
         void* mapped = nullptr;
         vmaMapMemory(m_renderer.getAllocator(), m_hudVtxAlloc, &mapped);

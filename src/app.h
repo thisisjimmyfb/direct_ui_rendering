@@ -75,8 +75,8 @@ private:
     VmaAllocation   m_hudVtxAlloc{VK_NULL_HANDLE};
     std::vector<UIVertex> m_hudVerts;
 
-    static constexpr uint32_t WINDOW_WIDTH  = 1280;
-    static constexpr uint32_t WINDOW_HEIGHT = 720;
+    static constexpr uint32_t WINDOW_WIDTH  = 1920;
+    static constexpr uint32_t WINDOW_HEIGHT = 1080;
 
     // Timeout tracking
     int m_timeoutSeconds{0};

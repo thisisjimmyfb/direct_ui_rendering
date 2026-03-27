@@ -40,30 +40,38 @@ float Metrics::averageFrameMs() const
 uint32_t Metrics::tessellateHUD(const UISystem& uiSystem,
                                 RenderMode mode,
                                 uint32_t msaaSamples,
-                                std::vector<UIVertex>& outVerts) const
+                                std::vector<UIVertex>& outVerts,
+                                const char* inputModeStr) const
 {
     char buf[64];
-    float lineHeight = 36.0f;  // slightly larger than GLYPH_CELL (32) for spacing
-    float x = 8.0f;
+    // Line height: GLYPH_CELL (32) + 8px spacing for clear vertical separation
+    float lineHeight = 40.0f;
+    // Left margin: consistent for all HUD elements
+    float leftMargin = 8.0f;
     uint32_t total = 0;
 
     // Line 0: mode
     const char* modeName = (mode == RenderMode::Direct) ? "DIRECT" : "TRADITIONAL";
     snprintf(buf, sizeof(buf), "Mode: %s", modeName);
-    total += uiSystem.tessellateString(buf, x, 8.0f + 0 * lineHeight, outVerts);
+    total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 0 * lineHeight, outVerts);
 
     // Line 1: frame time
     snprintf(buf, sizeof(buf), "Frame: %.1f ms", averageFrameMs());
-    total += uiSystem.tessellateString(buf, x, 8.0f + 1 * lineHeight, outVerts);
+    total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 1 * lineHeight, outVerts);
 
     // Line 2: GPU memory
     double mb = static_cast<double>(m_gpuBytes) / (1024.0 * 1024.0);
     snprintf(buf, sizeof(buf), "GPU Mem: %.1f MB", mb);
-    total += uiSystem.tessellateString(buf, x, 8.0f + 2 * lineHeight, outVerts);
+    total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 2 * lineHeight, outVerts);
 
     // Line 3: MSAA
     snprintf(buf, sizeof(buf), "MSAA: %ux", msaaSamples);
-    total += uiSystem.tessellateString(buf, x, 8.0f + 3 * lineHeight, outVerts);
+    total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 3 * lineHeight, outVerts);
+
+    // Line 4: input mode (optional) - aligned with same left margin as other HUD lines
+    if (inputModeStr) {
+        total += uiSystem.tessellateString(inputModeStr, leftMargin, leftMargin + 4 * lineHeight, outVerts);
+    }
 
     return total;
 }

@@ -24,12 +24,14 @@ public:
     // Query total VMA allocated bytes.  allocator may be VK_NULL_HANDLE (returns 0).
     void updateGPUMem(VmaAllocator allocator);
 
-    // Format the four HUD lines and tessellate them using uiSystem.
+    // Format the HUD lines and tessellate them using uiSystem.
+    // inputModeStr is an optional 5th line (pass nullptr to omit).
     // Returns the number of vertices written into outVerts.
     uint32_t tessellateHUD(const UISystem& uiSystem,
                            RenderMode mode,
                            uint32_t msaaSamples,
-                           std::vector<UIVertex>& outVerts) const;
+                           std::vector<UIVertex>& outVerts,
+                           const char* inputModeStr = nullptr) const;
 
     float averageFrameMs() const;
     uint64_t gpuAllocatedBytes() const { return m_gpuBytes; }

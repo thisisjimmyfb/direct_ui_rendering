@@ -1,5 +1,7 @@
 ## Progress History
 
+- **2026-03-26 20:00**: Completed iterate loop tasks: fixed overlay layout by increasing line height from 36px to 40px for better vertical separation between HUD elements (2026-03-26 20:00). Increased default window size from 1280×720 to 1920×1080 (2026-03-26 20:00). Created comprehensive SDF font support investigation document (spec/SDF_FONT_INVESTIGATION.md) with 20 implementation tasks organized into 5 phases (2026-03-26 20:00). Updated LOOP.md with SDF task list and testing improvements (2026-03-26 20:00). All 17/17 tests pass, Debug build clean, app exits code 0 after 10s timeout.
+
 - **2026-03-26 19:30**: Fixed floating world-space quad text persistence across input mode changes. Previously, the quad showed typed terminal text only while in UITerminal mode and reverted to "Hello World" when switching back to Camera mode. Fixed by changing the UI vertex buffer selection logic in `app.cpp` to use the terminal buffer whenever it has content (`m_uiTermVtxCount > 0`), regardless of the current input mode, falling back to Hello World only when no terminal text exists. 17/17 tests pass, build clean, app exits code 0 after 10s timeout.
 
 - **2026-03-26 19:15**: Made the floating world-space quad bigger. Changed local corner coordinates from ±0.5 (1×1 unit) to ±1.5 wide / ±0.75 tall (3×1.5 units), giving a 3× area increase that makes the surface much more prominent in the scene. All 17/17 tests pass, build clean, app exits after 10s timeout with no errors.

@@ -495,7 +495,7 @@ Enabled in Debug builds: `VK_LAYER_KHRONOS_validation`. Disabled in Release.
 
 ---
 
-## 12. Potential File Structure
+## 12. File Structure
 
 ```
 direct_ui_rendering/
