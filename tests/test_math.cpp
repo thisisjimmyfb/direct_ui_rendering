@@ -463,6 +463,19 @@ TEST_F(LightFrustumTest, AllRoomCornersInsideNDC)
     }
 }
 
+TEST_F(LightFrustumTest, AllRoomCornersNDCZInVulkanDepthRange)
+{
+    // Vulkan depth range is [0, 1].  A corner with NDC z outside this range
+    // would be clipped from the shadow map, producing missing shadows on that
+    // part of the scene.  The x/y tests above do not catch this failure mode.
+    for (const auto& c : roomCorners) {
+        glm::vec4 clip = lvp * glm::vec4(c, 1.0f);
+        float ndcZ = clip.z / clip.w;
+        EXPECT_GE(ndcZ, 0.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcZ=" << ndcZ << " < 0 (clipped from shadow map near plane)";
+        EXPECT_LE(ndcZ, 1.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcZ=" << ndcZ << " > 1 (clipped from shadow map far plane)";
+    }
+}
+
 TEST_F(LightFrustumTest, FrustumHalfExtentsTighterThanOldFixedBound)
 {
     // Reconstruct the same light-view matrix used inside lightViewProj() so we
