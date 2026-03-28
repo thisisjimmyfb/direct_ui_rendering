@@ -4,8 +4,7 @@ Find the most important task from the following list and implement it. After tas
 
 ## Pending Tasks
 - Refactor `src/renderer.cpp` (≈2086 lines): split into `renderer_init.cpp` (device/pipeline/swapchain setup), `renderer_recording.cpp` (per-frame command-buffer recording), and `renderer_resources.cpp` (GPU resource management), keeping `renderer.cpp` as the thin orchestration layer. Only proceed if the split does not fragment logic that is naturally co-located.
-- Add unit test `MetricsTest.HUDTessellation_TraditionalMode_WithInputModeStr_AllFiveLinesYSpacing` was completed. Next: add `MetricsTest.HUDTessellation_EmptyInputModeStr_FiveLinesYSpacing`: with `RenderMode::Direct` and `inputModeStr=""` (empty string, non-null), verify that `tessellateHUD` still emits exactly 5 lines, that the 5th line has 0 characters (0 extra vertices), and that lines 0–3 y-positions are unaffected (still `leftMargin + i * lineHeight`).
-- Add unit test `MetricsTest.HUDTessellation_LargeMSAASampleCount_NoBufferOverflow`: call `tessellateHUD` with `msaaSamples=99` (a value that would produce a 3-digit MSAA label "MSAA: 99x" = 10 chars) and verify the returned vertex count equals `(12 + 13 + 15 + 10) * 6 = 300`; guards against the MSAA label `snprintf` buffer being too small for multi-digit counts.
+- Add unit test `MetricsTest.HUDTessellation_EmptyInputModeStr_FiveLinesYSpacing`: with `RenderMode::Direct` and `inputModeStr=""` (empty string, non-null), verify that `tessellateHUD` still emits exactly 5 lines, that the 5th line has 0 characters (0 extra vertices), and that lines 0–3 y-positions are unaffected (still `leftMargin + i * lineHeight`).
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section

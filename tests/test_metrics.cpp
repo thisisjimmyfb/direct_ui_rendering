@@ -1008,3 +1008,44 @@ TEST(MetricsTest, HUDTessellation_SingleDigitMSAA_SameVertexCount)
     EXPECT_EQ(static_cast<uint32_t>(verts8.size()), count8)
         << "outVerts.size() does not match the returned count for msaaSamples=8";
 }
+
+// ---------------------------------------------------------------------------
+// MetricsTest — 3-digit MSAA sample count produces correct vertex count
+// ---------------------------------------------------------------------------
+
+// tessellateHUD formats the MSAA line as "MSAA: <N>x" where N is msaaSamples.
+// With msaaSamples=999, the label becomes "MSAA: 999x" (10 characters), one
+// more than the 2-digit "MSAA: 16x" (9 chars) and two more than the 1-digit
+// "MSAA: 4x" (8 chars).  This test guards against the MSAA label snprintf
+// buffer being sized too small for multi-digit counts (e.g. a buf[8] that
+// truncates "MSAA: 999x" to "MSAA: 99" would produce a shorter tessellation).
+//
+// Expected vertex breakdown with RenderMode::Direct, msaaSamples=999,
+// averageFrameMs()==0.0f, gpuAllocatedBytes()==0:
+//   Line 0: "Mode: DIRECT"     = 12 chars  →  72 vertices
+//   Line 1: "Frame: 0.0 ms"    = 13 chars  →  78 vertices
+//   Line 2: "GPU Mem: 0.0 MB"  = 15 chars  →  90 vertices
+//   Line 3: "MSAA: 999x"       = 10 chars  →  60 vertices
+//   Total                      = 50 chars  → 300 vertices
+TEST(MetricsTest, HUDTessellation_LargeMSAASampleCount_NoBufferOverflow)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 999u, verts);
+
+    constexpr uint32_t expectedVerts = (12u + 13u + 15u + 10u) * 6u;  // 300
+
+    ASSERT_GT(count, 0u)
+        << "tessellateHUD returned 0 for msaaSamples=999 — snprintf may have "
+           "truncated \"MSAA: 999x\" or the glyph table was not built";
+    EXPECT_EQ(count, expectedVerts)
+        << "msaaSamples=999 vertex count (" << count
+        << ") should be " << expectedVerts
+        << " — \"MSAA: 999x\" is 10 characters; a truncated label would "
+           "produce fewer vertices, indicating the snprintf buffer is too small";
+    EXPECT_EQ(static_cast<uint32_t>(verts.size()), count)
+        << "outVerts.size() does not match the returned count for msaaSamples=999";
+}
