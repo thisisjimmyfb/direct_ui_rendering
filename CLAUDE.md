@@ -60,7 +60,7 @@ direct_ui_rendering/
 │   ├── test_perf.cpp                # tests_render: performance regression
 │   ├── test_scene.cpp               # tests_unit: SceneInit, WorldCorners, SceneAnimation (incl. normal-wiggle peak/negative-peak/zero tests), LightFrustum
 │   ├── test_sdf.cpp                 # tests_sdf: SDF threshold/render tests (production shaders, real atlas)
-│   ├── test_transforms.cpp          # tests_unit: TransformMath (M_us/M_sw/M_sw-Z-offset/M_total/font-size-invariance), ClipPlane, DepthBias, ShadowBias
+│   ├── test_transforms.cpp          # tests_unit: TransformMath (M_us/M_sw/M_sw-Z-offset/M_total/font-size-invariance), ClipPlane, ClipPlane3D (3D surface at depth), ClipPlaneSymmetry (anti-parallel invariant), DepthBias, ShadowBias
 │   └── test_ui_system.cpp           # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
 └── CMakeLists.txt
 ```
