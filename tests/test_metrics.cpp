@@ -337,6 +337,66 @@ TEST(MetricsTest, HUDTessellation_AppendedVertexUVs_InUnitSquare)
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — HUD tessellation line height spacing
+// ---------------------------------------------------------------------------
+
+// Each HUD line is tessellated at y = leftMargin + lineIndex * lineHeight,
+// where lineHeight == 40.0f (GLYPH_CELL=32 + 8px spacing).
+// This test verifies that the first vertex of each line's first character
+// has the expected y-coordinate, catching regressions in the line-offset
+// computation where a fixed y or wrong lineHeight is used.
+TEST(MetricsTest, HUDTessellation_LineHeightSpacing_VerticalSeparation)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
+
+    // Fresh Metrics, RenderMode::Direct, 4 MSAA samples → character counts:
+    //   Line 0: "Mode: DIRECT"     = 12 chars  →  72 vertices (offset   0)
+    //   Line 1: "Frame: 0.0 ms"    = 13 chars  →  78 vertices (offset  72)
+    //   Line 2: "GPU Mem: 0.0 MB"  = 15 chars  →  90 vertices (offset 150)
+    //   Line 3: "MSAA: 4x"         =  8 chars  →  48 vertices (offset 240)
+    constexpr size_t line0Start = 0;
+    constexpr size_t line1Start = 72;   // 12 * 6
+    constexpr size_t line2Start = 150;  // (12 + 13) * 6
+    constexpr size_t line3Start = 240;  // (12 + 13 + 15) * 6
+    ASSERT_GE(verts.size(), line3Start + 6u)
+        << "tessellateHUD produced too few vertices to check all line starts";
+
+    // Line-height constants from metrics.cpp.
+    constexpr float leftMargin = 8.0f;
+    constexpr float lineHeight = 40.0f;  // GLYPH_CELL(32) + 8px spacing
+
+    const float expectedY0 = leftMargin + 0 * lineHeight;  // 8.0f
+    const float expectedY1 = leftMargin + 1 * lineHeight;  // 48.0f
+    const float expectedY2 = leftMargin + 2 * lineHeight;  // 88.0f
+    const float expectedY3 = leftMargin + 3 * lineHeight;  // 128.0f
+
+    // Each line's first vertex is TL of the first character quad; its y must
+    // equal the expected y for that line.
+    EXPECT_NEAR(verts[line0Start].pos.y, expectedY0, 1e-5f)
+        << "Line 0 TL y != " << expectedY0;
+    EXPECT_NEAR(verts[line1Start].pos.y, expectedY1, 1e-5f)
+        << "Line 1 TL y != " << expectedY1;
+    EXPECT_NEAR(verts[line2Start].pos.y, expectedY2, 1e-5f)
+        << "Line 2 TL y != " << expectedY2;
+    EXPECT_NEAR(verts[line3Start].pos.y, expectedY3, 1e-5f)
+        << "Line 3 TL y != " << expectedY3;
+
+    // Cross-check: successive line y-values must differ by exactly lineHeight.
+    float diff01 = verts[line1Start].pos.y - verts[line0Start].pos.y;
+    float diff12 = verts[line2Start].pos.y - verts[line1Start].pos.y;
+    float diff23 = verts[line3Start].pos.y - verts[line2Start].pos.y;
+
+    EXPECT_NEAR(diff01, lineHeight, 1e-5f) << "Line 0->1 y gap != lineHeight";
+    EXPECT_NEAR(diff12, lineHeight, 1e-5f) << "Line 1->2 y gap != lineHeight";
+    EXPECT_NEAR(diff23, lineHeight, 1e-5f) << "Line 2->3 y gap != lineHeight";
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
