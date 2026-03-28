@@ -4,6 +4,7 @@
 
 #include <thread>
 #include <chrono>
+#include <cstring>
 
 // ---------------------------------------------------------------------------
 // MetricsTest — frame timing ring buffer and HUD tessellation
@@ -90,4 +91,89 @@ TEST(MetricsTest, HUDTessellation_VertexCountMatchesLineCount)
         << "tessellateHUD returned wrong vertex count for 4 HUD lines";
     EXPECT_EQ(static_cast<uint32_t>(verts.size()), expectedVerts)
         << "outVerts.size() does not match the returned count";
+}
+
+// ---------------------------------------------------------------------------
+// MetricsTest — Traditional mode produces correct vertex count
+// ---------------------------------------------------------------------------
+
+// tessellateHUD with RenderMode::Traditional formats the mode line as
+// "Mode: TRADITIONAL" (17 chars) rather than "Mode: DIRECT" (12 chars).
+// The total vertex count must equal 6 * sum-of-chars for the four known lines.
+// This test catches regressions where the mode string is truncated or wrong.
+TEST(MetricsTest, HUDTessellation_TraditionalMode_VertexCount)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Traditional, msaaSamples=4, no inputModeStr:
+    //   Line 0: "Mode: TRADITIONAL" = 17 chars
+    //   Line 1: "Frame: 0.0 ms"     = 13 chars
+    //   Line 2: "GPU Mem: 0.0 MB"   = 15 chars
+    //   Line 3: "MSAA: 4x"          =  8 chars
+    //   Total                        = 53 chars  →  318 vertices
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    uint32_t count = metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts);
+
+    constexpr int expectedChars = 17 + 13 + 15 + 8;
+    constexpr uint32_t expectedVerts = 6u * static_cast<uint32_t>(expectedChars);
+
+    EXPECT_EQ(count, expectedVerts)
+        << "tessellateHUD returned wrong vertex count for Traditional mode HUD";
+    EXPECT_EQ(static_cast<uint32_t>(verts.size()), expectedVerts)
+        << "outVerts.size() does not match the returned count";
+}
+
+// ---------------------------------------------------------------------------
+// MetricsTest — optional inputModeStr adds a fifth line
+// ---------------------------------------------------------------------------
+
+// When a non-null inputModeStr is passed, tessellateHUD must append a 5th line
+// and the returned vertex count must equal the 4-line total plus
+// 6 * strlen(inputModeStr).  This catches cases where the optional line is
+// skipped entirely or double-counted.
+TEST(MetricsTest, HUDTessellation_WithInputModeStr_AddsExtraLine)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Direct, msaaSamples=4:
+    //   4-line base (same as HUDTessellation_VertexCountMatchesLineCount):
+    //     "Mode: DIRECT"    = 12 chars
+    //     "Frame: 0.0 ms"   = 13 chars
+    //     "GPU Mem: 0.0 MB" = 15 chars
+    //     "MSAA: 4x"        =  8 chars
+    //   Line 4: "Input: keyboard" = 15 chars
+    //   Total                      = 63 chars  →  378 vertices
+    const char* inputStr = "Input: keyboard";
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, inputStr);
+
+    constexpr int baseLine4Chars = 12 + 13 + 15 + 8;
+    const int extraChars = static_cast<int>(std::strlen(inputStr));
+    const uint32_t expectedVerts = 6u * static_cast<uint32_t>(baseLine4Chars + extraChars);
+
+    EXPECT_EQ(count, expectedVerts)
+        << "tessellateHUD returned wrong vertex count when inputModeStr is set";
+    EXPECT_EQ(static_cast<uint32_t>(verts.size()), expectedVerts)
+        << "outVerts.size() does not match the returned count";
+}
+
+// ---------------------------------------------------------------------------
+// MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
+// ---------------------------------------------------------------------------
+
+// updateGPUMem(VK_NULL_HANDLE) must set gpuAllocatedBytes() to 0 rather than
+// dereferencing the null handle.  This test guards against the null-check
+// being accidentally removed in a future refactor.
+TEST(MetricsTest, UpdateGPUMem_NullAllocator_SetsZero)
+{
+    Metrics m;
+    m.updateGPUMem(VK_NULL_HANDLE);
+    EXPECT_EQ(m.gpuAllocatedBytes(), 0u)
+        << "gpuAllocatedBytes() must be 0 when allocator is VK_NULL_HANDLE";
 }
