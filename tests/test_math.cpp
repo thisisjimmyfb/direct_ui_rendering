@@ -954,3 +954,149 @@ TEST(UISystemUVTable, OutOfRangeChar_ClampedToSpaceGlyph)
     EXPECT_NEAR(ext.u0, space.u0, 1e-6f);
     EXPECT_NEAR(ext.v0, space.v0, 1e-6f);
 }
+
+// ---------------------------------------------------------------------------
+// UISystem::tessellateString — vertex count, positions, and UV correctness
+// ---------------------------------------------------------------------------
+
+class TessellateStringTest : public ::testing::Test {
+protected:
+    UISystem sys;
+
+    void SetUp() override {
+        sys.buildGlyphTable();
+    }
+};
+
+TEST_F(TessellateStringTest, EmptyString_ZeroVertices)
+{
+    std::vector<UIVertex> verts;
+    uint32_t count = sys.tessellateString("", 0.0f, 0.0f, verts);
+    EXPECT_EQ(count, 0u);
+    EXPECT_TRUE(verts.empty());
+}
+
+TEST_F(TessellateStringTest, NChars_Produces6NVertices)
+{
+    for (int n : {1, 3, 11}) {
+        std::vector<UIVertex> verts;
+        std::string text(n, 'A');
+        uint32_t count = sys.tessellateString(text, 0.0f, 0.0f, verts);
+        EXPECT_EQ(count, static_cast<uint32_t>(6 * n)) << "n=" << n;
+        EXPECT_EQ(verts.size(), static_cast<size_t>(6 * n)) << "n=" << n;
+    }
+}
+
+TEST_F(TessellateStringTest, QuadCornerPositions_AdvanceByGlyphCell)
+{
+    // "AB" — two characters starting at (10, 20).
+    // Char 0: x0=10, y0=20, x1=10+GLYPH_CELL, y1=20+GLYPH_CELL
+    // Char 1: x0=10+GLYPH_CELL, y0=20, x1=10+2*GLYPH_CELL, y1=20+GLYPH_CELL
+    const float startX = 10.0f, startY = 20.0f;
+    const float cell = static_cast<float>(GLYPH_CELL);
+
+    std::vector<UIVertex> verts;
+    sys.tessellateString("AB", startX, startY, verts);
+    ASSERT_EQ(verts.size(), 12u);
+
+    // Char 0 vertices (indices 0–5): two triangles covering [10, 10+cell] x [20, 20+cell]
+    // Layout: TL, TR, BR, TL, BR, BL
+    const float x0_0 = startX,        x1_0 = startX + cell;
+    const float x0_1 = startX + cell, x1_1 = startX + 2.0f * cell;
+    const float y0 = startY, y1 = startY + cell;
+
+    EXPECT_NEAR(verts[0].pos.x, x0_0, 1e-5f) << "char0 v0 x";
+    EXPECT_NEAR(verts[0].pos.y, y0,   1e-5f) << "char0 v0 y";
+    EXPECT_NEAR(verts[1].pos.x, x1_0, 1e-5f) << "char0 v1 x";
+    EXPECT_NEAR(verts[1].pos.y, y0,   1e-5f) << "char0 v1 y";
+    EXPECT_NEAR(verts[2].pos.x, x1_0, 1e-5f) << "char0 v2 x";
+    EXPECT_NEAR(verts[2].pos.y, y1,   1e-5f) << "char0 v2 y";
+    EXPECT_NEAR(verts[5].pos.x, x0_0, 1e-5f) << "char0 v5 x";
+    EXPECT_NEAR(verts[5].pos.y, y1,   1e-5f) << "char0 v5 y";
+
+    EXPECT_NEAR(verts[6].pos.x,  x0_1, 1e-5f) << "char1 v0 x";
+    EXPECT_NEAR(verts[6].pos.y,  y0,   1e-5f) << "char1 v0 y";
+    EXPECT_NEAR(verts[7].pos.x,  x1_1, 1e-5f) << "char1 v1 x";
+    EXPECT_NEAR(verts[11].pos.x, x0_1, 1e-5f) << "char1 v5 x";
+    EXPECT_NEAR(verts[11].pos.y, y1,   1e-5f) << "char1 v5 y";
+}
+
+TEST_F(TessellateStringTest, UVsMatchUvForChar)
+{
+    // For each character in "Hello", the six tessellated vertices must carry
+    // UVs consistent with uvForChar for that character.
+    std::string_view text = "Hello";
+    std::vector<UIVertex> verts;
+    sys.tessellateString(text, 0.0f, 0.0f, verts);
+    ASSERT_EQ(verts.size(), text.size() * 6);
+
+    for (size_t i = 0; i < text.size(); ++i) {
+        GlyphRect uv = sys.uvForChar(text[i]);
+        size_t base = i * 6;
+        // Top-left corner (v0 and v3): u0, v0
+        EXPECT_NEAR(verts[base + 0].uv.x, uv.u0, 1e-6f) << "char " << i << " v0 u";
+        EXPECT_NEAR(verts[base + 0].uv.y, uv.v0, 1e-6f) << "char " << i << " v0 v";
+        EXPECT_NEAR(verts[base + 3].uv.x, uv.u0, 1e-6f) << "char " << i << " v3 u";
+        EXPECT_NEAR(verts[base + 3].uv.y, uv.v0, 1e-6f) << "char " << i << " v3 v";
+        // Top-right corner (v1): u1, v0
+        EXPECT_NEAR(verts[base + 1].uv.x, uv.u1, 1e-6f) << "char " << i << " v1 u";
+        EXPECT_NEAR(verts[base + 1].uv.y, uv.v0, 1e-6f) << "char " << i << " v1 v";
+        // Bottom-right corner (v2 and v4): u1, v1
+        EXPECT_NEAR(verts[base + 2].uv.x, uv.u1, 1e-6f) << "char " << i << " v2 u";
+        EXPECT_NEAR(verts[base + 2].uv.y, uv.v1, 1e-6f) << "char " << i << " v2 v";
+        EXPECT_NEAR(verts[base + 4].uv.x, uv.u1, 1e-6f) << "char " << i << " v4 u";
+        EXPECT_NEAR(verts[base + 4].uv.y, uv.v1, 1e-6f) << "char " << i << " v4 v";
+        // Bottom-left corner (v5): u0, v1
+        EXPECT_NEAR(verts[base + 5].uv.x, uv.u0, 1e-6f) << "char " << i << " v5 u";
+        EXPECT_NEAR(verts[base + 5].uv.y, uv.v1, 1e-6f) << "char " << i << " v5 v";
+    }
+}
+
+// ---------------------------------------------------------------------------
+// UISurface — local corner positions define a 4m×2m quad centered at origin
+// ---------------------------------------------------------------------------
+
+TEST(UISurfaceTest, LocalCorners_CorrectDimensions)
+{
+    // The default UISurface must define a 4 m wide × 2 m tall quad centered
+    // at the origin in the XY plane.  Accidental edits to these constants
+    // silently scale or shift the surface in world space, corrupting M_sw and
+    // all clip planes derived from it.
+    UISurface surf;
+
+    EXPECT_NEAR(surf.P_00_local.x, -2.0f, 1e-6f) << "P_00 x";
+    EXPECT_NEAR(surf.P_00_local.y,  1.0f, 1e-6f) << "P_00 y";
+    EXPECT_NEAR(surf.P_00_local.z,  0.0f, 1e-6f) << "P_00 z";
+
+    EXPECT_NEAR(surf.P_10_local.x,  2.0f, 1e-6f) << "P_10 x";
+    EXPECT_NEAR(surf.P_10_local.y,  1.0f, 1e-6f) << "P_10 y";
+    EXPECT_NEAR(surf.P_10_local.z,  0.0f, 1e-6f) << "P_10 z";
+
+    EXPECT_NEAR(surf.P_01_local.x, -2.0f, 1e-6f) << "P_01 x";
+    EXPECT_NEAR(surf.P_01_local.y, -1.0f, 1e-6f) << "P_01 y";
+    EXPECT_NEAR(surf.P_01_local.z,  0.0f, 1e-6f) << "P_01 z";
+
+    EXPECT_NEAR(surf.P_11_local.x,  2.0f, 1e-6f) << "P_11 x";
+    EXPECT_NEAR(surf.P_11_local.y, -1.0f, 1e-6f) << "P_11 y";
+    EXPECT_NEAR(surf.P_11_local.z,  0.0f, 1e-6f) << "P_11 z";
+}
+
+// ---------------------------------------------------------------------------
+// SceneAnimationTest — Z translation is always fixed at -2.5
+// ---------------------------------------------------------------------------
+
+TEST_F(SceneAnimationTest, ZTranslation_AlwaysFixedAt_Neg2_5)
+{
+    // The animation translates the surface in Z by a constant -2.5 m regardless
+    // of t.  Only X and Y oscillate.  Accidental removal of the constant term
+    // (e.g. editing the translate call) would silently move the surface away
+    // from the back wall with no compile-time error.
+    const float pi = std::acos(-1.0f);
+    for (float t : {0.0f, pi / 0.18f, pi / 0.22f, 2.0f * pi}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        glm::mat4 M = scene.animationMatrix(t);
+        // Column-major: M[3][2] is the Z component of the translation column.
+        EXPECT_NEAR(M[3][2], -2.5f, 1e-5f)
+            << "animationMatrix(" << t << ")[3][2] should always be -2.5";
+    }
+}

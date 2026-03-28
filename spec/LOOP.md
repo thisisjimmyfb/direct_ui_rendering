@@ -3,9 +3,8 @@ Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md)
 Find the most important task from the following list and implement it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github.
 
 ## Pending Tasks
-- Add unit tests for `UISystem::tessellateString`: verify empty string → 0 vertices, N characters → 6N vertices, quad corner positions advance by GLYPH_CELL per character from the starting (x,y), and UV coordinates match `uvForChar` for each character in the string.
-- Add unit test `UISurfaceTest.LocalCorners_CorrectDimensions`: verify the default `UISurface` local corner positions are exactly P_00=(-2,1,0), P_10=(2,1,0), P_01=(-2,-1,0), P_11=(2,-1,0) — a 4m×2m quad centered at the origin.
-- Add unit test `SceneAnimationTest.ZTranslation_AlwaysFixedAt_Neg2_5`: verify that `animationMatrix(t)[3][2]` equals -2.5 for multiple values of t (0, π/0.18, π/0.22, 2π), guarding the invariant that the surface depth offset is constant.
+- Add unit test `TessellateStringTest.AppendsToExistingVector`: verify that `tessellateString` appends to a pre-populated `outVerts` vector (i.e. existing entries are preserved and new vertices are added after them), guarding against an accidental `outVerts.clear()` inside the function.
+- Add unit test `SceneAnimationTest.YTranslation_AlwaysInExpectedRange`: verify that `animationMatrix(t)[3][1]` is always in [1.15, 1.85] (= 1.5 ± 0.35) for a sweep of t values, guarding the invariant that the surface stays within visible room bounds.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
