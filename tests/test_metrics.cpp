@@ -642,6 +642,62 @@ TEST(MetricsTest, HUDTessellation_FourLines_AllLinesXPositions)
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — Traditional mode: all four lines follow the arithmetic
+// y-sequence (parallels FourLines_AllLinesYSpacing for the Traditional branch)
+// ---------------------------------------------------------------------------
+
+// With RenderMode::Traditional and no inputModeStr, tessellateHUD formats the
+// mode line as "Mode: TRADITIONAL" (17 chars) instead of "Mode: DIRECT" (12
+// chars).  The y-coordinate of each line must still follow
+// y = leftMargin + i * lineHeight for i = 0..3 and successive pairs must
+// differ by exactly lineHeight, regardless of how the per-line character count
+// affects the vertex offsets.  This test catches regressions where the
+// Traditional-mode branch uses a different line-offset formula than Direct mode.
+TEST(MetricsTest, HUDTessellation_TraditionalMode_AllLinesYSpacing)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Traditional, msaaSamples=4, inputModeStr=nullptr:
+    //   Line 0: "Mode: TRADITIONAL" = 17 chars  → 102 vertices (offset   0)
+    //   Line 1: "Frame: 0.0 ms"     = 13 chars  →  78 vertices (offset 102)
+    //   Line 2: "GPU Mem: 0.0 MB"   = 15 chars  →  90 vertices (offset 180)
+    //   Line 3: "MSAA: 4x"          =  8 chars  →  48 vertices (offset 270)
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, nullptr);
+
+    constexpr size_t line0Start = 0u;
+    constexpr size_t line1Start = 17u * 6u;                             // 102
+    constexpr size_t line2Start = (17u + 13u) * 6u;                    // 180
+    constexpr size_t line3Start = (17u + 13u + 15u) * 6u;              // 270
+
+    ASSERT_GE(verts.size(), line3Start + 6u)
+        << "tessellateHUD (Traditional) produced too few vertices to check all four lines";
+
+    constexpr float leftMargin = 8.0f;
+    constexpr float lineHeight = 40.0f;  // GLYPH_CELL(32) + 8px spacing
+
+    // Verify each line's TL y-coordinate follows leftMargin + i * lineHeight.
+    const size_t lineStarts[4] = { line0Start, line1Start, line2Start, line3Start };
+    for (int i = 0; i < 4; ++i) {
+        const float expectedY = leftMargin + static_cast<float>(i) * lineHeight;
+        EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
+            << "Traditional mode Line " << i << " TL y != " << expectedY
+            << " — the arithmetic sequence leftMargin + i * lineHeight is broken";
+    }
+
+    // Cross-check: every successive pair must differ by exactly lineHeight.
+    for (int i = 0; i < 3; ++i) {
+        const float diff = verts[lineStarts[i + 1]].pos.y - verts[lineStarts[i]].pos.y;
+        EXPECT_NEAR(diff, lineHeight, 1e-5f)
+            << "Traditional mode Line " << i << " -> " << (i + 1)
+            << " y gap != lineHeight (" << lineHeight << ")";
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
@@ -750,4 +806,45 @@ TEST(MetricsTest, HUDTessellation_NonStandardMSAA_VertexCountReflectsLongerStrin
            "using the actual sample count";
     EXPECT_EQ(static_cast<uint32_t>(verts16.size()), count16)
         << "outVerts.size() does not match the returned count for msaaSamples=16";
+}
+
+// ---------------------------------------------------------------------------
+// MetricsTest — single-digit MSAA sample counts produce the same vertex count
+// ---------------------------------------------------------------------------
+
+// tessellateHUD formats the MSAA line as "MSAA: <N>x" where N is msaaSamples.
+// Both msaaSamples=4 and msaaSamples=8 produce an 8-character label
+// ("MSAA: 4x" and "MSAA: 8x"), so the returned vertex counts must be equal.
+// This confirms the MSAA label formatting is not accidentally length-sensitive
+// within the single-digit range (e.g. an snprintf with an off-by-one buffer
+// might truncate "MSAA: 8x" differently than "MSAA: 4x").
+TEST(MetricsTest, HUDTessellation_SingleDigitMSAA_SameVertexCount)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // RenderMode::Direct, no inputModeStr, msaaSamples=4:
+    //   Line 3: "MSAA: 4x"  = 8 chars
+    Metrics metrics4;
+    std::vector<UIVertex> verts4;
+    uint32_t count4 = metrics4.tessellateHUD(sys, RenderMode::Direct, 4u, verts4);
+
+    // Same call but msaaSamples=8:
+    //   Line 3: "MSAA: 8x"  = 8 chars  (same length as "MSAA: 4x")
+    Metrics metrics8;
+    std::vector<UIVertex> verts8;
+    uint32_t count8 = metrics8.tessellateHUD(sys, RenderMode::Direct, 8u, verts8);
+
+    ASSERT_GT(count4, 0u)
+        << "msaaSamples=4 tessellateHUD returned 0 — baseline call failed";
+    ASSERT_GT(count8, 0u)
+        << "msaaSamples=8 tessellateHUD returned 0";
+    EXPECT_EQ(count8, count4)
+        << "msaaSamples=8 vertex count (" << count8
+        << ") differs from msaaSamples=4 count (" << count4
+        << ") — single-digit MSAA labels should all be 8 characters "
+           "(\"MSAA: 4x\" / \"MSAA: 8x\") and produce the same vertex count";
+    EXPECT_EQ(static_cast<uint32_t>(verts8.size()), count8)
+        << "outVerts.size() does not match the returned count for msaaSamples=8";
 }
