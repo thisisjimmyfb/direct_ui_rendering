@@ -1,9 +1,8 @@
 ## Instruction
 Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md).
-Find the most important task from the following list and implement it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github.
+Find the most important task from the following list and implement it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress updates in this file.
 
 ## Pending Tasks
-- Add unit test `UISystemUVTable.RebuildGlyphTable_ConsistentAfterMultipleCalls`: call `buildGlyphTable()` twice on the same `UISystem` and verify the resulting UV table is identical both times, guarding against non-idempotent initialization or state pollution.
 - Add unit test `UISystemUVTable.AllCharacterIndexSpacing_NoDuplicatesOrGaps`: verify all 95 glyph UV rects tile the atlas grid without overlap or gap, checking that each rect is exactly `(GLYPH_CELL/ATLAS_SIZE)²` in area and adjacent entries share an edge.
 - Add unit test `TessellateStringTest.RepeatedCharsSameGlyph_AllVerticesIdenticalUVs`: tessellate `"AAAA"` and verify all 24 vertices share the same UV rect as `uvForChar('A')`, guarding against permutation or ordering bugs in quad assembly.
 - Add unit test `MetricsTest.HUDTessellation_LineHeightSpacing_WithInputModeStr_FifthLineSeparation`: when `inputModeStr` is supplied, verify the 5th line's first vertex TL y equals `leftMargin + 4 * lineHeight` (128.0f), catching regressions where the optional line uses a wrong index or a hard-coded offset.

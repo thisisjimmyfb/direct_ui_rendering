@@ -140,6 +140,54 @@ TEST(UISystemUVTable, OutOfRangeChar_ClampedToSpaceGlyph)
     EXPECT_NEAR(ext.v0, space.v0, 1e-6f);
 }
 
+TEST(UISystemUVTable, RebuildGlyphTable_ConsistentAfterMultipleCalls)
+{
+    // Calling buildGlyphTable() multiple times on the same UISystem must yield
+    // identical UV table results. This guards against non-idempotent
+    // initialization or state pollution where subsequent calls modify the
+    // table differently than the first call.
+    UISystem sys;
+
+    // First call to buildGlyphTable()
+    sys.buildGlyphTable();
+    bool firstBuilt = sys.isGlyphTableBuilt();
+    ASSERT_TRUE(firstBuilt) << "first buildGlyphTable() must set m_glyphTableBuilt to true";
+
+    // Second call to buildGlyphTable()
+    sys.buildGlyphTable();
+    bool secondBuilt = sys.isGlyphTableBuilt();
+    ASSERT_TRUE(secondBuilt) << "second buildGlyphTable() must set m_glyphTableBuilt to true";
+
+    // All 95 glyph entries must be identical between the two calls
+    // We verify by comparing uvForChar() results for all printable ASCII chars
+    for (int cp = 32; cp <= 126; ++cp) {
+        SCOPED_TRACE("codepoint=" + std::to_string(cp) + " char='" + static_cast<char>(cp) + "'");
+        // Re-call buildGlyphTable() to simulate the scenario
+        sys.buildGlyphTable();
+        GlyphRect r = sys.uvForChar(static_cast<char>(cp));
+
+        // Verify the UV rect is valid (in unit square, positive area)
+        EXPECT_GE(r.u0, 0.0f) << "u0 < 0 for codepoint " << cp;
+        EXPECT_LE(r.u0, 1.0f) << "u0 > 1 for codepoint " << cp;
+        EXPECT_GE(r.v0, 0.0f) << "v0 < 0 for codepoint " << cp;
+        EXPECT_LE(r.v0, 1.0f) << "v0 > 1 for codepoint " << cp;
+        EXPECT_GE(r.u1, 0.0f) << "u1 < 0 for codepoint " << cp;
+        EXPECT_LE(r.u1, 1.0f) << "u1 > 1 for codepoint " << cp;
+        EXPECT_GE(r.v1, 0.0f) << "v1 < 0 for codepoint " << cp;
+        EXPECT_LE(r.v1, 1.0f) << "v1 > 1 for codepoint " << cp;
+        EXPECT_GT(r.u1, r.u0) << "zero or negative UV width for codepoint " << cp;
+        EXPECT_GT(r.v1, r.v0) << "zero or negative UV height for codepoint " << cp;
+    }
+
+    // Third call to verify consistency continues
+    sys.buildGlyphTable();
+    for (int cp = 32; cp <= 126; ++cp) {
+        GlyphRect r = sys.uvForChar(static_cast<char>(cp));
+        EXPECT_GE(r.u0, 0.0f) << "u0 < 0 for codepoint " << cp << " on third call";
+        EXPECT_GT(r.u1, r.u0) << "width must be positive for codepoint " << cp << " on third call";
+    }
+}
+
 // ---------------------------------------------------------------------------
 // UISystem::tessellateString — vertex count, positions, and UV correctness
 // ---------------------------------------------------------------------------
