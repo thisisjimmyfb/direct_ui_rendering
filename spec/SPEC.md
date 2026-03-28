@@ -477,7 +477,7 @@ direct_ui_rendering/
 │   ├── CMakeLists.txt
 │   ├── perf_reference.h             # Hardcoded performance regression baselines
 │   ├── test_containment.cpp         # tests_render: UI pixel containment check, back wall shadow test
-│   ├── test_math.cpp                # tests_unit: matrix construction, clip plane signs, SDF constants, scene geometry, light frustum, animation matrix
+│   ├── test_math.cpp                # tests_unit: matrix construction, clip plane signs, depth bias, SDF constants, shadow bias, light frustum, scene geometry, animation matrix, UISystem UV table, tessellateString, UISurface corners
 │   ├── test_perf.cpp                # tests_render: performance regression
 │   └── test_sdf.cpp                 # tests_sdf: SDF threshold/render tests (production shaders, real atlas)
 └── CMakeLists.txt

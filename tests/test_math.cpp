@@ -1127,6 +1127,47 @@ TEST_F(TessellateStringTest, NonPrintableChars_FallBackToSpaceGlyphUVs)
     }
 }
 
+TEST_F(TessellateStringTest, NonPrintable_In_MixedString_PositionsAdvanceByGlyphCell)
+{
+    // "A\tB" — two printable characters bracketing one non-printable tab.
+    // The non-printable '\t' is clamped to the space glyph UV, but the cursor
+    // must still advance by exactly one GLYPH_CELL so that 'B' lands at
+    // x = startX + 2*GLYPH_CELL, not at startX + GLYPH_CELL (skipped advance)
+    // or startX + 3*GLYPH_CELL (double-advance).
+    //
+    // Guard against: a future refactor that conditions cx += cellF on the
+    // character being printable, or that advances cx twice for non-printables.
+    const float startX = 0.0f, startY = 0.0f;
+    const float cell = static_cast<float>(GLYPH_CELL);
+
+    std::vector<UIVertex> verts;
+    uint32_t count = sys.tessellateString("A\tB", startX, startY, verts);
+
+    // 3 characters × 6 vertices each = 18 vertices total.
+    ASSERT_EQ(count, 18u);
+    ASSERT_EQ(verts.size(), 18u);
+
+    // 'A' (char 0, vertices 0–5): x in [startX, startX + cell]
+    EXPECT_NEAR(verts[0].pos.x, startX,        1e-5f) << "A TL x";
+    EXPECT_NEAR(verts[1].pos.x, startX + cell, 1e-5f) << "A TR x";
+    EXPECT_NEAR(verts[0].pos.y, startY,        1e-5f) << "A TL y";
+    EXPECT_NEAR(verts[2].pos.y, startY + cell, 1e-5f) << "A BR y";
+
+    // '\t' (char 1, vertices 6–11): cursor must have advanced by exactly one
+    // GLYPH_CELL — the quad starts at startX + cell, not at startX (no-advance
+    // bug) and not at startX + 2*cell (double-advance bug).
+    EXPECT_NEAR(verts[6].pos.x,  startX + cell,        1e-5f) << "\\t TL x";
+    EXPECT_NEAR(verts[7].pos.x,  startX + 2.0f * cell, 1e-5f) << "\\t TR x";
+    EXPECT_NEAR(verts[6].pos.y,  startY,               1e-5f) << "\\t TL y";
+    EXPECT_NEAR(verts[8].pos.y,  startY + cell,        1e-5f) << "\\t BR y";
+
+    // 'B' (char 2, vertices 12–17): must be at startX + 2*cell.
+    EXPECT_NEAR(verts[12].pos.x, startX + 2.0f * cell, 1e-5f) << "B TL x";
+    EXPECT_NEAR(verts[13].pos.x, startX + 3.0f * cell, 1e-5f) << "B TR x";
+    EXPECT_NEAR(verts[12].pos.y, startY,               1e-5f) << "B TL y";
+    EXPECT_NEAR(verts[14].pos.y, startY + cell,        1e-5f) << "B BR y";
+}
+
 // ---------------------------------------------------------------------------
 // UISurface — local corner positions define a 4m×2m quad centered at origin
 // ---------------------------------------------------------------------------
