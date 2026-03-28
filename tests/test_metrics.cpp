@@ -410,3 +410,20 @@ TEST(MetricsTest, UpdateGPUMem_NullAllocator_SetsZero)
     EXPECT_EQ(m.gpuAllocatedBytes(), 0u)
         << "gpuAllocatedBytes() must be 0 when allocator is VK_NULL_HANDLE";
 }
+
+// ---------------------------------------------------------------------------
+// MetricsTest — averageFrameMs returns exactly zero when no frames recorded
+// ---------------------------------------------------------------------------
+
+// A freshly constructed Metrics object must return exactly 0.0f from
+// averageFrameMs() before any beginFrame/endFrame calls.  This guards against
+// using uninitialized ring-buffer data (garbage values from the stack) as
+// the average, which would silently corrupt frame timing metrics.
+TEST(MetricsTest, AverageFrameMs_ExactlyZeroWhenNoFrames)
+{
+    Metrics m;
+    // Pre-condition: no frames recorded yet.
+    EXPECT_FLOAT_EQ(m.averageFrameMs(), 0.0f)
+        << "averageFrameMs() must return exactly 0.0f on a fresh Metrics object, "
+           "not uninitialized ring-buffer data";
+}
