@@ -246,6 +246,97 @@ TEST(MetricsTest, HUDTessellation_PreExistingVertexValues_NotModified)
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — HUD tessellation with unbuilt glyph table returns 0
+// ---------------------------------------------------------------------------
+
+// When buildGlyphTable() has not been called, tessellateHUD() must return 0
+// and leave outVerts unmodified.  The guard in tessellateHUD checks
+// uiSystem.isGlyphTableBuilt() and returns early, ensuring callers can safely
+// pass a UISystem that was default-constructed without Vulkan init.
+TEST(MetricsTest, HUDTessellation_ReturnsZeroForEmptyUISystem)
+{
+    // Intentionally do NOT call sys.buildGlyphTable().
+    UISystem sys;
+
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    // Pre-populate with a sentinel so we can verify the vector is unchanged.
+    const UIVertex sentinel{{9.0f, 9.0f}, {0.5f, 0.5f}};
+    verts.push_back(sentinel);
+
+    uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
+
+    EXPECT_EQ(count, 0u)
+        << "tessellateHUD must return 0 when glyph table has not been built";
+    ASSERT_EQ(verts.size(), 1u)
+        << "tessellateHUD must not append vertices when glyph table is not built";
+    EXPECT_FLOAT_EQ(verts[0].pos.x, sentinel.pos.x)
+        << "pre-existing vertex pos.x was modified";
+    EXPECT_FLOAT_EQ(verts[0].pos.y, sentinel.pos.y)
+        << "pre-existing vertex pos.y was modified";
+}
+
+// ---------------------------------------------------------------------------
+// MetricsTest — every appended vertex position is within the HUD region
+// ---------------------------------------------------------------------------
+
+// tessellateHUD places HUD lines starting at leftMargin (8.0f) in both axes.
+// Every appended vertex must have pos.x >= 8.0f and pos.y >= 8.0f, catching
+// regressions where line offsets are computed incorrectly and vertices land at
+// negative or zero coordinates.
+TEST(MetricsTest, HUDTessellation_AppendedVertexPositions_InHUDRegion)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
+
+    ASSERT_FALSE(verts.empty()) << "tessellateHUD produced no vertices";
+
+    constexpr float leftMargin = 8.0f;
+    for (size_t i = 0; i < verts.size(); ++i) {
+        EXPECT_GE(verts[i].pos.x, leftMargin)
+            << "vertex[" << i << "].pos.x = " << verts[i].pos.x
+            << " is below leftMargin=" << leftMargin;
+        EXPECT_GE(verts[i].pos.y, leftMargin)
+            << "vertex[" << i << "].pos.y = " << verts[i].pos.y
+            << " is below leftMargin=" << leftMargin;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// MetricsTest — every appended vertex UV is in the unit square [0, 1]
+// ---------------------------------------------------------------------------
+
+// After tessellateHUD() with a properly built glyph table, all UV coordinates
+// must lie in [0.0f, 1.0f], ensuring the atlas lookup table never produces
+// out-of-range UVs under normal operation.
+TEST(MetricsTest, HUDTessellation_AppendedVertexUVs_InUnitSquare)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
+
+    ASSERT_FALSE(verts.empty()) << "tessellateHUD produced no vertices";
+
+    for (size_t i = 0; i < verts.size(); ++i) {
+        EXPECT_GE(verts[i].uv.x, 0.0f)
+            << "vertex[" << i << "].uv.x = " << verts[i].uv.x << " < 0";
+        EXPECT_LE(verts[i].uv.x, 1.0f)
+            << "vertex[" << i << "].uv.x = " << verts[i].uv.x << " > 1";
+        EXPECT_GE(verts[i].uv.y, 0.0f)
+            << "vertex[" << i << "].uv.y = " << verts[i].uv.y << " < 0";
+        EXPECT_LE(verts[i].uv.y, 1.0f)
+            << "vertex[" << i << "].uv.y = " << verts[i].uv.y << " > 1";
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 

@@ -43,6 +43,8 @@ uint32_t Metrics::tessellateHUD(const UISystem& uiSystem,
                                 std::vector<UIVertex>& outVerts,
                                 const char* inputModeStr) const
 {
+    if (!uiSystem.isGlyphTableBuilt()) return 0;
+
     char buf[64];
     // Line height: GLYPH_CELL (32) + 8px spacing for clear vertical separation
     float lineHeight = 40.0f;

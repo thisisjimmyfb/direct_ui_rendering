@@ -63,8 +63,9 @@ public:
     VkSampler    atlasSampler()   const { return m_atlasSampler; }
     VkBuffer     helloVertBuffer() const { return m_helloVtxBuf; }
     uint32_t     helloVertCount() const { return m_helloVertCount; }
-    bool         isSDF()          const { return m_sdfMode; }
-    float        sdfThreshold()   const { return m_sdfMode ? SDF_THRESHOLD_DEFAULT : 0.0f; }
+    bool         isSDF()             const { return m_sdfMode; }
+    float        sdfThreshold()      const { return m_sdfMode ? SDF_THRESHOLD_DEFAULT : 0.0f; }
+    bool         isGlyphTableBuilt() const { return m_glyphTableBuilt; }
 
 private:
 
@@ -86,4 +87,5 @@ private:
     std::array<GlyphRect, 95> m_glyphTable{};
 
     bool m_sdfMode{false};
+    bool m_glyphTableBuilt{false};
 };

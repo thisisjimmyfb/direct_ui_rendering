@@ -31,6 +31,7 @@ void UISystem::buildGlyphTable()
             ((row+1) * cellF) / atlasF,
         };
     }
+    m_glyphTableBuilt = true;
 }
 
 // ---------------------------------------------------------------------------
