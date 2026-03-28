@@ -1154,3 +1154,26 @@ TEST_F(SceneAnimationTest, YTranslation_AlwaysInExpectedRange)
         EXPECT_LE(y, hi) << "Y translation exceeded upper bound "       << hi;
     }
 }
+
+TEST_F(SceneAnimationTest, XTranslation_AlwaysInExpectedRange)
+{
+    // The X translation is 1.2*sin(t*0.18), so it must always lie in
+    // [-1.2, 1.2].  This guards the invariant that the surface center stays
+    // within room X bounds (walls at ±2 m).
+    const float pi = std::acos(-1.0f);
+    const float lo = -1.2f, hi = 1.2f;
+
+    // Dense sweep: 500 evenly-spaced t values spanning several full oscillation
+    // periods of the X term (period 2π/0.18 ≈ 34.9 s).
+    const int N = 500;
+    const float tMax = 4.0f * pi / 0.18f;   // two full X periods
+    for (int i = 0; i <= N; ++i) {
+        float t = tMax * static_cast<float>(i) / static_cast<float>(N);
+        SCOPED_TRACE("t=" + std::to_string(t));
+        glm::mat4 M = scene.animationMatrix(t);
+        // Column-major: M[3][0] is the X component of the translation column.
+        float x = M[3][0];
+        EXPECT_GE(x, lo) << "X translation dropped below lower bound " << lo;
+        EXPECT_LE(x, hi) << "X translation exceeded upper bound "       << hi;
+    }
+}
