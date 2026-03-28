@@ -698,6 +698,53 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_AllLinesYSpacing)
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — Traditional mode: all four lines start at leftMargin x
+// ---------------------------------------------------------------------------
+
+// With RenderMode::Traditional and no inputModeStr, the mode line is
+// "Mode: TRADITIONAL" (17 chars) instead of "Mode: DIRECT" (12 chars), which
+// shifts the vertex offsets for every subsequent line.  Despite the different
+// offsets, the TL x-coordinate of the first character on each line must still
+// equal leftMargin (8.0f).  This parallels FourLines_AllLinesXPositions for
+// the Traditional-mode branch and completes the x-position coverage begun by
+// TraditionalMode_AllLinesYSpacing.
+TEST(MetricsTest, HUDTessellation_TraditionalMode_AllLinesXPositions)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Traditional, msaaSamples=4, inputModeStr=nullptr:
+    //   Line 0: "Mode: TRADITIONAL" = 17 chars  → 102 vertices (offset   0)
+    //   Line 1: "Frame: 0.0 ms"     = 13 chars  →  78 vertices (offset 102)
+    //   Line 2: "GPU Mem: 0.0 MB"   = 15 chars  →  90 vertices (offset 180)
+    //   Line 3: "MSAA: 4x"          =  8 chars  →  48 vertices (offset 270)
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, nullptr);
+
+    constexpr size_t line0Start = 0u;
+    constexpr size_t line1Start = 17u * 6u;                             // 102
+    constexpr size_t line2Start = (17u + 13u) * 6u;                    // 180
+    constexpr size_t line3Start = (17u + 13u + 15u) * 6u;              // 270
+
+    ASSERT_GE(verts.size(), line3Start + 6u)
+        << "tessellateHUD (Traditional) produced too few vertices to check all four lines";
+
+    constexpr float leftMargin = 8.0f;
+
+    // The first vertex of each line is the TL corner of the first character quad.
+    // tessellateString starts cx at the supplied x parameter, so pos.x of the
+    // first vertex must equal leftMargin for every line.
+    const size_t lineStarts[4] = { line0Start, line1Start, line2Start, line3Start };
+    for (int i = 0; i < 4; ++i) {
+        EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
+            << "Traditional mode Line " << i << " TL x != " << leftMargin
+            << " — all four lines must start at leftMargin";
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
