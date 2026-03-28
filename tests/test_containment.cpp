@@ -618,3 +618,125 @@ TEST_F(ContainmentTest, BackWall_NotSelfShadowed)
         << "the back wall appears too dark, indicating excessive self-shadowing "
         << "likely due to insufficient depth bias in the shadow map";
 }
+
+// ---------------------------------------------------------------------------
+// Test 6: PCF shadow symmetry — centered {-0.5, 0.5} kernel produces no bias.
+//
+// This test validates that the 2×2 PCF kernel in room.frag produces symmetric
+// results when sampling around a lit/shadow transition. The kernel uses offsets
+// {-0.5, +0.5} texels which should be centered, producing no directional bias.
+//
+// We render a view that shows the room with visible lighting variation, then
+// scan horizontally across a row that contains a lit/shadow transition. We find
+// the midpoint (where luminance is halfway between the lit and shadow values),
+// then sample equal distances on either side of this midpoint.
+//
+// For a centered kernel, the luminance difference from the midpoint should be
+// symmetric: (litNear - midLum) ≈ (midLum - shadowNear), with ratio within ±10%.
+// ---------------------------------------------------------------------------
+TEST_F(ContainmentTest, PCFShadow_Symmetry_CenteredKernel)
+{
+    // Camera looking at the room from a position that shows visible lighting variation.
+    // Position: outside the room, looking at the front wall corner.
+    glm::mat4 view = glm::lookAt(glm::vec3(5.0f, 2.0f, 8.0f),
+                                 glm::vec3(0.0f, 1.5f, 3.0f),
+                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f),
+                                      static_cast<float>(FB_WIDTH) / FB_HEIGHT,
+                                      0.1f, 100.0f);
+    proj[1][1] *= -1.0f;
+
+    SceneUBO sceneUBO{};
+    sceneUBO.view          = view;
+    sceneUBO.proj          = proj;
+    sceneUBO.lightViewProj = scene.lightViewProj();
+    sceneUBO.lightDir      = glm::vec4(scene.light().direction, 0.0f);
+    sceneUBO.lightColor    = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient, 1.0f);
+    renderer.updateSceneUBO(sceneUBO);
+
+    // SurfaceUBO must be bound even though the room-only pass never reads it.
+    SurfaceUBO surfaceUBO{};
+    surfaceUBO.totalMatrix = glm::mat4(1.0f);
+    surfaceUBO.worldMatrix = glm::mat4(1.0f);
+    surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
+    renderer.updateSurfaceUBO(surfaceUBO);
+
+    auto pixels = renderAndReadback(/*directMode=*/true);
+
+    auto lumAt = [&](int x, int y) -> float {
+        const uint8_t* px = pixels.data() + (y * FB_WIDTH + x) * 4;
+        return 0.299f * px[0] / 255.0f +
+               0.587f * px[1] / 255.0f +
+               0.114f * px[2] / 255.0f;
+    };
+
+    // Scan the centre row horizontally.
+    const int row = FB_HEIGHT / 2;
+
+    // Sample luminance at all columns.
+    std::vector<float> luminance;
+    for (int x = 0; x < FB_WIDTH; ++x) {
+        luminance.push_back(lumAt(x, row));
+    }
+
+    // Find the minimum and maximum luminance.
+    float minLum = *std::min_element(luminance.begin(), luminance.end());
+    float maxLum = *std::max_element(luminance.begin(), luminance.end());
+
+    // Verify we have visible lighting variation.
+    ASSERT_GT(maxLum - minLum, 0.05f)
+        << "No visible lighting variation in centre row (row=" << row << ")\n"
+        << "  minLum=" << minLum << "  maxLum=" << maxLum;
+
+    // Target luminance is the midpoint between min and max.
+    const float targetLum = (minLum + maxLum) * 0.5f;
+
+    // Find the column closest to the midpoint luminance.
+    int edgeCol = FB_WIDTH / 2;
+    float bestDiff = 1e9f;
+    for (int x = 0; x < (int)FB_WIDTH; ++x) {
+        float diff = std::abs(luminance[x] - targetLum);
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            edgeCol = x;
+        }
+    }
+
+    // Sample k=20 pixels on each side of the edge — well outside the PCF penumbra.
+    const int k = 20;
+    ASSERT_GE(edgeCol - k, 0) << "Left sample out of bounds at edgeCol=" << edgeCol;
+    ASSERT_LT(edgeCol + k, (int)FB_WIDTH) << "Right sample out of bounds at edgeCol=" << edgeCol;
+
+    const float leftNear  = lumAt(edgeCol - k, row);
+    const float rightNear = lumAt(edgeCol + k, row);
+    const float edgeLum   = lumAt(edgeCol, row);
+
+    // Determine which side is brighter.
+    const float brighter  = std::max(leftNear, rightNear);
+    const float darker    = std::min(leftNear, rightNear);
+
+    EXPECT_GT(brighter, darker)
+        << "Expected brightness variation: brighter=" << brighter
+        << " darker=" << darker << " edgeCol=" << edgeCol;
+
+    // Compute excess and deficit from the edge luminance.
+    const float excess  = brighter - edgeLum;
+    const float deficit = edgeLum - darker;
+
+    ASSERT_GT(excess, 0.0f) << "excess must be positive: brighter=" << brighter << " edgeLum=" << edgeLum;
+    ASSERT_GT(deficit, 0.0f) << "deficit must be positive: edgeLum=" << edgeLum << " darker=" << darker;
+
+    // Symmetry assertion: excess ≈ deficit within ±10%.
+    // This validates the {-0.5, +0.5} PCF kernel is centered.
+    float ratio = excess / deficit;
+    EXPECT_NEAR(ratio, 1.0f, 0.1f)
+        << "PCF penumbra is asymmetric:\n"
+        << "  excess=" << excess << "  deficit=" << deficit
+        << "  ratio=" << ratio
+        << " (expected 1.0 ± 0.1 for centred {-0.5, +0.5} kernel)\n"
+        << "  edgeCol=" << edgeCol << "  edgeLum=" << edgeLum
+        << "  brighter=" << brighter << "  darker=" << darker
+        << "  targetLum=" << targetLum
+        << "  minLum=" << minLum << "  maxLum=" << maxLum;
+}

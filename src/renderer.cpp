@@ -723,7 +723,7 @@ bool Renderer::createRenderPasses()
         deps[1].dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         deps[1].srcAccessMask   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         deps[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
-        deps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+        deps[1].dependencyFlags = 0; // global dependency: shadow reads are cross-region
 
         VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         rpci.attachmentCount = 1;
