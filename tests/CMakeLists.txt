@@ -13,6 +13,7 @@ add_executable(tests_unit
     test_transforms.cpp
     test_scene.cpp
     test_ui_system.cpp
+    test_metrics.cpp
 )
 
 target_link_libraries(tests_unit PRIVATE

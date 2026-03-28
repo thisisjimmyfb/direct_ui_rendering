@@ -376,8 +376,9 @@ Testing is split into two GoogleTest targets:
 
 | Target | Vulkan context | What it tests |
 |--------|---------------|---------------|
-| `tests_unit` | None | Pure CPU math: matrix construction, clip plane derivation |
+| `tests_unit` | None | Pure CPU math: matrix construction, clip plane derivation, metrics ring buffer, HUD tessellation |
 | `tests_render` | Headless `VkDevice` | Clip containment: UI pixels fall inside the projected quad |
+| `tests_sdf` | Headless `VkDevice` | SDF threshold/render tests with production shaders and real atlas |
 
 Both targets link against the same app library (`direct_ui_rendering_lib`) and call the same functions the app uses. No math or rendering logic is duplicated.
 
@@ -477,6 +478,7 @@ direct_ui_rendering/
 │   ├── CMakeLists.txt
 │   ├── perf_reference.h             # Hardcoded performance regression baselines
 │   ├── test_containment.cpp         # tests_render: UI pixel containment check, back wall shadow test
+│   ├── test_metrics.cpp             # tests_unit: MetricsTest — ring-buffer wrap, HUD tessellation vertex count
 │   ├── test_perf.cpp                # tests_render: performance regression
 │   ├── test_scene.cpp               # tests_unit: SceneInit, WorldCorners, SceneAnimation, LightFrustum
 │   ├── test_sdf.cpp                 # tests_sdf: SDF threshold/render tests (production shaders, real atlas)
