@@ -1021,6 +1021,37 @@ TEST_F(TessellateStringTest, QuadCornerPositions_AdvanceByGlyphCell)
     EXPECT_NEAR(verts[11].pos.y, y1,   1e-5f) << "char1 v5 y";
 }
 
+TEST_F(TessellateStringTest, AppendsToExistingVector)
+{
+    // Pre-populate the vector with two sentinel vertices so we can verify they
+    // survive the call (guards against an accidental outVerts.clear() inside
+    // tessellateString).
+    std::vector<UIVertex> verts;
+    verts.push_back({{-1.0f, -2.0f}, {0.1f, 0.2f}});
+    verts.push_back({{-3.0f, -4.0f}, {0.3f, 0.4f}});
+    const size_t sentinelCount = verts.size();
+
+    uint32_t count = sys.tessellateString("Hi", 0.0f, 0.0f, verts);
+
+    // Two characters → 12 new vertices.
+    EXPECT_EQ(count, 12u);
+    ASSERT_EQ(verts.size(), sentinelCount + 12u);
+
+    // Sentinel entries must be unmodified.
+    EXPECT_NEAR(verts[0].pos.x, -1.0f, 1e-6f) << "sentinel[0] pos.x altered";
+    EXPECT_NEAR(verts[0].pos.y, -2.0f, 1e-6f) << "sentinel[0] pos.y altered";
+    EXPECT_NEAR(verts[0].uv.x,   0.1f, 1e-6f) << "sentinel[0] uv.x altered";
+    EXPECT_NEAR(verts[0].uv.y,   0.2f, 1e-6f) << "sentinel[0] uv.y altered";
+    EXPECT_NEAR(verts[1].pos.x, -3.0f, 1e-6f) << "sentinel[1] pos.x altered";
+    EXPECT_NEAR(verts[1].pos.y, -4.0f, 1e-6f) << "sentinel[1] pos.y altered";
+    EXPECT_NEAR(verts[1].uv.x,   0.3f, 1e-6f) << "sentinel[1] uv.x altered";
+    EXPECT_NEAR(verts[1].uv.y,   0.4f, 1e-6f) << "sentinel[1] uv.y altered";
+
+    // Spot-check: first new vertex starts at position (0, 0) for 'H'.
+    EXPECT_NEAR(verts[sentinelCount].pos.x, 0.0f, 1e-5f) << "first new vert x";
+    EXPECT_NEAR(verts[sentinelCount].pos.y, 0.0f, 1e-5f) << "first new vert y";
+}
+
 TEST_F(TessellateStringTest, UVsMatchUvForChar)
 {
     // For each character in "Hello", the six tessellated vertices must carry
@@ -1098,5 +1129,28 @@ TEST_F(SceneAnimationTest, ZTranslation_AlwaysFixedAt_Neg2_5)
         // Column-major: M[3][2] is the Z component of the translation column.
         EXPECT_NEAR(M[3][2], -2.5f, 1e-5f)
             << "animationMatrix(" << t << ")[3][2] should always be -2.5";
+    }
+}
+
+TEST_F(SceneAnimationTest, YTranslation_AlwaysInExpectedRange)
+{
+    // The Y translation is 1.5 + 0.35*sin(t*0.22), so it must always lie in
+    // [1.15, 1.85].  This guards the invariant that the surface stays within
+    // visible room bounds regardless of t.
+    const float pi = std::acos(-1.0f);
+    const float lo = 1.15f, hi = 1.85f;
+
+    // Dense sweep: 200 evenly-spaced t values spanning several full oscillation
+    // periods of both the X (period 2π/0.18) and Y (period 2π/0.22) terms.
+    const int N = 200;
+    const float tMax = 2.0f * pi / 0.18f;   // covers the slower X period
+    for (int i = 0; i <= N; ++i) {
+        float t = tMax * static_cast<float>(i) / static_cast<float>(N);
+        SCOPED_TRACE("t=" + std::to_string(t));
+        glm::mat4 M = scene.animationMatrix(t);
+        // Column-major: M[3][1] is the Y component of the translation column.
+        float y = M[3][1];
+        EXPECT_GE(y, lo) << "Y translation dropped below lower bound " << lo;
+        EXPECT_LE(y, hi) << "Y translation exceeded upper bound "       << hi;
     }
 }

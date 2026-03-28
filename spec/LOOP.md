@@ -3,8 +3,7 @@ Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md)
 Find the most important task from the following list and implement it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github.
 
 ## Pending Tasks
-- Add unit test `TessellateStringTest.AppendsToExistingVector`: verify that `tessellateString` appends to a pre-populated `outVerts` vector (i.e. existing entries are preserved and new vertices are added after them), guarding against an accidental `outVerts.clear()` inside the function.
-- Add unit test `SceneAnimationTest.YTranslation_AlwaysInExpectedRange`: verify that `animationMatrix(t)[3][1]` is always in [1.15, 1.85] (= 1.5 ± 0.35) for a sweep of t values, guarding the invariant that the surface stays within visible room bounds.
+- Add unit test `SceneAnimationTest.XTranslation_AlwaysInExpectedRange`: verify that `animationMatrix(t)[3][0]` is always in [-1.2, 1.2] for a dense sweep of t values, guarding the invariant that the surface center stays within room X bounds (walls at ±2 m).
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
