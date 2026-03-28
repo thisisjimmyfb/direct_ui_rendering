@@ -977,6 +977,56 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_EmptyInputModeStr_FiveLinesYSp
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — Traditional mode with empty (non-null) inputModeStr: lines 0–3
+// each start at x = leftMargin
+// ---------------------------------------------------------------------------
+
+// With RenderMode::Traditional and inputModeStr="" (non-null empty string),
+// tessellateHUD still enters the 5th-line branch but emits 0 vertices for it.
+// Lines 0–3 must each start at x = leftMargin (8.0f), completing the
+// empty-string x-position coverage for the Traditional branch (mirrors
+// HUDTessellation_EmptyInputModeStr_LinesXPositions for the Direct branch).
+// This guards against regressions where the empty-string 5th-line path
+// accidentally resets or skips the leftMargin x-offset for the earlier lines.
+TEST(MetricsTest, HUDTessellation_TraditionalMode_EmptyInputModeStr_LinesXPositions)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Traditional, msaaSamples=4, inputModeStr="" (empty, non-null):
+    //   Line 0: "Mode: TRADITIONAL" = 17 chars  → 102 vertices (offset   0)
+    //   Line 1: "Frame: 0.0 ms"     = 13 chars  →  78 vertices (offset 102)
+    //   Line 2: "GPU Mem: 0.0 MB"   = 15 chars  →  90 vertices (offset 180)
+    //   Line 3: "MSAA: 4x"          =  8 chars  →  48 vertices (offset 270)
+    //   Line 4: ""                  =  0 chars  →   0 vertices (offset 318)
+    //   Total                       = 53 chars  → 318 vertices
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, "");
+
+    constexpr size_t line0Start = 0u;
+    constexpr size_t line1Start = 17u * 6u;                             // 102
+    constexpr size_t line2Start = (17u + 13u) * 6u;                    // 180
+    constexpr size_t line3Start = (17u + 13u + 15u) * 6u;              // 270
+
+    ASSERT_GE(verts.size(), line3Start + 6u)
+        << "tessellateHUD (Traditional, empty inputModeStr) produced too few vertices to check all four base lines";
+
+    constexpr float leftMargin = 8.0f;
+
+    // The first vertex of each line is the TL corner of the first character quad.
+    // tessellateString starts cx at the supplied x parameter, so pos.x of the
+    // first vertex must equal leftMargin for every line.
+    const size_t lineStarts[4] = { line0Start, line1Start, line2Start, line3Start };
+    for (int i = 0; i < 4; ++i) {
+        EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
+            << "Traditional mode Line " << i << " TL x != " << leftMargin
+            << " — all four lines must start at leftMargin when inputModeStr is empty";
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
