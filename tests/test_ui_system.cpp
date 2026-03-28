@@ -401,6 +401,87 @@ TEST_F(TessellateStringTest, NonPrintable_In_MixedString_PositionsAdvanceByGlyph
     EXPECT_NEAR(verts[14].pos.y, startY + cell,        1e-5f) << "B BR y";
 }
 
+TEST(UISystemUVTable, AllCharacterIndexSpacing_NoDuplicatesOrGaps)
+{
+    // Verify all 95 glyph UV rects tile the atlas grid without overlap or gap.
+    // For each glyph at index i (ASCII char - 32):
+    //   - Its expected cell is col = i % COLS, row = i / COLS
+    //     where COLS = ATLAS_SIZE / GLYPH_CELL = 16
+    //   - Each rect must have exactly (GLYPH_CELL/ATLAS_SIZE) width and height
+    //   - Each rect must match its expected cell position exactly (no skipped
+    //     cells, no duplicate assignments)
+    //   - Consecutive glyphs in the same row must share an edge (u1[i] == u0[i+1])
+    //   - The first glyph of each new row must start at u0 == 0 and have
+    //     v0 == row * cellSize, ensuring row transitions have no gap
+    //
+    // This guards against: off-by-one in col/row arithmetic, incorrect cell
+    // size constants, and any permutation in buildGlyphTable() that assigns
+    // a glyph to the wrong cell index.
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    constexpr int   COLS      = static_cast<int>(ATLAS_SIZE / GLYPH_CELL); // 16
+    constexpr float cellSize  = static_cast<float>(GLYPH_CELL) /
+                                static_cast<float>(ATLAS_SIZE);            // 0.0625
+    constexpr float expectedArea = cellSize * cellSize;
+    constexpr int   NUM_GLYPHS   = 95; // printable ASCII 32..126
+
+    for (int i = 0; i < NUM_GLYPHS; ++i) {
+        const char c = static_cast<char>(32 + i);
+        SCOPED_TRACE("index=" + std::to_string(i) +
+                     " char='" + c + "'");
+
+        GlyphRect r = sys.uvForChar(c);
+
+        // 1. Each rect must be exactly cellSize × cellSize.
+        const float width  = r.u1 - r.u0;
+        const float height = r.v1 - r.v0;
+        EXPECT_NEAR(width,  cellSize, 1e-6f) << "wrong UV width at index " << i;
+        EXPECT_NEAR(height, cellSize, 1e-6f) << "wrong UV height at index " << i;
+
+        // Area check is redundant if width/height pass, but serves as an
+        // explicit signal in the failure message.
+        const float area = width * height;
+        EXPECT_NEAR(area, expectedArea, 1e-10f) << "wrong UV area at index " << i;
+
+        // 2. Rect must be at the expected grid cell (no gaps, no duplicates).
+        const int   col       = i % COLS;
+        const int   row       = i / COLS;
+        const float expectedU0 = col * cellSize;
+        const float expectedV0 = row * cellSize;
+        const float expectedU1 = (col + 1) * cellSize;
+        const float expectedV1 = (row + 1) * cellSize;
+
+        EXPECT_NEAR(r.u0, expectedU0, 1e-6f) << "u0 mismatch at index " << i;
+        EXPECT_NEAR(r.v0, expectedV0, 1e-6f) << "v0 mismatch at index " << i;
+        EXPECT_NEAR(r.u1, expectedU1, 1e-6f) << "u1 mismatch at index " << i;
+        EXPECT_NEAR(r.v1, expectedV1, 1e-6f) << "v1 mismatch at index " << i;
+    }
+
+    // 3. Consecutive glyphs within the same row must share an edge (u1[i] == u0[i+1]).
+    for (int i = 0; i < NUM_GLYPHS - 1; ++i) {
+        const int col = i % COLS;
+        if (col == COLS - 1)
+            continue; // row boundary — next glyph starts a new row, no shared edge
+        GlyphRect cur  = sys.uvForChar(static_cast<char>(32 + i));
+        GlyphRect next = sys.uvForChar(static_cast<char>(32 + i + 1));
+        EXPECT_NEAR(cur.u1, next.u0, 1e-6f)
+            << "shared edge missing between index " << i << " and " << (i + 1);
+    }
+
+    // 4. The first glyph of each row must start at u0 == 0.
+    const int numRows = (NUM_GLYPHS + COLS - 1) / COLS;
+    for (int row = 0; row < numRows; ++row) {
+        const int firstIdx = row * COLS;
+        if (firstIdx >= NUM_GLYPHS) break;
+        GlyphRect r = sys.uvForChar(static_cast<char>(32 + firstIdx));
+        EXPECT_NEAR(r.u0, 0.0f, 1e-6f)
+            << "first glyph of row " << row << " does not start at u0=0";
+        EXPECT_NEAR(r.v0, row * cellSize, 1e-6f)
+            << "first glyph of row " << row << " has wrong v0";
+    }
+}
+
 TEST_F(TessellateStringTest, AllNonPrintableRun_CursorAdvancesEvenly)
 {
     // A string of all non-printable characters must produce 6 vertices per
