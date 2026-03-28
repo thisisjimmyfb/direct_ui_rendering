@@ -132,6 +132,9 @@ add_custom_target(shaders ALL DEPENDS ${PROD_SPIRV_OUTPUTS})
 set(LIB_SOURCES
     src/app.cpp
     src/renderer.cpp
+    src/renderer_init.cpp
+    src/renderer_recording.cpp
+    src/renderer_resources.cpp
     src/scene.cpp
     src/ui_system.cpp
     src/ui_surface.cpp
