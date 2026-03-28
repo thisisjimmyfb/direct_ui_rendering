@@ -4,8 +4,7 @@ Find the most important task from the following list and implement it. After tas
 
 ## Pending Tasks
 - Refactor `src/renderer.cpp` (≈2086 lines): split into `renderer_init.cpp` (device/pipeline/swapchain setup), `renderer_recording.cpp` (per-frame command-buffer recording), and `renderer_resources.cpp` (GPU resource management), keeping `renderer.cpp` as the thin orchestration layer. Only proceed if the split does not fragment logic that is naturally co-located.
-- Add unit test `MetricsTest.HUDTessellation_EmptyInputModeStr_LinesXPositions`: with `RenderMode::Direct` and `inputModeStr=""` (empty string, non-null), verify that lines 0–3 each start at x = leftMargin (8.0f), mirroring the y-spacing coverage for the empty-string case.
-- Add unit test `MetricsTest.HUDTessellation_TraditionalMode_EmptyInputModeStr_FiveLinesYSpacing`: with `RenderMode::Traditional` and `inputModeStr=""` (empty string, non-null), verify that the total vertex count equals the 4-line Traditional base (318 vertices, no extra from empty 5th line) and that lines 0–3 y-positions are unaffected (still `leftMargin + i * lineHeight`).
+- Add unit test `MetricsTest.HUDTessellation_TraditionalMode_EmptyInputModeStr_LinesXPositions`: with `RenderMode::Traditional` and `inputModeStr=""` (empty string, non-null), verify that lines 0–3 each start at x = leftMargin (8.0f), completing the empty-string x-position coverage for the Traditional branch (mirrors `HUDTessellation_EmptyInputModeStr_LinesXPositions` for the Direct branch).
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
