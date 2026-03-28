@@ -3,7 +3,12 @@ Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md)
 Find the most important task from the following list and implement it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github.
 
 ## Pending Tasks
-- Add unit test `UISystemUVTable.GlyphTableBuilt_StateTransition`: verify that `isGlyphTableBuilt()` returns `false` on a default-constructed `UISystem` and `true` immediately after `buildGlyphTable()` is called, guarding against the flag being accidentally removed or never set.
+- Add unit test `UISystemUVTable.RebuildGlyphTable_ConsistentAfterMultipleCalls`: call `buildGlyphTable()` twice on the same `UISystem` and verify the resulting UV table is identical both times, guarding against non-idempotent initialization or state pollution.
+- Add unit test `UISystemUVTable.AllCharacterIndexSpacing_NoDuplicatesOrGaps`: verify all 95 glyph UV rects tile the atlas grid without overlap or gap, checking that each rect is exactly `(GLYPH_CELL/ATLAS_SIZE)²` in area and adjacent entries share an edge.
+- Add unit test `TessellateStringTest.RepeatedCharsSameGlyph_AllVerticesIdenticalUVs`: tessellate `"AAAA"` and verify all 24 vertices share the same UV rect as `uvForChar('A')`, guarding against permutation or ordering bugs in quad assembly.
+- Add unit test `MetricsTest.HUDTessellation_LineHeightSpacing_VerticalSeparation`: verify that successive HUD lines have y-coordinates separated by exactly the expected line height, catching regressions in the line-offset computation.
+- Add unit test `MetricsTest.AverageFrameMs_ExactlyZeroWhenNoFrames`: verify a freshly constructed `Metrics` object returns exactly `0.0f` from `averageFrameMs()` before any frames are recorded, guarding against uninitialized ring-buffer data.
+- Refactor `src/renderer.cpp` (≈2086 lines): split into `renderer_init.cpp` (device/pipeline/swapchain setup), `renderer_recording.cpp` (per-frame command-buffer recording), and `renderer_resources.cpp` (GPU resource management), keeping `renderer.cpp` as the thin orchestration layer. Only proceed if the split does not fragment logic that is naturally co-located.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section

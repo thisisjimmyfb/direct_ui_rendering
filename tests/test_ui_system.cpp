@@ -105,6 +105,21 @@ TEST(UISystemUVTable, FirstAndLastPrintable_CorrectCells)
     EXPECT_NEAR(tilde.v1,  6.0f * cell, 1e-6f);
 }
 
+TEST(UISystemUVTable, GlyphTableBuilt_StateTransition)
+{
+    // A default-constructed UISystem must report isGlyphTableBuilt()==false so
+    // that guards in UISystem and tessellateHUD can detect accidental use before
+    // the table is initialised.  After buildGlyphTable() the flag must flip to
+    // true — if it never sets the flag, every isGlyphTableBuilt() guard would
+    // permanently short-circuit and the affected code paths would be silently
+    // skipped at runtime.
+    UISystem sys;
+    EXPECT_FALSE(sys.isGlyphTableBuilt()) << "expected false before buildGlyphTable()";
+
+    sys.buildGlyphTable();
+    EXPECT_TRUE(sys.isGlyphTableBuilt()) << "expected true immediately after buildGlyphTable()";
+}
+
 TEST(UISystemUVTable, OutOfRangeChar_ClampedToSpaceGlyph)
 {
     // Characters outside [32, 126] must not sample outside the atlas.
