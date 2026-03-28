@@ -46,7 +46,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
+    
+    - name: Install Vulkan SDK
+      uses: humbletim/install-vulkan-sdk@v1.2
+      with:
+        version: 1.4.309.0
+        cache: true
+          
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
@@ -66,7 +72,7 @@ jobs:
 
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      run: build/build.sh
+      run: ${{ github.workspace }}/build/build.sh
 
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
