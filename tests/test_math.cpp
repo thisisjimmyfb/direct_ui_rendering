@@ -1083,6 +1083,50 @@ TEST_F(TessellateStringTest, UVsMatchUvForChar)
     }
 }
 
+TEST_F(TessellateStringTest, NonPrintableChars_FallBackToSpaceGlyphUVs)
+{
+    // Characters outside the printable ASCII range [32, 126] must produce the
+    // same quad UVs as the space glyph (ASCII 32 / index 0) when passed through
+    // tessellateString.  This guards the lookup-table bounds check: if the
+    // index computation (char - 32) is not clamped, a char like '\0' yields
+    // index -32 (out-of-bounds array access), and a char like '\x7f' (127)
+    // yields index 95 (one past the 95-element table).
+    //
+    // Tested codepoints: '\0' (0), '\t' (9), '\n' (10), '\x7f' (127).
+    const GlyphRect spaceUV = sys.uvForChar(' ');
+
+    const char nonPrintable[] = {'\0', '\t', '\n', '\x7f'};
+    const char* labels[]      = {"NUL(0)", "TAB(9)", "LF(10)", "DEL(127)"};
+
+    for (int i = 0; i < 4; ++i) {
+        SCOPED_TRACE(labels[i]);
+        std::string text(1, nonPrintable[i]);
+        std::vector<UIVertex> verts;
+        uint32_t count = sys.tessellateString(text, 0.0f, 0.0f, verts);
+
+        // Must still produce exactly one quad (6 vertices).
+        ASSERT_EQ(count, 6u) << labels[i] << " did not produce 6 vertices";
+        ASSERT_EQ(verts.size(), 6u);
+
+        // Every UV in the quad must match the space glyph's UV rect.
+        // Expected layout (same as TessellateStringTest.UVsMatchUvForChar):
+        //   v0 (TL): u0, v0    v1 (TR): u1, v0    v2 (BR): u1, v1
+        //   v3 (TL): u0, v0    v4 (BR): u1, v1    v5 (BL): u0, v1
+        EXPECT_NEAR(verts[0].uv.x, spaceUV.u0, 1e-6f) << "v0 u";
+        EXPECT_NEAR(verts[0].uv.y, spaceUV.v0, 1e-6f) << "v0 v";
+        EXPECT_NEAR(verts[1].uv.x, spaceUV.u1, 1e-6f) << "v1 u";
+        EXPECT_NEAR(verts[1].uv.y, spaceUV.v0, 1e-6f) << "v1 v";
+        EXPECT_NEAR(verts[2].uv.x, spaceUV.u1, 1e-6f) << "v2 u";
+        EXPECT_NEAR(verts[2].uv.y, spaceUV.v1, 1e-6f) << "v2 v";
+        EXPECT_NEAR(verts[3].uv.x, spaceUV.u0, 1e-6f) << "v3 u";
+        EXPECT_NEAR(verts[3].uv.y, spaceUV.v0, 1e-6f) << "v3 v";
+        EXPECT_NEAR(verts[4].uv.x, spaceUV.u1, 1e-6f) << "v4 u";
+        EXPECT_NEAR(verts[4].uv.y, spaceUV.v1, 1e-6f) << "v4 v";
+        EXPECT_NEAR(verts[5].uv.x, spaceUV.u0, 1e-6f) << "v5 u";
+        EXPECT_NEAR(verts[5].uv.y, spaceUV.v1, 1e-6f) << "v5 v";
+    }
+}
+
 // ---------------------------------------------------------------------------
 // UISurface — local corner positions define a 4m×2m quad centered at origin
 // ---------------------------------------------------------------------------
