@@ -362,6 +362,87 @@ TEST(TransformMath, M_total_NonUniformSurface_CornersAndCenter)
 }
 
 // ---------------------------------------------------------------------------
+// Font-size invariance: proportional canvas+quad scaling preserves world position
+// ---------------------------------------------------------------------------
+
+TEST(TransformMath, FontSizeInvariance_ProportionalScalePreservesWorldPos)
+{
+    // When the quad corners and canvas dimensions are both scaled by the same factor,
+    // a glyph at a fixed UI-space position must map to the same world-space location.
+    // This validates that M_world = M_sw * M_us is invariant under proportional scaling.
+    //
+    // Derivation: M_us x-scale = 1/(W*s), M_sw x-scale = L_u*s  =>  product = L_u/W (s cancels).
+
+    const float W_base = 512.0f, H_base = 128.0f;
+    const float L_u = 2.0f, L_v = 0.5f;   // canonical quad physical dimensions
+
+    glm::vec3 P00{0.0f, 0.0f, 0.0f};
+    glm::vec3 P10_base{L_u, 0.0f, 0.0f};
+    glm::vec3 P01_base{0.0f, L_v, 0.0f};
+    glm::mat4 identityVP(1.0f);
+
+    // Fixed UI-space glyph position (same vertex coordinates regardless of scale).
+    glm::vec4 uiPos(64.0f, 16.0f, 0.0f, 1.0f);
+
+    // Compute the canonical world-space landing point.
+    auto t_base = computeSurfaceTransforms(P00, P10_base, P01_base, W_base, H_base, identityVP);
+    glm::vec3 worldPos_base = glm::vec3(t_base.M_world * uiPos);
+
+    for (float scale : {0.25f, 0.5f, 0.75f, 1.5f, 2.0f, 3.0f}) {
+        glm::vec3 P10_s{L_u * scale, 0.0f, 0.0f};
+        glm::vec3 P01_s{0.0f, L_v * scale, 0.0f};
+
+        auto t_s = computeSurfaceTransforms(P00, P10_s, P01_s,
+                                            W_base * scale, H_base * scale,
+                                            identityVP);
+        glm::vec3 worldPos_s = glm::vec3(t_s.M_world * uiPos);
+
+        EXPECT_TRUE(vec3Near(worldPos_s, worldPos_base, 1e-5f))
+            << "scale = " << scale
+            << "  expected (" << worldPos_base.x << ", " << worldPos_base.y << ", " << worldPos_base.z << ")"
+            << "  got ("     << worldPos_s.x     << ", " << worldPos_s.y     << ", " << worldPos_s.z     << ")";
+    }
+}
+
+TEST(TransformMath, FontSizeInvariance_NonUniformScalePreservesWorldPos)
+{
+    // Same invariance holds when W and H are scaled independently (scaleW != scaleH),
+    // as long as each axis is scaled proportionally between canvas and quad.
+
+    const float W_base = 512.0f, H_base = 128.0f;
+    const float L_u = 2.0f, L_v = 0.5f;
+
+    glm::vec3 P00{0.0f, 0.0f, 0.0f};
+    glm::mat4 identityVP(1.0f);
+
+    glm::vec4 uiPos(64.0f, 16.0f, 0.0f, 1.0f);
+
+    auto t_base = computeSurfaceTransforms(P00,
+                                           {L_u, 0.0f, 0.0f},
+                                           {0.0f, L_v, 0.0f},
+                                           W_base, H_base, identityVP);
+    glm::vec3 worldPos_base = glm::vec3(t_base.M_world * uiPos);
+
+    // Non-uniform scales: scaleW and scaleH differ.
+    struct ScalePair { float sw, sh; };
+    for (auto [sw, sh] : std::initializer_list<ScalePair>{{0.5f, 2.0f}, {2.0f, 0.5f}, {0.3f, 1.7f}}) {
+        auto t_s = computeSurfaceTransforms(P00,
+                                            {L_u * sw, 0.0f, 0.0f},
+                                            {0.0f, L_v * sh, 0.0f},
+                                            W_base * sw, H_base * sh,
+                                            identityVP);
+        glm::vec3 worldPos_s = glm::vec3(t_s.M_world * uiPos);
+
+        EXPECT_NEAR(worldPos_s.x, worldPos_base.x, 1e-5f)
+            << "scaleW=" << sw << " scaleH=" << sh;
+        EXPECT_NEAR(worldPos_s.y, worldPos_base.y, 1e-5f)
+            << "scaleW=" << sw << " scaleH=" << sh;
+        EXPECT_NEAR(worldPos_s.z, worldPos_base.z, 1e-5f)
+            << "scaleW=" << sw << " scaleH=" << sh;
+    }
+}
+
+// ---------------------------------------------------------------------------
 // ShadowBias — slope-scaled bias formula: max(0.005*(1-NdotL), 0.001)
 // ---------------------------------------------------------------------------
 

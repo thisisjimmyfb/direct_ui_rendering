@@ -259,6 +259,151 @@ TEST_F(WorldCornersTest, PlanarityPreservedAtMultipleTimes)
     }
 }
 
+TEST_F(WorldCornersTest, Scale1_MatchesDefaultUnscaled)
+{
+    // worldCorners with scaleW=1.0, scaleH=1.0 must produce the same result
+    // as the default (no scale arguments).  This guards the default-parameter
+    // contract for both parameters.
+    for (float t : {0.0f, 1.0f, 2.5f}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        glm::vec3 P00a, P10a, P01a, P11a;
+        glm::vec3 P00b, P10b, P01b, P11b;
+        scene.worldCorners(t, P00a, P10a, P01a, P11a);
+        scene.worldCorners(t, P00b, P10b, P01b, P11b, 1.0f, 1.0f);
+
+        EXPECT_NEAR(glm::length(P00a - P00b), 0.0f, 1e-5f) << "P_00 mismatch at t=" << t;
+        EXPECT_NEAR(glm::length(P10a - P10b), 0.0f, 1e-5f) << "P_10 mismatch at t=" << t;
+        EXPECT_NEAR(glm::length(P01a - P01b), 0.0f, 1e-5f) << "P_01 mismatch at t=" << t;
+        EXPECT_NEAR(glm::length(P11a - P11b), 0.0f, 1e-5f) << "P_11 mismatch at t=" << t;
+    }
+}
+
+TEST_F(WorldCornersTest, Scale2_CornersAreDoubledRelativeToCenter)
+{
+    // At t=0 the animation matrix is a pure translation T.
+    // The local center is at the origin, so scaled corners satisfy:
+    //   P_xx_world(scaleW=2,scaleH=2) = T * (2 * P_xx_local)
+    //   = T_translation + 2 * R * P_xx_local  (R=I at t=0)
+    // Equivalently: P_scaled - center_world = 2 * (P_unscaled - center_world)
+    // where center_world is the world position of the local origin.
+    glm::mat4 M = scene.animationMatrix(0.0f);
+    glm::vec3 center_world = glm::vec3(M * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+    glm::vec3 P00_1, P10_1, P01_1, P11_1;
+    glm::vec3 P00_2, P10_2, P01_2, P11_2;
+    scene.worldCorners(0.0f, P00_1, P10_1, P01_1, P11_1, 1.0f, 1.0f);
+    scene.worldCorners(0.0f, P00_2, P10_2, P01_2, P11_2, 2.0f, 2.0f);
+
+    EXPECT_NEAR(glm::length((P00_2 - center_world) - 2.0f * (P00_1 - center_world)), 0.0f, 1e-4f) << "P_00 scale=2 mismatch";
+    EXPECT_NEAR(glm::length((P10_2 - center_world) - 2.0f * (P10_1 - center_world)), 0.0f, 1e-4f) << "P_10 scale=2 mismatch";
+    EXPECT_NEAR(glm::length((P01_2 - center_world) - 2.0f * (P01_1 - center_world)), 0.0f, 1e-4f) << "P_01 scale=2 mismatch";
+    EXPECT_NEAR(glm::length((P11_2 - center_world) - 2.0f * (P11_1 - center_world)), 0.0f, 1e-4f) << "P_11 scale=2 mismatch";
+}
+
+TEST_F(WorldCornersTest, ScaleHalf_EdgeLengthIsHalved)
+{
+    // Uniform scaling by 0.5 must halve both edge vectors of the quad.
+    // Measured as the length of (P_10 - P_00) and (P_01 - P_00).
+    glm::vec3 P00_1, P10_1, P01_1, P11_1;
+    glm::vec3 P00_h, P10_h, P01_h, P11_h;
+    scene.worldCorners(0.0f, P00_1, P10_1, P01_1, P11_1, 1.0f, 1.0f);
+    scene.worldCorners(0.0f, P00_h, P10_h, P01_h, P11_h, 0.5f, 0.5f);
+
+    float wFull = glm::length(P10_1 - P00_1);
+    float hFull = glm::length(P01_1 - P00_1);
+    float wHalf = glm::length(P10_h - P00_h);
+    float hHalf = glm::length(P01_h - P00_h);
+
+    EXPECT_NEAR(wHalf, wFull * 0.5f, 1e-4f) << "horizontal edge not halved";
+    EXPECT_NEAR(hHalf, hFull * 0.5f, 1e-4f) << "vertical edge not halved";
+}
+
+TEST_F(WorldCornersTest, ScalePreservesParallelogramIdentity)
+{
+    // The parallelogram identity P_11 = P_00 + (P_10-P_00) + (P_01-P_00)
+    // must hold for any uniform scale value.
+    for (float scale : {0.5f, 1.5f, 2.0f, 3.0f}) {
+        SCOPED_TRACE("scale=" + std::to_string(scale));
+        glm::vec3 P00, P10, P01, P11;
+        scene.worldCorners(0.0f, P00, P10, P01, P11, scale, scale);
+
+        glm::vec3 expected = P00 + (P10 - P00) + (P01 - P00);
+        EXPECT_NEAR(glm::length(P11 - expected), 0.0f, 1e-5f)
+            << "parallelogram identity failed at scale=" << scale;
+    }
+}
+
+TEST_F(WorldCornersTest, NonUniformScale_WidthDoubled_HeightUnchanged)
+{
+    // scaleW=2, scaleH=1: horizontal edge length doubles, vertical stays the same.
+    // This verifies that scaleW and scaleH act independently on the local X/Y axes.
+    glm::vec3 P00_1, P10_1, P01_1, P11_1;
+    glm::vec3 P00_w, P10_w, P01_w, P11_w;
+    scene.worldCorners(0.0f, P00_1, P10_1, P01_1, P11_1, 1.0f, 1.0f);
+    scene.worldCorners(0.0f, P00_w, P10_w, P01_w, P11_w, 2.0f, 1.0f);
+
+    float wBase   = glm::length(P10_1 - P00_1);
+    float hBase   = glm::length(P01_1 - P00_1);
+    float wScaled = glm::length(P10_w - P00_w);
+    float hScaled = glm::length(P01_w - P00_w);
+
+    EXPECT_NEAR(wScaled, wBase * 2.0f, 1e-4f) << "horizontal edge should be doubled";
+    EXPECT_NEAR(hScaled, hBase,        1e-4f) << "vertical edge should be unchanged";
+}
+
+TEST_F(WorldCornersTest, NonUniformScale_HeightDoubled_WidthUnchanged)
+{
+    // scaleW=1, scaleH=2: vertical edge length doubles, horizontal stays the same.
+    glm::vec3 P00_1, P10_1, P01_1, P11_1;
+    glm::vec3 P00_h, P10_h, P01_h, P11_h;
+    scene.worldCorners(0.0f, P00_1, P10_1, P01_1, P11_1, 1.0f, 1.0f);
+    scene.worldCorners(0.0f, P00_h, P10_h, P01_h, P11_h, 1.0f, 2.0f);
+
+    float wBase   = glm::length(P10_1 - P00_1);
+    float hBase   = glm::length(P01_1 - P00_1);
+    float wScaled = glm::length(P10_h - P00_h);
+    float hScaled = glm::length(P01_h - P00_h);
+
+    EXPECT_NEAR(wScaled, wBase,        1e-4f) << "horizontal edge should be unchanged";
+    EXPECT_NEAR(hScaled, hBase * 2.0f, 1e-4f) << "vertical edge should be doubled";
+}
+
+TEST_F(WorldCornersTest, NonUniformScale_PreservesParallelogramIdentity)
+{
+    // The parallelogram identity must hold for non-uniform scale combinations.
+    struct Case { float w, h; };
+    for (auto [sw, sh] : std::initializer_list<Case>{{2.0f, 0.5f}, {0.5f, 2.0f}, {1.5f, 3.0f}}) {
+        SCOPED_TRACE("scaleW=" + std::to_string(sw) + " scaleH=" + std::to_string(sh));
+        glm::vec3 P00, P10, P01, P11;
+        scene.worldCorners(0.0f, P00, P10, P01, P11, sw, sh);
+
+        glm::vec3 expected = P00 + (P10 - P00) + (P01 - P00);
+        EXPECT_NEAR(glm::length(P11 - expected), 0.0f, 1e-5f)
+            << "parallelogram identity failed for scaleW=" << sw << " scaleH=" << sh;
+    }
+}
+
+TEST_F(WorldCornersTest, NonUniformScale_CenterStaysFixed)
+{
+    // The center of the quad ((P_00 + P_11) / 2) must equal the world position
+    // of the local origin under any scaleW/scaleH combination, because the local
+    // corners are symmetric around the origin.  This confirms that non-uniform
+    // scaling does not shift the quad's anchor point.
+    glm::mat4 M = scene.animationMatrix(0.0f);
+    glm::vec3 center_world = glm::vec3(M * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+    struct Case { float w, h; };
+    for (auto [sw, sh] : std::initializer_list<Case>{{2.0f, 0.5f}, {0.5f, 2.0f}, {3.0f, 1.0f}}) {
+        SCOPED_TRACE("scaleW=" + std::to_string(sw) + " scaleH=" + std::to_string(sh));
+        glm::vec3 P00, P10, P01, P11;
+        scene.worldCorners(0.0f, P00, P10, P01, P11, sw, sh);
+
+        glm::vec3 center = (P00 + P11) * 0.5f;
+        EXPECT_NEAR(glm::length(center - center_world), 0.0f, 1e-4f)
+            << "center shifted for scaleW=" << sw << " scaleH=" << sh;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // SceneAnimation — animationMatrix(0) base-case purity
 // ---------------------------------------------------------------------------

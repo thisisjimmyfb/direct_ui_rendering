@@ -202,7 +202,7 @@ void App::drawFrame()
 
     // Compute world-space surface corners for this frame.
     glm::vec3 P_00, P_10, P_01, P_11;
-    m_scene.worldCorners(m_time, P_00, P_10, P_01, P_11);
+    m_scene.worldCorners(m_time, P_00, P_10, P_01, P_11, m_quadW, m_quadH);
 
     // Camera look-at from current position and orientation
     glm::mat4 view = glm::lookAt(m_camPos, m_camPos + camFront, glm::vec3(0, 1, 0));
@@ -222,8 +222,13 @@ void App::drawFrame()
     m_renderer.updateSceneUBO(sceneUBO);
 
     // SurfaceUBO — always computed, only consumed by direct mode shaders
+    // Scale the canvas dimensions by the quad scale factors so that fonts stay
+    // the same physical world-space size when the quad is resized.  A wider quad
+    // (m_quadW > 1) has longer edge vectors, so dividing by a proportionally
+    // larger W_ui keeps the glyph-size-per-unit-world-space constant.  Content
+    // that extends beyond the scaled quad boundary is clipped by the clip planes.
     auto transforms = computeSurfaceTransforms(P_00, P_10, P_01,
-                                               W_UI, H_UI,
+                                               W_UI * m_quadW, H_UI * m_quadH,
                                                proj * view);
     auto clipPlanes  = computeClipPlanes(P_00, P_10, P_01);
 
@@ -292,7 +297,10 @@ void App::drawFrame()
 
     // UI RT pass (traditional mode only).
     if (m_mode == RenderMode::Traditional) {
-        glm::mat4 uiOrtho = glm::ortho(0.0f, (float)W_UI, 0.0f, (float)H_UI, -1.0f, 1.0f);
+        // Scale the ortho viewport by m_quadW/m_quadH so the composited RT matches the
+        // direct-mode canvas scaling — a glyph at a given UI-space position then maps to
+        // the same physical world-space size in both modes regardless of quad scale.
+        glm::mat4 uiOrtho = glm::ortho(0.0f, (float)W_UI * m_quadW, 0.0f, (float)H_UI * m_quadH, -1.0f, 1.0f);
         m_renderer.recordUIRTPass(m_cmd, uiVtxBuf, uiVtxCount, uiOrtho, m_ui.sdfThreshold());
     }
 
@@ -394,6 +402,22 @@ void App::onKey(int key, int action)
     } else if (key == GLFW_KEY_MINUS || key == GLFW_KEY_KP_SUBTRACT) {
         m_depthBias -= 0.0001f;
         printf("depthBias = %.5f\n", m_depthBias);
+    } else if (key == GLFW_KEY_RIGHT_BRACKET) {
+        m_quadW += 0.1f;
+        if (m_quadW > 3.0f) m_quadW = 3.0f;
+        printf("quadW = %.2f  quadH = %.2f\n", m_quadW, m_quadH);
+    } else if (key == GLFW_KEY_LEFT_BRACKET) {
+        m_quadW -= 0.1f;
+        if (m_quadW < 0.1f) m_quadW = 0.1f;
+        printf("quadW = %.2f  quadH = %.2f\n", m_quadW, m_quadH);
+    } else if (key == GLFW_KEY_P) {
+        m_quadH += 0.1f;
+        if (m_quadH > 3.0f) m_quadH = 3.0f;
+        printf("quadW = %.2f  quadH = %.2f\n", m_quadW, m_quadH);
+    } else if (key == GLFW_KEY_O) {
+        m_quadH -= 0.1f;
+        if (m_quadH < 0.1f) m_quadH = 0.1f;
+        printf("quadW = %.2f  quadH = %.2f\n", m_quadW, m_quadH);
     } else if (key == GLFW_KEY_ESCAPE && m_mouseCapture) {
         m_mouseCapture = false;
         glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

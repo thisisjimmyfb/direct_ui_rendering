@@ -740,3 +740,70 @@ TEST_F(ContainmentTest, PCFShadow_Symmetry_CenteredKernel)
         << "  targetLum=" << targetLum
         << "  minLum=" << minLum << "  maxLum=" << maxLum;
 }
+
+// ---------------------------------------------------------------------------
+// Test 7: Non-uniform quad scale — clip planes track the reshaped surface.
+//
+// Uses Scene::worldCorners with scaleW=2.0, scaleH=0.5 to produce a surface
+// that is twice as wide and half as tall as the default.  The clip planes are
+// derived from the reshaped world corners.  The test verifies:
+//   (a) at least one magenta pixel is present on screen (surface is visible),
+//   (b) all magenta pixels lie within the screen-space projection of the
+//       reshaped quad — i.e. the clip planes correctly reflect the new bounds.
+// ---------------------------------------------------------------------------
+
+TEST_F(ContainmentTest, NonUniformScale_DirectMode_ClipPlanesTrackReshapedSurface)
+{
+    constexpr float scaleW = 2.0f;
+    constexpr float scaleH = 0.5f;
+
+    // Camera positioned inside the room looking toward the back wall where
+    // the animated surface sits at t=0 (near z=-2.5, y≈1.5).
+    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.5f, 2.5f),
+                                 glm::vec3(0.0f, 1.5f, -2.5f),
+                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f),
+                                      static_cast<float>(FB_WIDTH) / FB_HEIGHT,
+                                      0.1f, 100.0f);
+    proj[1][1] *= -1.0f;
+    glm::mat4 vp = proj * view;
+
+    SceneUBO sceneUBO{};
+    sceneUBO.view          = view;
+    sceneUBO.proj          = proj;
+    sceneUBO.lightViewProj = scene.lightViewProj();
+    sceneUBO.lightDir      = glm::vec4(scene.light().direction, 0.0f);
+    sceneUBO.lightColor    = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
+    renderer.updateSceneUBO(sceneUBO);
+
+    // Get world corners with non-uniform scale applied.
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, scaleW, scaleH);
+
+    // Scale canvas dimensions proportionally so font size is invariant.
+    // This causes H_UI * scaleH content to map exactly to the reshaped surface
+    // height-wise, while W_UI * scaleW is the logical canvas width.
+    auto transforms = computeSurfaceTransforms(P00, P10, P01,
+                                               static_cast<float>(Renderer::W_UI) * scaleW,
+                                               static_cast<float>(Renderer::H_UI) * scaleH,
+                                               vp);
+    auto clipPlanes = computeClipPlanes(P00, P10, P01);
+
+    SurfaceUBO surfaceUBO{};
+    surfaceUBO.totalMatrix = transforms.M_total;
+    surfaceUBO.worldMatrix = transforms.M_world;
+    for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
+    surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
+    renderer.updateSurfaceUBO(surfaceUBO);
+
+    auto pixels = renderAndReadback(/*directMode=*/true);
+
+    // (a) Non-vacuous: at least one magenta pixel must be visible.
+    EXPECT_GT(countMagentaPixels(pixels), 0)
+        << "No magenta pixels found with scaleW=" << scaleW << " scaleH=" << scaleH
+        << " — reshaped surface may be off-screen or M_total is degenerate";
+
+    // (b) All magenta pixels must lie within the projected reshaped quad.
+    assertMagentaContained(pixels, vp, P00, P10, P11, P01);
+}

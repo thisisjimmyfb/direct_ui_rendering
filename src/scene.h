@@ -44,9 +44,14 @@ public:
     glm::mat4 animationMatrix(float t) const;
 
     // Transform local UI surface corners to world space using M_anim(t).
+    // scaleW scales the horizontal (X) extent, scaleH scales the vertical (Y)
+    // extent, both around the local origin (center of the quad).  Pass equal
+    // values for uniform scaling; pass different values to change the aspect
+    // ratio without retessellating text content.
     void worldCorners(float t,
                       glm::vec3& P_00, glm::vec3& P_10,
-                      glm::vec3& P_01, glm::vec3& P_11) const;
+                      glm::vec3& P_01, glm::vec3& P_11,
+                      float scaleW = 1.0f, float scaleH = 1.0f) const;
 
     // Compute the light's view-projection matrix for shadow mapping.
     glm::mat4 lightViewProj() const;

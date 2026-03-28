@@ -52,6 +52,8 @@ private:
     RenderMode m_mode{RenderMode::Direct};
     bool       m_pendingModeToggle{false};
     float      m_depthBias{Renderer::DEPTH_BIAS_DEFAULT};
+    float      m_quadW{1.0f};   // horizontal scale of the UI surface quad
+    float      m_quadH{1.0f};   // vertical scale of the UI surface quad
     float      m_time{0.0f};
 
     // Camera state

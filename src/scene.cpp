@@ -92,13 +92,17 @@ glm::mat4 Scene::animationMatrix(float t) const
 
 void Scene::worldCorners(float t,
                          glm::vec3& P_00, glm::vec3& P_10,
-                         glm::vec3& P_01, glm::vec3& P_11) const
+                         glm::vec3& P_01, glm::vec3& P_11,
+                         float scaleW, float scaleH) const
 {
     glm::mat4 M = animationMatrix(t);
-    P_00 = glm::vec3(M * glm::vec4(m_uiSurface.P_00_local, 1.0f));
-    P_10 = glm::vec3(M * glm::vec4(m_uiSurface.P_10_local, 1.0f));
-    P_01 = glm::vec3(M * glm::vec4(m_uiSurface.P_01_local, 1.0f));
-    P_11 = glm::vec3(M * glm::vec4(m_uiSurface.P_11_local, 1.0f));
+    auto applyScale = [scaleW, scaleH](const glm::vec3& p) {
+        return glm::vec3(p.x * scaleW, p.y * scaleH, p.z);
+    };
+    P_00 = glm::vec3(M * glm::vec4(applyScale(m_uiSurface.P_00_local), 1.0f));
+    P_10 = glm::vec3(M * glm::vec4(applyScale(m_uiSurface.P_10_local), 1.0f));
+    P_01 = glm::vec3(M * glm::vec4(applyScale(m_uiSurface.P_01_local), 1.0f));
+    P_11 = glm::vec3(M * glm::vec4(applyScale(m_uiSurface.P_11_local), 1.0f));
 }
 
 // ---------------------------------------------------------------------------
