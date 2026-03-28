@@ -714,3 +714,32 @@ TEST_F(SceneAnimationTest, XTranslation_AlwaysInExpectedRange)
         EXPECT_LE(x, hi) << "X translation exceeded upper bound "       << hi;
     }
 }
+
+TEST_F(SceneAnimationTest, NormalWiggle_AtNegativePeak_RotationMatchesCombinedYAndZNeg)
+{
+    // At t = 3π, sin(t * 0.5) = sin(3π/2) = -1.0, so normalAngle = -25°.
+    // The combined rotation is R_Y(yAngle) * R_Z(-25°).
+    // This mirrors NormalWiggle_AtPeak which covers the +25° direction and
+    // verifies that the Z-rotation is correctly negated, not clamped or
+    // abs()-ed somewhere in the implementation.
+    const float pi = std::acos(-1.0f);
+    const float t  = 3.0f * pi;   // t * 0.5 = 3π/2 → sin = -1.0
+
+    const float yAngle = glm::radians(15.0f) * std::sin(t * 0.25f);
+    const float zAngle = -glm::radians(25.0f);   // sin(3π/2) = -1
+
+    glm::mat4 M = scene.animationMatrix(t);
+
+    // Build reference: T * R_Y * R_Z  (applied in order: Z first, then Y)
+    glm::mat4 refRot = glm::mat4(1.0f);
+    refRot = glm::rotate(refRot, yAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+    refRot = glm::rotate(refRot, zAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+
+    for (int col = 0; col < 3; ++col) {
+        for (int row = 0; row < 3; ++row) {
+            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-5f)
+                << "combined rotation mismatch at col=" << col << " row=" << row
+                << " (t=3π, yAngle=" << yAngle << " rad, zAngle=" << zAngle << " rad)";
+        }
+    }
+}

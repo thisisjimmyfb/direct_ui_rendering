@@ -56,6 +56,37 @@ TEST(TransformMath, M_sw_MapsOneOneToP11)
     EXPECT_TRUE(vec3Near(glm::vec3(result), P11));
 }
 
+TEST(TransformMath, M_sw_SurfaceWithZComponent_AllFourCorners)
+{
+    // Surface at Z=-2.5 matching the actual scene geometry at t=0.
+    // This verifies that M_sw correctly handles non-zero Z in the corner
+    // positions — all existing M_sw tests use Z=0.  A bug in the translation
+    // column (col 3) of the affine matrix would silently produce the wrong
+    // world-space position for every UI vertex at depth.
+    glm::vec3 P00{-2.0f,  2.5f, -2.5f};  // world corners at t=0 for the scene surface
+    glm::vec3 P10{ 2.0f,  2.5f, -2.5f};
+    glm::vec3 P01{-2.0f,  0.5f, -2.5f};
+    glm::vec3 P11 = P00 + (P10 - P00) + (P01 - P00);  // = (2, 0.5, -2.5)
+
+    glm::mat4 M = computeM_sw(P00, P10, P01);
+
+    // (0,0,0,1) -> P00
+    glm::vec4 r0 = M * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r0), P00)) << "origin did not map to P00";
+
+    // (1,0,0,1) -> P10
+    glm::vec4 r1 = M * glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r1), P10)) << "e_u tip did not map to P10";
+
+    // (0,1,0,1) -> P01
+    glm::vec4 r2 = M * glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r2), P01)) << "e_v tip did not map to P01";
+
+    // (1,1,0,1) -> P11
+    glm::vec4 r3 = M * glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r3), P11)) << "diagonal corner did not map to P11";
+}
+
 // ---------------------------------------------------------------------------
 // M_total tests (identity view-projection)
 // ---------------------------------------------------------------------------
