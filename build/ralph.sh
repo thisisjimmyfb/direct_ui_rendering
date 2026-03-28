@@ -88,7 +88,7 @@ trap 'echo ""; echo "ralph stopped after $iteration iteration(s)."; exit 0' INT 
 # ── helpers ───────────────────────────────────────────────────────────────────
 run_local_llm() {
     export ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL"
-	claude "${CLAUDE_FLAGS[@]}" < "$LOOP" 2>&1
+	cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}" 2>&1
 	unset ANTHROPIC_BASE_URL
 }
 
@@ -129,11 +129,13 @@ while true; do
     echo ""
 
     # Always try Claude first
-	output=$(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}" 2>/dev/null)
+	set +e
+	output=$(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}")
     exit_code=$?
-
+	set -e
+	
     if [[ $exit_code -ne 0 ]] || is_token_limit_error "$output"; then
-        echo "⚠ Token limit hit, using local LLM for this iteration" >&2
+        echo "⚠ Token limit hit, using local LLM for this iteration"
         echo ""
         run_local_llm
     fi

@@ -856,3 +856,101 @@ TEST_F(LightFrustumTest, LightColor_AllChannelsPositive)
     EXPECT_GT(col.b, 0.0f)
         << "light color blue channel=" << col.b << " (must be > 0)";
 }
+
+TEST_F(LightFrustumTest, AmbientColor_AllChannelsPositive)
+{
+    // All three RGB channels of the ambient color must be strictly positive.
+    // A zero ambient channel silently removes the base illumination term for
+    // that wavelength in room.frag, producing pure black on surfaces that never
+    // face the light with no compile-time or runtime error.
+    glm::vec3 amb = scene.light().ambient;
+    EXPECT_GT(amb.r, 0.0f)
+        << "ambient red channel=" << amb.r << " (must be > 0)";
+    EXPECT_GT(amb.g, 0.0f)
+        << "ambient green channel=" << amb.g << " (must be > 0)";
+    EXPECT_GT(amb.b, 0.0f)
+        << "ambient blue channel=" << amb.b << " (must be > 0)";
+}
+
+// ---------------------------------------------------------------------------
+// UISystem — uvForChar covers all printable ASCII (no Vulkan required)
+// ---------------------------------------------------------------------------
+
+TEST(UISystemUVTable, PrintableASCII_UVsInUnitSquare)
+{
+    // buildGlyphTable() is pure CPU math (no Vulkan).  For every printable
+    // ASCII codepoint (32–126) the returned UV rect must:
+    //   • lie fully within [0, 1] × [0, 1]
+    //   • have strictly positive width  (u1 > u0)
+    //   • have strictly positive height (v1 > v0)
+    //
+    // An out-of-range UV silently samples outside the atlas, producing garbled
+    // or invisible glyphs with no compile-time or runtime error.
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    for (int cp = 32; cp <= 126; ++cp) {
+        SCOPED_TRACE("codepoint=" + std::to_string(cp) +
+                     " char='" + static_cast<char>(cp) + "'");
+        GlyphRect r = sys.uvForChar(static_cast<char>(cp));
+
+        EXPECT_GE(r.u0, 0.0f) << "u0 < 0";
+        EXPECT_LE(r.u0, 1.0f) << "u0 > 1";
+        EXPECT_GE(r.v0, 0.0f) << "v0 < 0";
+        EXPECT_LE(r.v0, 1.0f) << "v0 > 1";
+        EXPECT_GE(r.u1, 0.0f) << "u1 < 0";
+        EXPECT_LE(r.u1, 1.0f) << "u1 > 1";
+        EXPECT_GE(r.v1, 0.0f) << "v1 < 0";
+        EXPECT_LE(r.v1, 1.0f) << "v1 > 1";
+
+        EXPECT_GT(r.u1, r.u0) << "zero or negative UV width (u1 <= u0)";
+        EXPECT_GT(r.v1, r.v0) << "zero or negative UV height (v1 <= v0)";
+    }
+}
+
+TEST(UISystemUVTable, FirstAndLastPrintable_CorrectCells)
+{
+    // Spot-check the first (space, index 0) and last ('~', index 94) glyphs
+    // against the analytically expected cell boundaries.
+    //   Atlas: 512×512, cell: 32×32  → cellSize/atlasSize = 1/16 = 0.0625
+    //   index 0  → col=0, row=0  → u0=0,      v0=0,      u1=0.0625, v1=0.0625
+    //   index 94 → col=14, row=5 → u0=14/16,  v0=5/16,   u1=15/16,  v1=6/16
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    constexpr float cell = static_cast<float>(GLYPH_CELL) / static_cast<float>(ATLAS_SIZE);
+
+    // Space (ASCII 32, index 0)
+    GlyphRect sp = sys.uvForChar(' ');
+    EXPECT_NEAR(sp.u0, 0.0f,  1e-6f);
+    EXPECT_NEAR(sp.v0, 0.0f,  1e-6f);
+    EXPECT_NEAR(sp.u1, cell,  1e-6f);
+    EXPECT_NEAR(sp.v1, cell,  1e-6f);
+
+    // Tilde (ASCII 126, index 94)
+    GlyphRect tilde = sys.uvForChar('~');
+    EXPECT_NEAR(tilde.u0, 14.0f * cell, 1e-6f);
+    EXPECT_NEAR(tilde.v0,  5.0f * cell, 1e-6f);
+    EXPECT_NEAR(tilde.u1, 15.0f * cell, 1e-6f);
+    EXPECT_NEAR(tilde.v1,  6.0f * cell, 1e-6f);
+}
+
+TEST(UISystemUVTable, OutOfRangeChar_ClampedToSpaceGlyph)
+{
+    // Characters outside [32, 126] must not sample outside the atlas.
+    // The implementation clamps them to the space glyph (index 0).
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    GlyphRect space = sys.uvForChar(' ');
+
+    // Control character (below 32)
+    GlyphRect ctrl = sys.uvForChar('\t');
+    EXPECT_NEAR(ctrl.u0, space.u0, 1e-6f);
+    EXPECT_NEAR(ctrl.v0, space.v0, 1e-6f);
+
+    // Extended ASCII (above 126)
+    GlyphRect ext = sys.uvForChar('\x80');
+    EXPECT_NEAR(ext.u0, space.u0, 1e-6f);
+    EXPECT_NEAR(ext.v0, space.v0, 1e-6f);
+}

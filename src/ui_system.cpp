@@ -12,20 +12,11 @@
 #include <cstring>
 
 // ---------------------------------------------------------------------------
-// init
+// buildGlyphTable — pure CPU, no Vulkan required
 // ---------------------------------------------------------------------------
 
-bool UISystem::init(VmaAllocator allocator,
-                    VkDevice device,
-                    VkCommandPool cmdPool,
-                    VkQueue queue,
-                    const char* atlasPath)
+void UISystem::buildGlyphTable()
 {
-    m_allocator = allocator;
-    m_device    = device;
-
-    // Build glyph UV table.
-    // Atlas layout: 16 glyphs per row, row-major order starting at ASCII 32 (space).
     constexpr float cellF  = static_cast<float>(GLYPH_CELL);
     constexpr float atlasF = static_cast<float>(ATLAS_SIZE);
     constexpr int glyphsPerRow = ATLAS_SIZE / GLYPH_CELL;  // 16
@@ -40,6 +31,23 @@ bool UISystem::init(VmaAllocator allocator,
             ((row+1) * cellF) / atlasF,
         };
     }
+}
+
+// ---------------------------------------------------------------------------
+// init
+// ---------------------------------------------------------------------------
+
+bool UISystem::init(VmaAllocator allocator,
+                    VkDevice device,
+                    VkCommandPool cmdPool,
+                    VkQueue queue,
+                    const char* atlasPath)
+{
+    m_allocator = allocator;
+    m_device    = device;
+
+    // Build glyph UV table.
+    buildGlyphTable();
 
     // Try system fonts for SDF generation
     const char* fontPaths[] = {

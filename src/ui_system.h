@@ -46,6 +46,14 @@ public:
 
     void cleanup();
 
+    // Populate m_glyphTable from atlas layout constants (pure CPU, no Vulkan).
+    // Called automatically by init(); also callable standalone for unit tests.
+    void buildGlyphTable();
+
+    // Return the UV rect for a printable ASCII character (32–126).
+    // Characters outside this range are clamped to the space glyph.
+    GlyphRect uvForChar(char c) const;
+
     // Rebuild HUD vertex data from a formatted string (called each frame for metrics).
     // Returns the number of vertices written.
     uint32_t tessellateString(std::string_view text, float x, float y,
@@ -59,7 +67,6 @@ public:
     float        sdfThreshold()   const { return m_sdfMode ? SDF_THRESHOLD_DEFAULT : 0.0f; }
 
 private:
-    GlyphRect uvForChar(char c) const;
 
     VmaAllocator m_allocator{VK_NULL_HANDLE};
     VkDevice     m_device{VK_NULL_HANDLE};

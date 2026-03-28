@@ -391,77 +391,6 @@ The `Renderer` class must cleanly separate the **device/pipeline layer** from th
 
 This constraint also applies to `UISurface` and `Scene` — neither may hold a direct reference to swapchain state.
 
-### 10.3 Unit Tests (`tests_unit`)
-
-No Vulkan context required. Tests call pure math functions from `ui_surface.h` and `scene.h`.
-
-#### 10.3.1 Matrix construction
-
-For a known surface (e.g. a unit square in the XY plane: `P_00=(0,0,0)`, `P_10=(1,0,0)`, `P_01=(0,1,0)`) and a known UI canvas (`W_ui=512`, `H_ui=128`):
-
-- Assert `M_us` maps `(0, 0)` → `(0, 0)` and `(512, 128)` → `(1, 1)` in normalized surface space.
-- Assert `M_sw` maps `(0, 0)` → `P_00` and `(1, 1)` → `P_11` in world space.
-- Assert `M_total` maps the four UI canvas corners to the four world-space quad corners (after applying a known identity view-projection).
-
-Reference values are analytically derived and hardcoded in the test.
-
-#### 10.3.2 Clip plane signs
-
-For the same unit-square surface:
-
-- **Inside points** — UI positions that map within `[0,W_ui] × [0,H_ui]`: assert all four `dot(clipPlane[i], worldPos) >= 0`.
-- **Outside points** — UI positions that map outside the canvas bounds (e.g. `(-10, 64)`, `(600, 64)`, `(256, -10)`, `(256, 200)`): assert at least one `dot(clipPlane[i], worldPos) < 0`.
-- **Boundary points** — UI positions exactly on an edge (e.g. `(0, 64)`): assert the corresponding clip distance is `~0` (within `1e-5`).
-
-#### 10.3.3 Performance regression
-
-Hardcoded reference values for metrics captured on the development machine. Tests assert that measured values do not exceed the reference by more than a fixed tolerance:
-
-| Metric | Reference | Tolerance |
-|--------|-----------|-----------|
-| GPU memory — direct mode | TBD (fill in after first run) | +10% |
-| GPU memory — traditional mode | TBD | +10% |
-| Frame time (CPU) — direct mode | TBD ms | +20% |
-| Frame time (CPU) — traditional mode | TBD ms | +20% |
-
-Reference values are stored in `tests/perf_reference.h` and updated manually when the renderer changes intentionally. The test fails if the measured value exceeds `reference * (1 + tolerance)`.
-
-### 10.4 Render Tests (`tests_render`)
-
-Requires a headless `VkDevice`. Each test calls `Renderer::init(headless=true)`, allocates an offscreen `RenderTarget`, renders one frame, and reads the image back to CPU via a staging buffer.
-
-#### 10.4.1 UI Containment Test
-
-**Purpose:** Verify that all UI pixels rendered in direct mode fall within the screen-space projection of the surface quad.
-
-**Setup:**
-- Surface quad at a known world position (no animation — static for the test).
-- UI rendered in a solid, distinct test color (pure magenta: `vec4(1, 0, 1, 1)`). This is enabled via a compile-time `#define UI_TEST_COLOR` that overrides the atlas sample in `ui.frag`.
-- Room geometry rendered in a different color (e.g. grey) so UI pixels are unambiguously identifiable.
-
-**Procedure:**
-1. Render one frame to the offscreen `RenderTarget`.
-2. Readback the resolved (1x) image to a CPU buffer.
-3. Project the four world-space surface corners through the view-projection to screen-space pixel coordinates, forming a convex quad.
-4. Scan every pixel in the readback image. For each pixel whose color is within a threshold of magenta, assert it falls inside the screen-space convex quad.
-5. Allow a **2-pixel margin** around the quad boundary to tolerate MSAA edge blending.
-
-**Pass condition:** Zero UI-colored pixels lie outside the quad boundary (plus margin).
-
-#### 10.4.2 Test Color Injection
-
-`ui.frag` contains:
-
-```glsl
-#ifdef UI_TEST_COLOR
-    outColor = vec4(1.0, 0.0, 1.0, 1.0);
-#else
-    outColor = texture(uiAtlas, inTexCoord);
-#endif
-```
-
-The `tests_render` CMake target defines `UI_TEST_COLOR` when compiling shaders for the test pipeline. The production build does not define it.
-
 ---
 
 ## 11. Build and Dependencies
@@ -511,16 +440,17 @@ direct_ui_rendering/
 │   ├── ralph.sh                     # Automated iterate-loop runner (Ralph agent)
 │   ├── run.sh                       # Run the project
 │   └── test.sh                      # Run tests
+├── CLAUDE.md                        # Codebase instructions for Claude Code
+├── CMakeLists.txt                   # CMake build configuration
+├── README.md                        # Project overview and math framework summary
 ├── spec/
 │   ├── direct_ui_rendering.md       # Original math reference
 │   ├── LOOP.md                      # Iterate loop task list (active task tracking)
 │   └── SPEC.md
-├── CLAUDE.md                        # Codebase instructions for Claude Code (read SPEC + direct_ui_rendering.md)
-├── README.md                        # Project overview and math framework summary
 ├── src/
-│   ├── main.cpp                     # Entry point, window loop, input
 │   ├── app.h                        # Top-level app: init, frame loop, cleanup
 │   ├── app.cpp
+│   ├── main.cpp                     # Entry point, window loop, input
 │   ├── metrics.h                    # Frame timer, VMA stats, HUD draw
 │   ├── metrics.cpp
 │   ├── renderer.h                   # Vulkan device, pipelines, render passes
@@ -546,7 +476,7 @@ direct_ui_rendering/
 ├── tests/
 │   ├── CMakeLists.txt
 │   ├── perf_reference.h             # Hardcoded performance regression baselines
-│   ├── test_containment.cpp         # tests_render: UI pixel containment check (UI_TEST_COLOR shaders)
+│   ├── test_containment.cpp         # tests_render: UI pixel containment check, back wall shadow test
 │   ├── test_math.cpp                # tests_unit: matrix construction, clip plane signs, SDF constants, scene geometry, light frustum, animation matrix
 │   ├── test_perf.cpp                # tests_render: performance regression
 │   └── test_sdf.cpp                 # tests_sdf: SDF threshold/render tests (production shaders, real atlas)

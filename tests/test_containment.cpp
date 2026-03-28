@@ -527,3 +527,94 @@ TEST_F(ContainmentTest, DirectMode_AnimationFrames_MagentaContained)
         assertMagentaContained(pixels, vp, P00, P10, P11, P01);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Test 5: Back wall not self-shadowed
+//
+// Position the camera facing the back wall (Z = -D), render one frame, and
+// read back the center region of the back wall.  Since the directional light
+// has direction (-0.5, -1.0, -0.5) and the back wall normal is (0, 0, 1),
+// the dot product N·L = 0 — the wall receives zero diffuse illumination.
+// Without a working depth bias, the back wall would be entirely shadowed
+// (acne) and appear black.  This test asserts that the mean luminance of
+// the back-wall region exceeds ambientColor + 0.1, proving that at least
+// some diffuse light contribution reaches the wall (the depth bias prevents
+// total self-shadowing).
+// ---------------------------------------------------------------------------
+
+TEST_F(ContainmentTest, BackWall_NotSelfShadowed)
+{
+    // Room dimensions (matching Scene::init())
+    constexpr float W = 2.0f;   // half-width
+    constexpr float H = 3.0f;   // full height
+    constexpr float D = 3.0f;   // half-depth
+
+    // Camera facing the back wall (Z = -D) from the front.
+    // Position: in front of the back wall, looking at its center.
+    glm::vec3 camPos{0.0f, H * 0.5f, D + 5.0f};   // (0, 1.5, 8)
+    glm::vec3 camTarget{-W * 0.5f, H * 0.5f, -D};  // point on back wall
+    glm::mat4 view = glm::lookAt(camPos, camTarget, glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f),
+                                      static_cast<float>(FB_WIDTH) / FB_HEIGHT,
+                                      0.1f, 100.0f);
+    proj[1][1] *= -1.0f;
+    glm::mat4 vp = proj * view;
+
+    SceneUBO sceneUBO{};
+    sceneUBO.view          = view;
+    sceneUBO.proj          = proj;
+    sceneUBO.lightViewProj = scene.lightViewProj();
+    sceneUBO.lightDir      = glm::vec4(scene.light().direction, 0.0f);
+    sceneUBO.lightColor    = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
+    renderer.updateSceneUBO(sceneUBO);
+
+    auto pixels = renderAndReadback(/*directMode=*/true);
+
+    // Define a center strip on the back wall in screen space.
+    // The back wall spans most of the screen when viewed from this angle.
+    // We sample a horizontal strip in the vertical center of the image.
+    const int stripTop    = FB_HEIGHT / 3;
+    const int stripBottom = 2 * FB_HEIGHT / 3;
+    const int stripLeft   = FB_WIDTH / 4;
+    const int stripRight  = 3 * FB_WIDTH / 4;
+
+    // Compute mean luminance of the center strip.
+    // Luminance = 0.299*R + 0.587*G + 0.114*B (standard NTSC weights).
+    double sumLuminance = 0.0;
+    int pixelCount = 0;
+    for (int y = stripTop; y < stripBottom; ++y) {
+        for (int x = stripLeft; x < stripRight; ++x) {
+            const uint8_t* px = pixels.data() + (y * FB_WIDTH + x) * 4;
+            float r = px[0] / 255.0f;
+            float g = px[1] / 255.0f;
+            float b = px[2] / 255.0f;
+            float lum = 0.299f * r + 0.587f * g + 0.114f * b;
+            sumLuminance += lum;
+            ++pixelCount;
+        }
+    }
+
+    EXPECT_GT(pixelCount, 0) << "No pixels sampled in back-wall region";
+
+    double meanLuminance = sumLuminance / static_cast<double>(pixelCount);
+
+    // The ambient color from scene.h is {0.15f, 0.15f, 0.2f}.
+    // Its luminance contribution alone is:
+    //   0.299*0.15 + 0.587*0.15 + 0.114*0.2 = 0.1557
+    // The test asserts meanLuminance > ambientLuminance + 0.1, i.e.,
+    // > 0.2557, proving that some diffuse light reaches the back wall
+    // (the depth bias prevents total self-shadowing/acne).
+    float ambientLuminance =
+        0.299f * scene.light().ambient.r +
+        0.587f * scene.light().ambient.g +
+        0.114f * scene.light().ambient.b;
+    float threshold = ambientLuminance + 0.1f;
+
+    EXPECT_GT(meanLuminance, threshold)
+        << "Back wall mean luminance=" << meanLuminance
+        << " <= threshold=" << threshold
+        << " (ambient luminance + 0.1); "
+        << "the back wall appears too dark, indicating excessive self-shadowing "
+        << "likely due to insufficient depth bias in the shadow map";
+}
