@@ -164,6 +164,38 @@ TEST(MetricsTest, HUDTessellation_WithInputModeStr_AddsExtraLine)
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — tessellateHUD appends to a pre-populated outVerts vector
+// ---------------------------------------------------------------------------
+
+// If outVerts is cleared inside tessellateHUD before tessellation begins,
+// the pre-existing vertices would be lost and the final size would equal
+// only the tessellated count.  This test guards against that regression by
+// calling tessellateHUD with a non-empty vector and verifying that the total
+// size equals the pre-existing element count plus the tessellated vertex count.
+TEST(MetricsTest, HUDTessellation_AppendsToExistingVector)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+
+    // Pre-populate the vector with 7 default-constructed vertices.
+    constexpr uint32_t preExistingCount = 7u;
+    verts.resize(preExistingCount);
+
+    // tessellateHUD with RenderMode::Direct, msaaSamples=4, no inputModeStr
+    // produces 288 vertices (same as HUDTessellation_VertexCountMatchesLineCount).
+    uint32_t appended = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
+
+    constexpr uint32_t expectedAppended = 6u * (12u + 13u + 15u + 8u); // 288
+    EXPECT_EQ(appended, expectedAppended)
+        << "tessellateHUD returned wrong appended vertex count";
+    EXPECT_EQ(verts.size(), static_cast<size_t>(preExistingCount + expectedAppended))
+        << "outVerts was cleared before tessellation — pre-existing vertices lost";
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 

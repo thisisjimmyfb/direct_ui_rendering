@@ -3,8 +3,8 @@ Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md)
 Find the most important task from the following list and implement it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github.
 
 ## Pending Tasks
-- Delete `tests/test_math.cpp` — the file is no longer compiled (replaced by `test_transforms.cpp`, `test_scene.cpp`, and `test_ui_system.cpp`) and its presence in the repo is misleading.
-- Add unit test `MetricsTest.HUDTessellation_AppendsToExistingVector`: call `Metrics::tessellateHUD()` with a pre-populated `outVerts` vector and verify the final size equals the pre-existing count plus the tessellated count, catching any future regression where `outVerts` is cleared before tessellation begins.
+- Add unit test `MetricsTest.HUDTessellation_PreExistingVertexValues_NotModified`: pre-populate `outVerts` with sentinel-valued vertices, call `tessellateHUD()`, and assert the first N vertices still hold the sentinel values — catching a regression where `tessellateHUD` overwrites rather than appends.
+- Add unit test `MetricsTest.HUDTessellation_ReturnsZeroForEmptyUISystem`: call `tessellateHUD()` with a `UISystem` whose glyph table has not been built (`buildGlyphTable()` not called) and verify the return value is 0 and `outVerts` is not modified.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
