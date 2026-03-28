@@ -4,7 +4,7 @@ Find the most important task from the following list and implement it. After tas
 
 ## Pending Tasks
 - Refactor `src/renderer.cpp` (≈2086 lines): split into `renderer_init.cpp` (device/pipeline/swapchain setup), `renderer_recording.cpp` (per-frame command-buffer recording), and `renderer_resources.cpp` (GPU resource management), keeping `renderer.cpp` as the thin orchestration layer. Only proceed if the split does not fragment logic that is naturally co-located.
-- Add unit test `MetricsTest.HUDTessellation_TraditionalMode_WithInputModeStr_AllFiveLinesXPositions`: with `RenderMode::Traditional` and a non-null `inputModeStr`, verify that all five lines start at `x = leftMargin` (8.0f); mirrors `WithInputModeStr_AllFiveLinesXPositions` for the Traditional branch and completes the 5-line x-position coverage matrix alongside `TraditionalMode_AllLinesXPositions`.
+- Add unit test `MetricsTest.HUDTessellation_TraditionalMode_WithInputModeStr_AllFiveLinesYSpacing`: with `RenderMode::Traditional` and a non-null `inputModeStr`, verify that all five lines follow `y = leftMargin + i * lineHeight` and that successive pairs differ by exactly `lineHeight`; mirrors `WithInputModeStr_AllFiveLinesYSpacing` for the Traditional branch and completes the 5-line y-spacing coverage matrix alongside `TraditionalMode_AllLinesYSpacing`.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
