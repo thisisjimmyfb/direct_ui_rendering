@@ -439,6 +439,62 @@ TEST(MetricsTest, HUDTessellation_LineHeightSpacing_WithInputModeStr_FifthLineSe
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — all five lines follow the arithmetic y-sequence when
+// inputModeStr is supplied
+// ---------------------------------------------------------------------------
+
+// When inputModeStr is supplied, tessellateHUD must place all five lines at
+// y = leftMargin + i * lineHeight for i = 0..4.  This test verifies that
+// adding the optional 5th line does not perturb lines 0-3 and that the full
+// arithmetic sequence is intact.
+TEST(MetricsTest, HUDTessellation_WithInputModeStr_AllFiveLinesYSpacing)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Direct, msaaSamples=4, inputModeStr="Input: keyboard":
+    //   Line 0: "Mode: DIRECT"     = 12 chars  →  72 vertices (offset   0)
+    //   Line 1: "Frame: 0.0 ms"    = 13 chars  →  78 vertices (offset  72)
+    //   Line 2: "GPU Mem: 0.0 MB"  = 15 chars  →  90 vertices (offset 150)
+    //   Line 3: "MSAA: 4x"         =  8 chars  →  48 vertices (offset 240)
+    //   Line 4: "Input: keyboard"  = 15 chars  →  90 vertices (offset 288)
+    const char* inputStr = "Input: keyboard";
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, inputStr);
+
+    constexpr size_t line0Start = 0u;
+    constexpr size_t line1Start = 12u * 6u;                        // 72
+    constexpr size_t line2Start = (12u + 13u) * 6u;               // 150
+    constexpr size_t line3Start = (12u + 13u + 15u) * 6u;         // 240
+    constexpr size_t line4Start = (12u + 13u + 15u + 8u) * 6u;   // 288
+
+    ASSERT_GE(verts.size(), line4Start + 6u)
+        << "tessellateHUD produced too few vertices to check all five lines";
+
+    constexpr float leftMargin = 8.0f;
+    constexpr float lineHeight = 40.0f;  // GLYPH_CELL(32) + 8px spacing
+
+    // Verify each line's TL y-coordinate follows leftMargin + i * lineHeight.
+    const size_t lineStarts[5] = { line0Start, line1Start, line2Start, line3Start, line4Start };
+    for (int i = 0; i < 5; ++i) {
+        const float expectedY = leftMargin + static_cast<float>(i) * lineHeight;
+        EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
+            << "Line " << i << " TL y != " << expectedY
+            << " — the arithmetic sequence leftMargin + i * lineHeight is broken";
+    }
+
+    // Cross-check: every successive pair must differ by exactly lineHeight,
+    // confirming the sequence is intact end-to-end including the 5th line.
+    for (int i = 0; i < 4; ++i) {
+        const float diff = verts[lineStarts[i + 1]].pos.y - verts[lineStarts[i]].pos.y;
+        EXPECT_NEAR(diff, lineHeight, 1e-5f)
+            << "Line " << i << " -> " << (i + 1) << " y gap != lineHeight (" << lineHeight << ")";
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
