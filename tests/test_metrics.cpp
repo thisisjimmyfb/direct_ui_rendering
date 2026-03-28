@@ -397,6 +397,48 @@ TEST(MetricsTest, HUDTessellation_LineHeightSpacing_VerticalSeparation)
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — 5th line y-position when inputModeStr is supplied
+// ---------------------------------------------------------------------------
+
+// When inputModeStr is supplied, tessellateHUD places the 5th line at
+// y = leftMargin + 4 * lineHeight.  This test verifies the TL vertex of the
+// 5th line's first character has exactly that y-coordinate, catching
+// regressions where the optional line uses a wrong index (e.g. 3 instead of 4)
+// or a hard-coded offset that diverges from the formula.
+TEST(MetricsTest, HUDTessellation_LineHeightSpacing_WithInputModeStr_FifthLineSeparation)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Direct, msaaSamples=4, inputModeStr="Input: keyboard":
+    //   Line 0: "Mode: DIRECT"     = 12 chars  →  72 vertices (offset   0)
+    //   Line 1: "Frame: 0.0 ms"    = 13 chars  →  78 vertices (offset  72)
+    //   Line 2: "GPU Mem: 0.0 MB"  = 15 chars  →  90 vertices (offset 150)
+    //   Line 3: "MSAA: 4x"         =  8 chars  →  48 vertices (offset 240)
+    //   Line 4: "Input: keyboard"  = 15 chars  →  90 vertices (offset 288)
+    const char* inputStr = "Input: keyboard";
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, inputStr);
+
+    // Line 4 starts after lines 0-3: (12+13+15+8)*6 = 288 vertices.
+    constexpr size_t line4Start = (12u + 13u + 15u + 8u) * 6u; // 288
+
+    ASSERT_GE(verts.size(), line4Start + 6u)
+        << "tessellateHUD produced too few vertices to check line 4 start";
+
+    // Expected y for line 4: leftMargin + 4 * lineHeight = 8.0f + 4 * 40.0f = 168.0f
+    constexpr float leftMargin = 8.0f;
+    constexpr float lineHeight = 40.0f;
+    const float expectedY4 = leftMargin + 4.0f * lineHeight; // 168.0f
+
+    EXPECT_NEAR(verts[line4Start].pos.y, expectedY4, 1e-5f)
+        << "Line 4 TL y != " << expectedY4
+        << " — optional inputModeStr line may be using wrong index or hard-coded offset";
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
