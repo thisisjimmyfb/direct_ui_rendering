@@ -495,6 +495,55 @@ TEST(MetricsTest, HUDTessellation_WithInputModeStr_AllFiveLinesYSpacing)
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — all five lines share leftMargin x-position when inputModeStr
+// is supplied
+// ---------------------------------------------------------------------------
+
+// When inputModeStr is supplied, tessellateHUD must start each of the five
+// lines at x = leftMargin (8.0f).  This complements AllFiveLinesYSpacing by
+// confirming the optional 5th line uses the same left-margin logic as lines
+// 0-3, and catches regressions where the 5th line is placed at x=0 or at
+// some other hard-coded offset.
+TEST(MetricsTest, HUDTessellation_WithInputModeStr_AllFiveLinesXPositions)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Direct, msaaSamples=4, inputModeStr="Input: keyboard":
+    //   Line 0: "Mode: DIRECT"     = 12 chars  →  72 vertices (offset   0)
+    //   Line 1: "Frame: 0.0 ms"    = 13 chars  →  78 vertices (offset  72)
+    //   Line 2: "GPU Mem: 0.0 MB"  = 15 chars  →  90 vertices (offset 150)
+    //   Line 3: "MSAA: 4x"         =  8 chars  →  48 vertices (offset 240)
+    //   Line 4: "Input: keyboard"  = 15 chars  →  90 vertices (offset 288)
+    const char* inputStr = "Input: keyboard";
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, inputStr);
+
+    constexpr size_t line0Start = 0u;
+    constexpr size_t line1Start = 12u * 6u;                        // 72
+    constexpr size_t line2Start = (12u + 13u) * 6u;               // 150
+    constexpr size_t line3Start = (12u + 13u + 15u) * 6u;         // 240
+    constexpr size_t line4Start = (12u + 13u + 15u + 8u) * 6u;   // 288
+
+    ASSERT_GE(verts.size(), line4Start + 6u)
+        << "tessellateHUD produced too few vertices to check all five lines";
+
+    constexpr float leftMargin = 8.0f;
+
+    // The first vertex of each line is the TL corner of the first character quad.
+    // tessellateString starts cx at the supplied x parameter, so pos.x of the
+    // first vertex must equal leftMargin for every line.
+    const size_t lineStarts[5] = { line0Start, line1Start, line2Start, line3Start, line4Start };
+    for (int i = 0; i < 5; ++i) {
+        EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
+            << "Line " << i << " TL x != " << leftMargin
+            << " — all five lines must start at leftMargin";
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
