@@ -1,0 +1,398 @@
+#include <gtest/gtest.h>
+#include "ui_system.h"
+#include "ui_surface.h"
+#include "scene.h"
+
+#include <glm/glm.hpp>
+#include <cmath>
+#include <string>
+
+// ---------------------------------------------------------------------------
+// SDF constant and UISystem accessor tests
+// ---------------------------------------------------------------------------
+
+TEST(SDFConstants, ThresholdMatchesOnEdgeValueRatio)
+{
+    // SDF_THRESHOLD_DEFAULT should be close to SDF_ON_EDGE_VALUE / 255.0f.
+    float expected = static_cast<float>(SDF_ON_EDGE_VALUE) / 255.0f;
+    EXPECT_NEAR(SDF_THRESHOLD_DEFAULT, expected, 0.01f);
+}
+
+TEST(SDFConstants, SdfThresholdReturnsZeroWhenNotSDF)
+{
+    // Default-constructed UISystem has isSDF()==false; sdfThreshold() must return 0.
+    UISystem sys;
+    EXPECT_FALSE(sys.isSDF());
+    EXPECT_FLOAT_EQ(sys.sdfThreshold(), 0.0f);
+}
+
+TEST(SDFConstants, PixelDistScale_IsPositiveAndInRange)
+{
+    // SDF_PIXEL_DIST_SCALE must be positive and within a sane range so the
+    // distance field has meaningful per-pixel resolution.
+    EXPECT_GT(SDF_PIXEL_DIST_SCALE, 0.0f);
+    EXPECT_GE(SDF_PIXEL_DIST_SCALE, 1.0f);
+    EXPECT_LE(SDF_PIXEL_DIST_SCALE, 100.0f);
+}
+
+TEST(SDFConstants, GlyphPadding_IsPositive)
+{
+    // SDF_GLYPH_PADDING must be at least 1 so the distance field can bleed
+    // beyond the glyph outline and produce correct smoothstep transitions.
+    EXPECT_GT(SDF_GLYPH_PADDING, 0);
+}
+
+// ---------------------------------------------------------------------------
+// UISystem — uvForChar covers all printable ASCII (no Vulkan required)
+// ---------------------------------------------------------------------------
+
+TEST(UISystemUVTable, PrintableASCII_UVsInUnitSquare)
+{
+    // buildGlyphTable() is pure CPU math (no Vulkan).  For every printable
+    // ASCII codepoint (32–126) the returned UV rect must:
+    //   • lie fully within [0, 1] × [0, 1]
+    //   • have strictly positive width  (u1 > u0)
+    //   • have strictly positive height (v1 > v0)
+    //
+    // An out-of-range UV silently samples outside the atlas, producing garbled
+    // or invisible glyphs with no compile-time or runtime error.
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    for (int cp = 32; cp <= 126; ++cp) {
+        SCOPED_TRACE("codepoint=" + std::to_string(cp) +
+                     " char='" + static_cast<char>(cp) + "'");
+        GlyphRect r = sys.uvForChar(static_cast<char>(cp));
+
+        EXPECT_GE(r.u0, 0.0f) << "u0 < 0";
+        EXPECT_LE(r.u0, 1.0f) << "u0 > 1";
+        EXPECT_GE(r.v0, 0.0f) << "v0 < 0";
+        EXPECT_LE(r.v0, 1.0f) << "v0 > 1";
+        EXPECT_GE(r.u1, 0.0f) << "u1 < 0";
+        EXPECT_LE(r.u1, 1.0f) << "u1 > 1";
+        EXPECT_GE(r.v1, 0.0f) << "v1 < 0";
+        EXPECT_LE(r.v1, 1.0f) << "v1 > 1";
+
+        EXPECT_GT(r.u1, r.u0) << "zero or negative UV width (u1 <= u0)";
+        EXPECT_GT(r.v1, r.v0) << "zero or negative UV height (v1 <= v0)";
+    }
+}
+
+TEST(UISystemUVTable, FirstAndLastPrintable_CorrectCells)
+{
+    // Spot-check the first (space, index 0) and last ('~', index 94) glyphs
+    // against the analytically expected cell boundaries.
+    //   Atlas: 512×512, cell: 32×32  → cellSize/atlasSize = 1/16 = 0.0625
+    //   index 0  → col=0, row=0  → u0=0,      v0=0,      u1=0.0625, v1=0.0625
+    //   index 94 → col=14, row=5 → u0=14/16,  v0=5/16,   u1=15/16,  v1=6/16
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    constexpr float cell = static_cast<float>(GLYPH_CELL) / static_cast<float>(ATLAS_SIZE);
+
+    // Space (ASCII 32, index 0)
+    GlyphRect sp = sys.uvForChar(' ');
+    EXPECT_NEAR(sp.u0, 0.0f,  1e-6f);
+    EXPECT_NEAR(sp.v0, 0.0f,  1e-6f);
+    EXPECT_NEAR(sp.u1, cell,  1e-6f);
+    EXPECT_NEAR(sp.v1, cell,  1e-6f);
+
+    // Tilde (ASCII 126, index 94)
+    GlyphRect tilde = sys.uvForChar('~');
+    EXPECT_NEAR(tilde.u0, 14.0f * cell, 1e-6f);
+    EXPECT_NEAR(tilde.v0,  5.0f * cell, 1e-6f);
+    EXPECT_NEAR(tilde.u1, 15.0f * cell, 1e-6f);
+    EXPECT_NEAR(tilde.v1,  6.0f * cell, 1e-6f);
+}
+
+TEST(UISystemUVTable, OutOfRangeChar_ClampedToSpaceGlyph)
+{
+    // Characters outside [32, 126] must not sample outside the atlas.
+    // The implementation clamps them to the space glyph (index 0).
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    GlyphRect space = sys.uvForChar(' ');
+
+    // Control character (below 32)
+    GlyphRect ctrl = sys.uvForChar('\t');
+    EXPECT_NEAR(ctrl.u0, space.u0, 1e-6f);
+    EXPECT_NEAR(ctrl.v0, space.v0, 1e-6f);
+
+    // Extended ASCII (above 126)
+    GlyphRect ext = sys.uvForChar('\x80');
+    EXPECT_NEAR(ext.u0, space.u0, 1e-6f);
+    EXPECT_NEAR(ext.v0, space.v0, 1e-6f);
+}
+
+// ---------------------------------------------------------------------------
+// UISystem::tessellateString — vertex count, positions, and UV correctness
+// ---------------------------------------------------------------------------
+
+class TessellateStringTest : public ::testing::Test {
+protected:
+    UISystem sys;
+
+    void SetUp() override {
+        sys.buildGlyphTable();
+    }
+};
+
+TEST_F(TessellateStringTest, EmptyString_ZeroVertices)
+{
+    std::vector<UIVertex> verts;
+    uint32_t count = sys.tessellateString("", 0.0f, 0.0f, verts);
+    EXPECT_EQ(count, 0u);
+    EXPECT_TRUE(verts.empty());
+}
+
+TEST_F(TessellateStringTest, NChars_Produces6NVertices)
+{
+    for (int n : {1, 3, 11}) {
+        std::vector<UIVertex> verts;
+        std::string text(n, 'A');
+        uint32_t count = sys.tessellateString(text, 0.0f, 0.0f, verts);
+        EXPECT_EQ(count, static_cast<uint32_t>(6 * n)) << "n=" << n;
+        EXPECT_EQ(verts.size(), static_cast<size_t>(6 * n)) << "n=" << n;
+    }
+}
+
+TEST_F(TessellateStringTest, QuadCornerPositions_AdvanceByGlyphCell)
+{
+    // "AB" — two characters starting at (10, 20).
+    // Char 0: x0=10, y0=20, x1=10+GLYPH_CELL, y1=20+GLYPH_CELL
+    // Char 1: x0=10+GLYPH_CELL, y0=20, x1=10+2*GLYPH_CELL, y1=20+GLYPH_CELL
+    const float startX = 10.0f, startY = 20.0f;
+    const float cell = static_cast<float>(GLYPH_CELL);
+
+    std::vector<UIVertex> verts;
+    sys.tessellateString("AB", startX, startY, verts);
+    ASSERT_EQ(verts.size(), 12u);
+
+    // Char 0 vertices (indices 0–5): two triangles covering [10, 10+cell] x [20, 20+cell]
+    // Layout: TL, TR, BR, TL, BR, BL
+    const float x0_0 = startX,        x1_0 = startX + cell;
+    const float x0_1 = startX + cell, x1_1 = startX + 2.0f * cell;
+    const float y0 = startY, y1 = startY + cell;
+
+    EXPECT_NEAR(verts[0].pos.x, x0_0, 1e-5f) << "char0 v0 x";
+    EXPECT_NEAR(verts[0].pos.y, y0,   1e-5f) << "char0 v0 y";
+    EXPECT_NEAR(verts[1].pos.x, x1_0, 1e-5f) << "char0 v1 x";
+    EXPECT_NEAR(verts[1].pos.y, y0,   1e-5f) << "char0 v1 y";
+    EXPECT_NEAR(verts[2].pos.x, x1_0, 1e-5f) << "char0 v2 x";
+    EXPECT_NEAR(verts[2].pos.y, y1,   1e-5f) << "char0 v2 y";
+    EXPECT_NEAR(verts[5].pos.x, x0_0, 1e-5f) << "char0 v5 x";
+    EXPECT_NEAR(verts[5].pos.y, y1,   1e-5f) << "char0 v5 y";
+
+    EXPECT_NEAR(verts[6].pos.x,  x0_1, 1e-5f) << "char1 v0 x";
+    EXPECT_NEAR(verts[6].pos.y,  y0,   1e-5f) << "char1 v0 y";
+    EXPECT_NEAR(verts[7].pos.x,  x1_1, 1e-5f) << "char1 v1 x";
+    EXPECT_NEAR(verts[11].pos.x, x0_1, 1e-5f) << "char1 v5 x";
+    EXPECT_NEAR(verts[11].pos.y, y1,   1e-5f) << "char1 v5 y";
+}
+
+TEST_F(TessellateStringTest, AppendsToExistingVector)
+{
+    // Pre-populate the vector with two sentinel vertices so we can verify they
+    // survive the call (guards against an accidental outVerts.clear() inside
+    // tessellateString).
+    std::vector<UIVertex> verts;
+    verts.push_back({{-1.0f, -2.0f}, {0.1f, 0.2f}});
+    verts.push_back({{-3.0f, -4.0f}, {0.3f, 0.4f}});
+    const size_t sentinelCount = verts.size();
+
+    uint32_t count = sys.tessellateString("Hi", 0.0f, 0.0f, verts);
+
+    // Two characters → 12 new vertices.
+    EXPECT_EQ(count, 12u);
+    ASSERT_EQ(verts.size(), sentinelCount + 12u);
+
+    // Sentinel entries must be unmodified.
+    EXPECT_NEAR(verts[0].pos.x, -1.0f, 1e-6f) << "sentinel[0] pos.x altered";
+    EXPECT_NEAR(verts[0].pos.y, -2.0f, 1e-6f) << "sentinel[0] pos.y altered";
+    EXPECT_NEAR(verts[0].uv.x,   0.1f, 1e-6f) << "sentinel[0] uv.x altered";
+    EXPECT_NEAR(verts[0].uv.y,   0.2f, 1e-6f) << "sentinel[0] uv.y altered";
+    EXPECT_NEAR(verts[1].pos.x, -3.0f, 1e-6f) << "sentinel[1] pos.x altered";
+    EXPECT_NEAR(verts[1].pos.y, -4.0f, 1e-6f) << "sentinel[1] pos.y altered";
+    EXPECT_NEAR(verts[1].uv.x,   0.3f, 1e-6f) << "sentinel[1] uv.x altered";
+    EXPECT_NEAR(verts[1].uv.y,   0.4f, 1e-6f) << "sentinel[1] uv.y altered";
+
+    // Spot-check: first new vertex starts at position (0, 0) for 'H'.
+    EXPECT_NEAR(verts[sentinelCount].pos.x, 0.0f, 1e-5f) << "first new vert x";
+    EXPECT_NEAR(verts[sentinelCount].pos.y, 0.0f, 1e-5f) << "first new vert y";
+}
+
+TEST_F(TessellateStringTest, UVsMatchUvForChar)
+{
+    // For each character in "Hello", the six tessellated vertices must carry
+    // UVs consistent with uvForChar for that character.
+    std::string_view text = "Hello";
+    std::vector<UIVertex> verts;
+    sys.tessellateString(text, 0.0f, 0.0f, verts);
+    ASSERT_EQ(verts.size(), text.size() * 6);
+
+    for (size_t i = 0; i < text.size(); ++i) {
+        GlyphRect uv = sys.uvForChar(text[i]);
+        size_t base = i * 6;
+        // Top-left corner (v0 and v3): u0, v0
+        EXPECT_NEAR(verts[base + 0].uv.x, uv.u0, 1e-6f) << "char " << i << " v0 u";
+        EXPECT_NEAR(verts[base + 0].uv.y, uv.v0, 1e-6f) << "char " << i << " v0 v";
+        EXPECT_NEAR(verts[base + 3].uv.x, uv.u0, 1e-6f) << "char " << i << " v3 u";
+        EXPECT_NEAR(verts[base + 3].uv.y, uv.v0, 1e-6f) << "char " << i << " v3 v";
+        // Top-right corner (v1): u1, v0
+        EXPECT_NEAR(verts[base + 1].uv.x, uv.u1, 1e-6f) << "char " << i << " v1 u";
+        EXPECT_NEAR(verts[base + 1].uv.y, uv.v0, 1e-6f) << "char " << i << " v1 v";
+        // Bottom-right corner (v2 and v4): u1, v1
+        EXPECT_NEAR(verts[base + 2].uv.x, uv.u1, 1e-6f) << "char " << i << " v2 u";
+        EXPECT_NEAR(verts[base + 2].uv.y, uv.v1, 1e-6f) << "char " << i << " v2 v";
+        EXPECT_NEAR(verts[base + 4].uv.x, uv.u1, 1e-6f) << "char " << i << " v4 u";
+        EXPECT_NEAR(verts[base + 4].uv.y, uv.v1, 1e-6f) << "char " << i << " v4 v";
+        // Bottom-left corner (v5): u0, v1
+        EXPECT_NEAR(verts[base + 5].uv.x, uv.u0, 1e-6f) << "char " << i << " v5 u";
+        EXPECT_NEAR(verts[base + 5].uv.y, uv.v1, 1e-6f) << "char " << i << " v5 v";
+    }
+}
+
+TEST_F(TessellateStringTest, NonPrintableChars_FallBackToSpaceGlyphUVs)
+{
+    // Characters outside the printable ASCII range [32, 126] must produce the
+    // same quad UVs as the space glyph (ASCII 32 / index 0) when passed through
+    // tessellateString.  This guards the lookup-table bounds check: if the
+    // index computation (char - 32) is not clamped, a char like '\0' yields
+    // index -32 (out-of-bounds array access), and a char like '\x7f' (127)
+    // yields index 95 (one past the 95-element table).
+    //
+    // Tested codepoints: '\0' (0), '\t' (9), '\n' (10), '\x7f' (127).
+    const GlyphRect spaceUV = sys.uvForChar(' ');
+
+    const char nonPrintable[] = {'\0', '\t', '\n', '\x7f'};
+    const char* labels[]      = {"NUL(0)", "TAB(9)", "LF(10)", "DEL(127)"};
+
+    for (int i = 0; i < 4; ++i) {
+        SCOPED_TRACE(labels[i]);
+        std::string text(1, nonPrintable[i]);
+        std::vector<UIVertex> verts;
+        uint32_t count = sys.tessellateString(text, 0.0f, 0.0f, verts);
+
+        // Must still produce exactly one quad (6 vertices).
+        ASSERT_EQ(count, 6u) << labels[i] << " did not produce 6 vertices";
+        ASSERT_EQ(verts.size(), 6u);
+
+        // Every UV in the quad must match the space glyph's UV rect.
+        // Expected layout (same as TessellateStringTest.UVsMatchUvForChar):
+        //   v0 (TL): u0, v0    v1 (TR): u1, v0    v2 (BR): u1, v1
+        //   v3 (TL): u0, v0    v4 (BR): u1, v1    v5 (BL): u0, v1
+        EXPECT_NEAR(verts[0].uv.x, spaceUV.u0, 1e-6f) << "v0 u";
+        EXPECT_NEAR(verts[0].uv.y, spaceUV.v0, 1e-6f) << "v0 v";
+        EXPECT_NEAR(verts[1].uv.x, spaceUV.u1, 1e-6f) << "v1 u";
+        EXPECT_NEAR(verts[1].uv.y, spaceUV.v0, 1e-6f) << "v1 v";
+        EXPECT_NEAR(verts[2].uv.x, spaceUV.u1, 1e-6f) << "v2 u";
+        EXPECT_NEAR(verts[2].uv.y, spaceUV.v1, 1e-6f) << "v2 v";
+        EXPECT_NEAR(verts[3].uv.x, spaceUV.u0, 1e-6f) << "v3 u";
+        EXPECT_NEAR(verts[3].uv.y, spaceUV.v0, 1e-6f) << "v3 v";
+        EXPECT_NEAR(verts[4].uv.x, spaceUV.u1, 1e-6f) << "v4 u";
+        EXPECT_NEAR(verts[4].uv.y, spaceUV.v1, 1e-6f) << "v4 v";
+        EXPECT_NEAR(verts[5].uv.x, spaceUV.u0, 1e-6f) << "v5 u";
+        EXPECT_NEAR(verts[5].uv.y, spaceUV.v1, 1e-6f) << "v5 v";
+    }
+}
+
+TEST_F(TessellateStringTest, NonPrintable_In_MixedString_PositionsAdvanceByGlyphCell)
+{
+    // "A\tB" — two printable characters bracketing one non-printable tab.
+    // The non-printable '\t' is clamped to the space glyph UV, but the cursor
+    // must still advance by exactly one GLYPH_CELL so that 'B' lands at
+    // x = startX + 2*GLYPH_CELL, not at startX + GLYPH_CELL (skipped advance)
+    // or startX + 3*GLYPH_CELL (double-advance).
+    //
+    // Guard against: a future refactor that conditions cx += cellF on the
+    // character being printable, or that advances cx twice for non-printables.
+    const float startX = 0.0f, startY = 0.0f;
+    const float cell = static_cast<float>(GLYPH_CELL);
+
+    std::vector<UIVertex> verts;
+    uint32_t count = sys.tessellateString("A\tB", startX, startY, verts);
+
+    // 3 characters × 6 vertices each = 18 vertices total.
+    ASSERT_EQ(count, 18u);
+    ASSERT_EQ(verts.size(), 18u);
+
+    // 'A' (char 0, vertices 0–5): x in [startX, startX + cell]
+    EXPECT_NEAR(verts[0].pos.x, startX,        1e-5f) << "A TL x";
+    EXPECT_NEAR(verts[1].pos.x, startX + cell, 1e-5f) << "A TR x";
+    EXPECT_NEAR(verts[0].pos.y, startY,        1e-5f) << "A TL y";
+    EXPECT_NEAR(verts[2].pos.y, startY + cell, 1e-5f) << "A BR y";
+
+    // '\t' (char 1, vertices 6–11): cursor must have advanced by exactly one
+    // GLYPH_CELL — the quad starts at startX + cell, not at startX (no-advance
+    // bug) and not at startX + 2*cell (double-advance bug).
+    EXPECT_NEAR(verts[6].pos.x,  startX + cell,        1e-5f) << "\\t TL x";
+    EXPECT_NEAR(verts[7].pos.x,  startX + 2.0f * cell, 1e-5f) << "\\t TR x";
+    EXPECT_NEAR(verts[6].pos.y,  startY,               1e-5f) << "\\t TL y";
+    EXPECT_NEAR(verts[8].pos.y,  startY + cell,        1e-5f) << "\\t BR y";
+
+    // 'B' (char 2, vertices 12–17): must be at startX + 2*cell.
+    EXPECT_NEAR(verts[12].pos.x, startX + 2.0f * cell, 1e-5f) << "B TL x";
+    EXPECT_NEAR(verts[13].pos.x, startX + 3.0f * cell, 1e-5f) << "B TR x";
+    EXPECT_NEAR(verts[12].pos.y, startY,               1e-5f) << "B TL y";
+    EXPECT_NEAR(verts[14].pos.y, startY + cell,        1e-5f) << "B BR y";
+}
+
+TEST_F(TessellateStringTest, AllNonPrintableRun_CursorAdvancesEvenly)
+{
+    // A string of all non-printable characters must produce 6 vertices per
+    // character with the cursor advancing by exactly GLYPH_CELL for each.
+    // This covers the degenerate case where there are no printable characters
+    // to anchor the position sequence, complementing the mixed-string test.
+    const float startX = 5.0f, startY = 10.0f;
+    const float cell = static_cast<float>(GLYPH_CELL);
+    const std::string text = "\t\n";  // two non-printable characters
+
+    std::vector<UIVertex> verts;
+    uint32_t count = sys.tessellateString(text, startX, startY, verts);
+
+    // 2 characters × 6 vertices each = 12 vertices total.
+    ASSERT_EQ(count, 12u);
+    ASSERT_EQ(verts.size(), 12u);
+
+    // Char 0 ('\t'): TL at (startX, startY), TR at (startX+cell, startY)
+    EXPECT_NEAR(verts[0].pos.x, startX,        1e-5f) << "char0 TL x";
+    EXPECT_NEAR(verts[0].pos.y, startY,        1e-5f) << "char0 TL y";
+    EXPECT_NEAR(verts[1].pos.x, startX + cell, 1e-5f) << "char0 TR x";
+    EXPECT_NEAR(verts[2].pos.y, startY + cell, 1e-5f) << "char0 BR y";
+
+    // Char 1 ('\n'): TL at (startX+cell, startY) — one cell advance
+    EXPECT_NEAR(verts[6].pos.x,  startX + cell,        1e-5f) << "char1 TL x";
+    EXPECT_NEAR(verts[6].pos.y,  startY,               1e-5f) << "char1 TL y";
+    EXPECT_NEAR(verts[7].pos.x,  startX + 2.0f * cell, 1e-5f) << "char1 TR x";
+    EXPECT_NEAR(verts[8].pos.y,  startY + cell,        1e-5f) << "char1 BR y";
+}
+
+// ---------------------------------------------------------------------------
+// UISurface — local corner positions define a 4m×2m quad centered at origin
+// ---------------------------------------------------------------------------
+
+TEST(UISurfaceTest, LocalCorners_CorrectDimensions)
+{
+    // The default UISurface must define a 4 m wide × 2 m tall quad centered
+    // at the origin in the XY plane.  Accidental edits to these constants
+    // silently scale or shift the surface in world space, corrupting M_sw and
+    // all clip planes derived from it.
+    UISurface surf;
+
+    EXPECT_NEAR(surf.P_00_local.x, -2.0f, 1e-6f) << "P_00 x";
+    EXPECT_NEAR(surf.P_00_local.y,  1.0f, 1e-6f) << "P_00 y";
+    EXPECT_NEAR(surf.P_00_local.z,  0.0f, 1e-6f) << "P_00 z";
+
+    EXPECT_NEAR(surf.P_10_local.x,  2.0f, 1e-6f) << "P_10 x";
+    EXPECT_NEAR(surf.P_10_local.y,  1.0f, 1e-6f) << "P_10 y";
+    EXPECT_NEAR(surf.P_10_local.z,  0.0f, 1e-6f) << "P_10 z";
+
+    EXPECT_NEAR(surf.P_01_local.x, -2.0f, 1e-6f) << "P_01 x";
+    EXPECT_NEAR(surf.P_01_local.y, -1.0f, 1e-6f) << "P_01 y";
+    EXPECT_NEAR(surf.P_01_local.z,  0.0f, 1e-6f) << "P_01 z";
+
+    EXPECT_NEAR(surf.P_11_local.x,  2.0f, 1e-6f) << "P_11 x";
+    EXPECT_NEAR(surf.P_11_local.y, -1.0f, 1e-6f) << "P_11 y";
+    EXPECT_NEAR(surf.P_11_local.z,  0.0f, 1e-6f) << "P_11 z";
+}

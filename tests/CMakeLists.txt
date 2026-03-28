@@ -4,10 +4,15 @@ include(GoogleTest)
 
 # ---------------------------------------------------------------------------
 # tests_unit — pure CPU math tests (no Vulkan context required)
-# Sources: test_math.cpp (matrix construction + clip plane signs)
+# Sources split by domain:
+#   test_transforms.cpp — TransformMath, ClipPlane, DepthBias, ShadowBias
+#   test_scene.cpp      — SceneInit, WorldCorners, SceneAnimation, LightFrustum
+#   test_ui_system.cpp  — SDFConstants, UISystemUVTable, TessellateString, UISurface
 # ---------------------------------------------------------------------------
 add_executable(tests_unit
-    test_math.cpp
+    test_transforms.cpp
+    test_scene.cpp
+    test_ui_system.cpp
 )
 
 target_link_libraries(tests_unit PRIVATE
