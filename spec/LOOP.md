@@ -5,7 +5,7 @@ Find the most important task from the following list and implement it. After tas
 ## Pending Tasks
 - Refactor `src/renderer.cpp` (≈2086 lines): split into `renderer_init.cpp` (device/pipeline/swapchain setup), `renderer_recording.cpp` (per-frame command-buffer recording), and `renderer_resources.cpp` (GPU resource management), keeping `renderer.cpp` as the thin orchestration layer. Only proceed if the split does not fragment logic that is naturally co-located.
 - Add unit test `MetricsTest.HUDTessellation_TraditionalMode_AllLinesYSpacing`: with `RenderMode::Traditional` and no `inputModeStr`, verify that all four lines follow `y = leftMargin + i * lineHeight` for i=0..3 and successive pairs differ by exactly `lineHeight`; parallels `FourLines_AllLinesYSpacing` for the Traditional mode branch.
-- Add unit test `MetricsTest.HUDTessellation_NonStandardMSAA_VertexCountReflectsLongerString`: call `tessellateHUD` with `msaaSamples=16` (producing `"MSAA: 16x"` = 9 chars instead of `"MSAA: 4x"` = 8 chars) and verify the returned vertex count is 6 greater than the equivalent `msaaSamples=4` call, confirming the MSAA line formatting is not hard-coded.
+- Add unit test `MetricsTest.HUDTessellation_SingleDigitMSAA_SameVertexCount`: call `tessellateHUD` with `msaaSamples=4` and `msaaSamples=8` and verify the returned vertex counts are equal, confirming that single-digit MSAA sample counts all produce an 8-character MSAA label ("MSAA: 4x" / "MSAA: 8x") and the formatting is not accidentally length-sensitive within the single-digit range.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section

@@ -701,3 +701,53 @@ TEST(MetricsTest, AverageFrameMs_SingleFrame_ReturnsPositiveValue)
            "dividing by zero or discarding the first sample (count == 0 guard "
            "triggered when m_frameIndex should be 1 and m_filled is false)";
 }
+
+// ---------------------------------------------------------------------------
+// MetricsTest — non-standard MSAA sample count produces a longer MSAA line
+// ---------------------------------------------------------------------------
+
+// tessellateHUD formats the MSAA line as "MSAA: <N>x" where N is the actual
+// msaaSamples argument.  With msaaSamples=4 the string is "MSAA: 4x" (8 chars);
+// with msaaSamples=16 the string is "MSAA: 16x" (9 chars) — one extra character.
+// The vertex count for the msaaSamples=16 call must therefore be exactly 6
+// greater than the msaaSamples=4 call (6 vertices per character).
+// This catches regressions where the MSAA label is hard-coded (e.g. always
+// "MSAA: 4x") regardless of the actual sample count passed in.
+TEST(MetricsTest, HUDTessellation_NonStandardMSAA_VertexCountReflectsLongerString)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // RenderMode::Direct, no inputModeStr, msaaSamples=4:
+    //   Line 0: "Mode: DIRECT"     = 12 chars
+    //   Line 1: "Frame: 0.0 ms"    = 13 chars
+    //   Line 2: "GPU Mem: 0.0 MB"  = 15 chars
+    //   Line 3: "MSAA: 4x"         =  8 chars
+    //   Total                       = 48 chars  →  288 vertices
+    Metrics metrics4;
+    std::vector<UIVertex> verts4;
+    uint32_t count4 = metrics4.tessellateHUD(sys, RenderMode::Direct, 4u, verts4);
+
+    // Same call but msaaSamples=16:
+    //   Line 0: "Mode: DIRECT"     = 12 chars
+    //   Line 1: "Frame: 0.0 ms"    = 13 chars
+    //   Line 2: "GPU Mem: 0.0 MB"  = 15 chars
+    //   Line 3: "MSAA: 16x"        =  9 chars  (one extra char vs "MSAA: 4x")
+    //   Total                       = 49 chars  →  294 vertices
+    Metrics metrics16;
+    std::vector<UIVertex> verts16;
+    uint32_t count16 = metrics16.tessellateHUD(sys, RenderMode::Direct, 16u, verts16);
+
+    // The msaaSamples=16 call must produce exactly 6 more vertices than the
+    // msaaSamples=4 call, confirming the MSAA line is formatted dynamically.
+    ASSERT_GT(count4, 0u)
+        << "msaaSamples=4 tessellateHUD returned 0 — baseline call failed";
+    EXPECT_EQ(count16, count4 + 6u)
+        << "msaaSamples=16 vertex count (" << count16
+        << ") should be exactly 6 more than msaaSamples=4 count (" << count4
+        << ") — MSAA label may be hard-coded to \"MSAA: 4x\" instead of "
+           "using the actual sample count";
+    EXPECT_EQ(static_cast<uint32_t>(verts16.size()), count16)
+        << "outVerts.size() does not match the returned count for msaaSamples=16";
+}
