@@ -482,6 +482,53 @@ TEST(UISystemUVTable, AllCharacterIndexSpacing_NoDuplicatesOrGaps)
     }
 }
 
+TEST_F(TessellateStringTest, RepeatedCharsSameGlyph_AllVerticesIdenticalUVs)
+{
+    // Tessellate "AAAA" (4 identical characters) and verify that every one of
+    // the 24 resulting vertices carries the same UV rect as uvForChar('A').
+    //
+    // When all input characters are identical the quad-assembly loop is driven
+    // by cursor position alone — a permutation or ordering bug (e.g. using the
+    // loop index rather than the character to look up the glyph, or writing UV
+    // corners in the wrong order for non-first characters) would surface here
+    // while going undetected in a test like UVsMatchUvForChar that uses a
+    // string with all distinct characters.
+    //
+    // Expected UV layout per quad (6 vertices, two triangles TL–TR–BR / TL–BR–BL):
+    //   v0 (TL): u0, v0    v1 (TR): u1, v0    v2 (BR): u1, v1
+    //   v3 (TL): u0, v0    v4 (BR): u1, v1    v5 (BL): u0, v1
+    const GlyphRect uvA = sys.uvForChar('A');
+
+    std::vector<UIVertex> verts;
+    uint32_t count = sys.tessellateString("AAAA", 0.0f, 0.0f, verts);
+
+    // 4 characters × 6 vertices = 24 total.
+    ASSERT_EQ(count, 24u);
+    ASSERT_EQ(verts.size(), 24u);
+
+    for (size_t q = 0; q < 4; ++q) {
+        SCOPED_TRACE("quad=" + std::to_string(q));
+        const size_t b = q * 6;
+
+        // TL corners (v0 and v3): (u0, v0)
+        EXPECT_NEAR(verts[b + 0].uv.x, uvA.u0, 1e-6f) << "v0 u";
+        EXPECT_NEAR(verts[b + 0].uv.y, uvA.v0, 1e-6f) << "v0 v";
+        EXPECT_NEAR(verts[b + 3].uv.x, uvA.u0, 1e-6f) << "v3 u";
+        EXPECT_NEAR(verts[b + 3].uv.y, uvA.v0, 1e-6f) << "v3 v";
+        // TR corner (v1): (u1, v0)
+        EXPECT_NEAR(verts[b + 1].uv.x, uvA.u1, 1e-6f) << "v1 u";
+        EXPECT_NEAR(verts[b + 1].uv.y, uvA.v0, 1e-6f) << "v1 v";
+        // BR corners (v2 and v4): (u1, v1)
+        EXPECT_NEAR(verts[b + 2].uv.x, uvA.u1, 1e-6f) << "v2 u";
+        EXPECT_NEAR(verts[b + 2].uv.y, uvA.v1, 1e-6f) << "v2 v";
+        EXPECT_NEAR(verts[b + 4].uv.x, uvA.u1, 1e-6f) << "v4 u";
+        EXPECT_NEAR(verts[b + 4].uv.y, uvA.v1, 1e-6f) << "v4 v";
+        // BL corner (v5): (u0, v1)
+        EXPECT_NEAR(verts[b + 5].uv.x, uvA.u0, 1e-6f) << "v5 u";
+        EXPECT_NEAR(verts[b + 5].uv.y, uvA.v1, 1e-6f) << "v5 v";
+    }
+}
+
 TEST_F(TessellateStringTest, AllNonPrintableRun_CursorAdvancesEvenly)
 {
     // A string of all non-printable characters must produce 6 vertices per
