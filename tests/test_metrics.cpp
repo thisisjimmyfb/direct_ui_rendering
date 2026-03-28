@@ -797,6 +797,67 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_WithInputModeStr_AllFiveLinesX
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — Traditional mode with inputModeStr: all five lines follow
+// the arithmetic y-sequence
+// ---------------------------------------------------------------------------
+
+// With RenderMode::Traditional and a non-null inputModeStr, tessellateHUD
+// must place all five lines at y = leftMargin + i * lineHeight for i = 0..4.
+// Line 0 is "Mode: TRADITIONAL" (17 chars) instead of "Mode: DIRECT" (12
+// chars), shifting all vertex offsets relative to the Direct-mode variant.
+// This test verifies that adding the optional 5th line does not perturb lines
+// 0-3 and that the full arithmetic sequence is intact for the Traditional
+// branch.  It mirrors WithInputModeStr_AllFiveLinesYSpacing for the
+// Traditional branch and completes the 5-line y-spacing coverage matrix
+// alongside TraditionalMode_AllLinesYSpacing.
+TEST(MetricsTest, HUDTessellation_TraditionalMode_WithInputModeStr_AllFiveLinesYSpacing)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Traditional, msaaSamples=4, inputModeStr="Input: keyboard":
+    //   Line 0: "Mode: TRADITIONAL" = 17 chars  → 102 vertices (offset   0)
+    //   Line 1: "Frame: 0.0 ms"     = 13 chars  →  78 vertices (offset 102)
+    //   Line 2: "GPU Mem: 0.0 MB"   = 15 chars  →  90 vertices (offset 180)
+    //   Line 3: "MSAA: 4x"          =  8 chars  →  48 vertices (offset 270)
+    //   Line 4: "Input: keyboard"   = 15 chars  →  90 vertices (offset 318)
+    const char* inputStr = "Input: keyboard";
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, inputStr);
+
+    constexpr size_t line0Start = 0u;
+    constexpr size_t line1Start = 17u * 6u;                              // 102
+    constexpr size_t line2Start = (17u + 13u) * 6u;                     // 180
+    constexpr size_t line3Start = (17u + 13u + 15u) * 6u;               // 270
+    constexpr size_t line4Start = (17u + 13u + 15u + 8u) * 6u;          // 318
+
+    ASSERT_GE(verts.size(), line4Start + 6u)
+        << "tessellateHUD (Traditional+inputModeStr) produced too few vertices to check all five lines";
+
+    constexpr float leftMargin = 8.0f;
+    constexpr float lineHeight = 40.0f;  // GLYPH_CELL(32) + 8px spacing
+
+    // Verify each line's TL y-coordinate follows leftMargin + i * lineHeight.
+    const size_t lineStarts[5] = { line0Start, line1Start, line2Start, line3Start, line4Start };
+    for (int i = 0; i < 5; ++i) {
+        const float expectedY = leftMargin + static_cast<float>(i) * lineHeight;
+        EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
+            << "Traditional mode Line " << i << " TL y != " << expectedY
+            << " — the arithmetic sequence leftMargin + i * lineHeight is broken";
+    }
+
+    // Cross-check: every successive pair must differ by exactly lineHeight.
+    for (int i = 0; i < 4; ++i) {
+        const float diff = verts[lineStarts[i + 1]].pos.y - verts[lineStarts[i]].pos.y;
+        EXPECT_NEAR(diff, lineHeight, 1e-5f)
+            << "Traditional mode Line " << i << " -> " << (i + 1)
+            << " y gap != lineHeight (" << lineHeight << ")";
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
