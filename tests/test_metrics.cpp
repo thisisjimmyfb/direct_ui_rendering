@@ -196,6 +196,56 @@ TEST(MetricsTest, HUDTessellation_AppendsToExistingVector)
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — pre-existing vertex VALUES are not modified by tessellateHUD
+// ---------------------------------------------------------------------------
+
+// HUDTessellation_AppendsToExistingVector confirms that the vector grows by
+// the right number of elements, but a subtler regression is possible: the
+// implementation could internally resize/reallocate and write zeros over the
+// pre-existing slot range (e.g. via a clear() + resize() pattern) while still
+// pushing the new vertices afterwards.  This test catches that by filling the
+// initial slots with distinctive sentinel values and asserting every field of
+// every sentinel vertex is unchanged after the call.
+TEST(MetricsTest, HUDTessellation_PreExistingVertexValues_NotModified)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+
+    // Use a non-power-of-two count so a resize-to-nearest-power-of-two
+    // implementation is more likely to expose a bug.
+    constexpr uint32_t SENTINEL_COUNT = 5u;
+
+    // Sentinel values chosen to be far from zero so that any overwrite
+    // (even with default-constructed UIVertex{}) is immediately detectable.
+    const UIVertex sentinel{ {1234.0f, 5678.0f}, {0.111f, 0.999f} };
+    for (uint32_t i = 0; i < SENTINEL_COUNT; ++i)
+        verts.push_back(sentinel);
+
+    // Call tessellateHUD; it must append, not overwrite.
+    uint32_t appended = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
+
+    // The appended count must be non-zero (same expectation as the sibling
+    // tests), otherwise this test doesn't exercise the regression it intends to.
+    ASSERT_GT(appended, 0u)
+        << "tessellateHUD returned 0 vertices — sentinel check is vacuous";
+
+    // Verify every sentinel vertex still holds its original values.
+    for (uint32_t i = 0; i < SENTINEL_COUNT; ++i) {
+        EXPECT_FLOAT_EQ(verts[i].pos.x, sentinel.pos.x)
+            << "sentinel pos.x overwritten at index " << i;
+        EXPECT_FLOAT_EQ(verts[i].pos.y, sentinel.pos.y)
+            << "sentinel pos.y overwritten at index " << i;
+        EXPECT_FLOAT_EQ(verts[i].uv.x, sentinel.uv.x)
+            << "sentinel uv.x overwritten at index " << i;
+        EXPECT_FLOAT_EQ(verts[i].uv.y, sentinel.uv.y)
+            << "sentinel uv.y overwritten at index " << i;
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
