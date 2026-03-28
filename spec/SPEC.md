@@ -478,7 +478,7 @@ direct_ui_rendering/
 │   ├── CMakeLists.txt
 │   ├── perf_reference.h             # Hardcoded performance regression baselines
 │   ├── test_containment.cpp         # tests_render: UI pixel containment check, back wall shadow test
-│   ├── test_metrics.cpp             # tests_unit: MetricsTest — ring-buffer wrap, HUD tessellation (Direct/Traditional/inputModeStr/null allocator/append-guard/unbuilt-guard/position-bounds/UV-bounds/line-height-spacing/5th-line-separation), averageFrameMs zero-state
+│   ├── test_metrics.cpp             # tests_unit: MetricsTest — ring-buffer wrap, HUD tessellation (Direct/Traditional/inputModeStr/null allocator/append-guard/unbuilt-guard/position-bounds/UV-bounds/line-height-spacing/5th-line-separation), averageFrameMs zero-state/single-frame
 │   ├── test_perf.cpp                # tests_render: performance regression
 │   ├── test_scene.cpp               # tests_unit: SceneInit, WorldCorners, SceneAnimation, LightFrustum
 │   ├── test_sdf.cpp                 # tests_sdf: SDF threshold/render tests (production shaders, real atlas)

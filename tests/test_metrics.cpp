@@ -469,3 +469,32 @@ TEST(MetricsTest, AverageFrameMs_ExactlyZeroWhenNoFrames)
         << "averageFrameMs() must return exactly 0.0f on a fresh Metrics object, "
            "not uninitialized ring-buffer data";
 }
+
+// ---------------------------------------------------------------------------
+// MetricsTest — averageFrameMs returns a positive value after a single frame
+// ---------------------------------------------------------------------------
+
+// After exactly one beginFrame/endFrame cycle that includes a brief sleep,
+// averageFrameMs() must return a strictly positive value.  The single-sample
+// path in averageFrameMs() uses count = m_frameIndex (== 1), so the only
+// failure modes are:
+//   1. count is treated as 0 → divide-by-zero guard returns 0.0f (first sample
+//      is silently discarded because m_filled never gets set for a single frame)
+//   2. count is negative or overflows → undefined behaviour / negative average
+// The sleep ensures the measured duration is non-trivially positive (> 0 μs),
+// so any value > 0.0f confirms the single-sample path works correctly.
+TEST(MetricsTest, AverageFrameMs_SingleFrame_ReturnsPositiveValue)
+{
+    Metrics m;
+
+    m.beginFrame();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    m.endFrame();
+
+    float avg = m.averageFrameMs();
+    EXPECT_GT(avg, 0.0f)
+        << "averageFrameMs() returned " << avg
+        << " after one frame with a 1 ms sleep — single-sample path may be "
+           "dividing by zero or discarding the first sample (count == 0 guard "
+           "triggered when m_frameIndex should be 1 and m_filled is false)";
+}

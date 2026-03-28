@@ -3,7 +3,6 @@ Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md)
 Find the most important task from the following list and implement it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress updates in this file.
 
 ## Pending Tasks
-- Add unit test `MetricsTest.AverageFrameMs_SingleFrame_ReturnsPositiveValue`: after exactly one call to `beginFrame` / `endFrame` (with a brief sleep), verify `averageFrameMs()` returns a strictly positive value, guarding against the single-sample path in `averageFrameMs()` dividing by zero or discarding the first sample.
 - Refactor `src/renderer.cpp` (≈2086 lines): split into `renderer_init.cpp` (device/pipeline/swapchain setup), `renderer_recording.cpp` (per-frame command-buffer recording), and `renderer_resources.cpp` (GPU resource management), keeping `renderer.cpp` as the thin orchestration layer. Only proceed if the split does not fragment logic that is naturally co-located.
 - Add unit test `MetricsTest.HUDTessellation_WithInputModeStr_AllFiveLinesYSpacing`: when `inputModeStr` is supplied, verify that all five line y-values follow `leftMargin + i * lineHeight` for i = 0..4, ensuring that adding the optional 5th line does not perturb lines 0-3 and that the full arithmetic sequence is intact.
 
