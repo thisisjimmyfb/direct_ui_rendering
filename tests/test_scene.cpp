@@ -329,6 +329,57 @@ TEST_F(SceneAnimationTest, NonTrivialAngle_RotationSubmatrixMatchesGlmRotate)
     }
 }
 
+TEST_F(SceneAnimationTest, NormalWiggle_AtPeak_RotationMatchesCombinedYAndZ)
+{
+    // At t = π, sin(t * 0.5) = sin(π/2) = 1.0, so normalAngle = 25°.
+    // The combined rotation is R_Y(yAngle) * R_Z(25°).
+    // This verifies the normal-wiggle axis and amplitude are correct.
+    const float pi = std::acos(-1.0f);
+    const float t  = pi;   // t * 0.5 = π/2 → sin = 1.0
+
+    const float yAngle = glm::radians(15.0f) * std::sin(t * 0.25f);
+    const float zAngle = glm::radians(25.0f);   // sin(π * 0.5) = 1
+
+    glm::mat4 M = scene.animationMatrix(t);
+
+    // Build reference: T * R_Y * R_Z (applied in order: Z first, then Y)
+    glm::mat4 refRot = glm::mat4(1.0f);
+    refRot = glm::rotate(refRot, yAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+    refRot = glm::rotate(refRot, zAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+
+    for (int col = 0; col < 3; ++col) {
+        for (int row = 0; row < 3; ++row) {
+            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-5f)
+                << "combined rotation mismatch at col=" << col << " row=" << row
+                << " (t=π, yAngle=" << yAngle << " rad, zAngle=" << zAngle << " rad)";
+        }
+    }
+}
+
+TEST_F(SceneAnimationTest, NormalWiggle_ZeroAt_T0_And_T2Pi)
+{
+    // The normal wiggle uses sin(t * 0.5f), so it is exactly zero at t=0 and
+    // t=2π.  At those times the rotation sub-matrix must equal R_Y alone with no
+    // Z-rotation contribution.
+    const float pi = std::acos(-1.0f);
+    for (float t : {0.0f, 2.0f * pi}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        const float yAngle = glm::radians(15.0f) * std::sin(t * 0.25f);
+
+        glm::mat4 M      = scene.animationMatrix(t);
+        glm::mat4 refRot = glm::rotate(glm::mat4(1.0f), yAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+
+        for (int col = 0; col < 3; ++col) {
+            for (int row = 0; row < 3; ++row) {
+                EXPECT_NEAR(M[col][row], refRot[col][row], 1e-5f)
+                    << "normal wiggle should be zero at t=" << t
+                    << " — rotation should equal R_Y only"
+                    << " (col=" << col << " row=" << row << ")";
+            }
+        }
+    }
+}
+
 TEST_F(SceneAnimationTest, AtSinPi_LateralXNearZero_YFollowsFormula)
 {
     // t = π / 0.18  →  t * 0.18 = π  →  sin(π) ≈ 0  →  lateralX ≈ 0.
