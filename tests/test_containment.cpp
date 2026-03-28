@@ -57,6 +57,31 @@ static bool isMagenta(uint8_t r, uint8_t g, uint8_t b, uint8_t threshold = 32)
     return r > (255 - threshold) && g < threshold && b > (255 - threshold);
 }
 
+// Axis-aligned bounding box of all magenta pixels in a readback buffer.
+struct MagentaBBox {
+    int minX{INT_MAX}, minY{INT_MAX};
+    int maxX{INT_MIN}, maxY{INT_MIN};
+    bool valid{false};
+};
+
+static MagentaBBox computeMagentaBBox(const std::vector<uint8_t>& pixels,
+                                      uint32_t width, uint32_t height)
+{
+    MagentaBBox bb;
+    for (uint32_t y = 0; y < height; ++y)
+        for (uint32_t x = 0; x < width; ++x) {
+            const uint8_t* px = pixels.data() + (y * width + x) * 4;
+            if (isMagenta(px[0], px[1], px[2])) {
+                bb.valid = true;
+                bb.minX  = std::min(bb.minX, (int)x);
+                bb.minY  = std::min(bb.minY, (int)y);
+                bb.maxX  = std::max(bb.maxX, (int)x);
+                bb.maxY  = std::max(bb.maxY, (int)y);
+            }
+        }
+    return bb;
+}
+
 // ---------------------------------------------------------------------------
 // ContainmentTest fixture — shared GPU resources across all containment tests.
 // Each test configures its own camera and surface, then calls renderAndCheck().
@@ -806,4 +831,137 @@ TEST_F(ContainmentTest, NonUniformScale_DirectMode_ClipPlanesTrackReshapedSurfac
 
     // (b) All magenta pixels must lie within the projected reshaped quad.
     assertMagentaContained(pixels, vp, P00, P10, P11, P01);
+}
+
+// ---------------------------------------------------------------------------
+// Test 8: Font-size invariance across modes — scaled quad, sub-canvas rect.
+//
+// Render a surface with scaleW=0.5 (half-width) in both direct mode and
+// traditional mode.  The UI vertex buffer covers only the LEFT HALF of UI
+// space: x in [0, W_UI/2], y in [0, H_UI].  Both modes use the unscaled
+// canvas dimensions W_UI × H_UI so:
+//
+//   Direct mode   : M_us maps x=[0,W_UI/2] → s=[0,0.5] — left half of surface.
+//   Traditional   : ortho maps x=[0,W_UI/2] to left half of RT; the full RT
+//                   is composited onto the surface quad → left half of surface.
+//
+// The left-half sub-canvas therefore projects to the same screen region in
+// both modes.  The test asserts that the bounding boxes of magenta pixels
+// agree within a 3-pixel tolerance, verifying font-size invariance.
+// ---------------------------------------------------------------------------
+
+TEST_F(ContainmentTest, FontSizeInvariance_DirectVsTraditional_ScaledQuad)
+{
+    constexpr float scaleW = 0.5f;
+    constexpr float scaleH = 1.0f;
+
+    // Camera inside room looking toward back wall (same camera as Test 7).
+    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.5f, 2.5f),
+                                 glm::vec3(0.0f, 1.5f, -2.5f),
+                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f),
+                                      static_cast<float>(FB_WIDTH) / FB_HEIGHT,
+                                      0.1f, 100.0f);
+    proj[1][1] *= -1.0f;
+    glm::mat4 vp = proj * view;
+
+    SceneUBO sceneUBO{};
+    sceneUBO.view          = view;
+    sceneUBO.proj          = proj;
+    sceneUBO.lightViewProj = scene.lightViewProj();
+    sceneUBO.lightDir      = glm::vec4(scene.light().direction, 0.0f);
+    sceneUBO.lightColor    = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
+    renderer.updateSceneUBO(sceneUBO);
+
+    // Surface corners with scaleW=0.5 at t=0.
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, scaleW, scaleH);
+
+    // Both modes use the unscaled canvas (W_UI × H_UI).
+    auto transforms = computeSurfaceTransforms(P00, P10, P01,
+                                               static_cast<float>(Renderer::W_UI),
+                                               static_cast<float>(Renderer::H_UI), vp);
+    auto clipPlanes = computeClipPlanes(P00, P10, P01);
+
+    SurfaceUBO surfaceUBO{};
+    surfaceUBO.totalMatrix = transforms.M_total;
+    surfaceUBO.worldMatrix = transforms.M_world;
+    for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
+    surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
+    renderer.updateSurfaceUBO(surfaceUBO);
+
+    // Traditional mode needs the surface quad positioned correctly.
+    renderer.updateSurfaceQuad(P00, P10, P01, P11);
+
+    // Sub-canvas vertex buffer: a rect covering the LEFT HALF of UI space.
+    // x in [0, W_UI/2], y in [0, H_UI] — two triangles, 6 vertices.
+    const float halfW = static_cast<float>(Renderer::W_UI) * 0.5f;
+    const float H     = static_cast<float>(Renderer::H_UI);
+    UIVertex subVerts[UI_VTX_COUNT] = {
+        {{0,     0}, {0.0f, 0.0f}}, {{halfW, 0}, {0.5f, 0.0f}}, {{halfW, H}, {0.5f, 1.0f}},
+        {{0,     0}, {0.0f, 0.0f}}, {{halfW, H}, {0.5f, 1.0f}}, {{0,     H}, {0.0f, 1.0f}},
+    };
+    VkBuffer      subVtxBuf   = VK_NULL_HANDLE;
+    VmaAllocation subVtxAlloc = VK_NULL_HANDLE;
+    {
+        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bci.size        = sizeof(subVerts);
+        bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VmaAllocationCreateInfo ai{};
+        ai.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        ASSERT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
+                                  &subVtxBuf, &subVtxAlloc, nullptr), VK_SUCCESS);
+        void* mapped = nullptr;
+        vmaMapMemory(renderer.getAllocator(), subVtxAlloc, &mapped);
+        memcpy(mapped, subVerts, sizeof(subVerts));
+        vmaUnmapMemory(renderer.getAllocator(), subVtxAlloc);
+    }
+
+    // Temporarily replace the fixture's vertex buffer with the sub-canvas one
+    // so renderAndReadback records draws using the left-half rect.
+    VkBuffer      savedBuf   = uiVtxBuf;
+    VmaAllocation savedAlloc = uiVtxAlloc;
+    uiVtxBuf   = subVtxBuf;
+    uiVtxAlloc = subVtxAlloc;
+
+    // Ortho matrix for traditional mode: full unscaled canvas.
+    glm::mat4 uiOrtho = glm::ortho(0.0f, static_cast<float>(Renderer::W_UI),
+                                   static_cast<float>(Renderer::H_UI), 0.0f,
+                                   -1.0f, 1.0f);
+
+    auto pixelsDirect = renderAndReadback(/*directMode=*/true);
+    auto pixelsTrad   = renderAndReadback(/*directMode=*/false, uiOrtho);
+
+    // Restore original full-canvas vertex buffer; destroy sub-canvas buffer.
+    uiVtxBuf   = savedBuf;
+    uiVtxAlloc = savedAlloc;
+    vmaDestroyBuffer(renderer.getAllocator(), subVtxBuf, subVtxAlloc);
+
+    // Compute bounding boxes of magenta pixels for each mode.
+    auto bboxDirect = computeMagentaBBox(pixelsDirect, FB_WIDTH, FB_HEIGHT);
+    auto bboxTrad   = computeMagentaBBox(pixelsTrad,   FB_WIDTH, FB_HEIGHT);
+
+    ASSERT_TRUE(bboxDirect.valid)
+        << "No magenta pixels in direct-mode render "
+           "(scaleW=" << scaleW << " — surface may be off-screen)";
+    ASSERT_TRUE(bboxTrad.valid)
+        << "No magenta pixels in traditional-mode render "
+           "(scaleW=" << scaleW << " — surface quad or composite pass misconfigured)";
+
+    // Both modes must place the left-half sub-canvas at the same screen region.
+    constexpr int kTol = 3;
+    EXPECT_NEAR(bboxDirect.minX, bboxTrad.minX, kTol)
+        << "Left edge mismatch: direct=" << bboxDirect.minX
+        << " trad=" << bboxTrad.minX;
+    EXPECT_NEAR(bboxDirect.maxX, bboxTrad.maxX, kTol)
+        << "Right edge mismatch: direct=" << bboxDirect.maxX
+        << " trad=" << bboxTrad.maxX;
+    EXPECT_NEAR(bboxDirect.minY, bboxTrad.minY, kTol)
+        << "Top edge mismatch: direct=" << bboxDirect.minY
+        << " trad=" << bboxTrad.minY;
+    EXPECT_NEAR(bboxDirect.maxY, bboxTrad.maxY, kTol)
+        << "Bottom edge mismatch: direct=" << bboxDirect.maxY
+        << " trad=" << bboxTrad.maxY;
 }
