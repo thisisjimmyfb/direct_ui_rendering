@@ -544,6 +544,51 @@ TEST(MetricsTest, HUDTessellation_WithInputModeStr_AllFiveLinesXPositions)
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — all four lines share leftMargin x-position when no
+// inputModeStr is supplied
+// ---------------------------------------------------------------------------
+
+// Without inputModeStr (nullptr), tessellateHUD renders exactly four lines.
+// Each line's first-character TL x-coordinate must equal leftMargin (8.0f).
+// This parallels AllFiveLinesXPositions and confirms the exact-x guarantee
+// holds for the 4-line case independently of the optional 5th line.
+TEST(MetricsTest, HUDTessellation_FourLines_AllLinesXPositions)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
+    // With RenderMode::Direct, msaaSamples=4, inputModeStr=nullptr:
+    //   Line 0: "Mode: DIRECT"     = 12 chars  →  72 vertices (offset   0)
+    //   Line 1: "Frame: 0.0 ms"    = 13 chars  →  78 vertices (offset  72)
+    //   Line 2: "GPU Mem: 0.0 MB"  = 15 chars  →  90 vertices (offset 150)
+    //   Line 3: "MSAA: 4x"         =  8 chars  →  48 vertices (offset 240)
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, nullptr);
+
+    constexpr size_t line0Start = 0u;
+    constexpr size_t line1Start = 12u * 6u;                        // 72
+    constexpr size_t line2Start = (12u + 13u) * 6u;               // 150
+    constexpr size_t line3Start = (12u + 13u + 15u) * 6u;         // 240
+
+    ASSERT_GE(verts.size(), line3Start + 6u)
+        << "tessellateHUD produced too few vertices to check all four lines";
+
+    constexpr float leftMargin = 8.0f;
+
+    // The first vertex of each line is the TL corner of the first character quad.
+    // tessellateString starts cx at the supplied x parameter, so pos.x of the
+    // first vertex must equal leftMargin for every line.
+    const size_t lineStarts[4] = { line0Start, line1Start, line2Start, line3Start };
+    for (int i = 0; i < 4; ++i) {
+        EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
+            << "Line " << i << " TL x != " << leftMargin
+            << " — all four lines must start at leftMargin";
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — null VmaAllocator sets gpuAllocatedBytes to zero
 // ---------------------------------------------------------------------------
 
