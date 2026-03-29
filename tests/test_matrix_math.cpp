@@ -88,6 +88,56 @@ TEST(TransformMath, M_sw_SurfaceWithZComponent_AllFourCorners)
 }
 
 // ---------------------------------------------------------------------------
+// M_sw with a 3D parallelogram (non-zero Z AND non-orthogonal e_u/e_v)
+//
+// All existing M_sw tests cover these properties separately but never combined:
+//   • M_sw_SurfaceWithZComponent_AllFourCorners: non-zero Z, but rectangular
+//   • M_sw_Parallelogram_AllFourCorners: non-orthogonal edges, but Z=0
+//
+// This test combines both: a parallelogram at Z=-2.5 with dot(e_u, e_v) ≠ 0.
+// This exercises the full M_sw computation where the translation column must
+// handle non-zero Z AND the basis vectors must handle non-orthogonal e_u/e_v.
+//
+//   P_00 = (-1, 0.5, -2.5)
+//   P_10 = (2,  0.5, -2.5)   e_u = (3, 0, 0)
+//   P_01 = (-0.5, 2.5, -2.5) e_v = (0.5, 2, 0)   dot(e_u, e_v) = 1.5 ≠ 0
+//   P_11 = P_00 + e_u + e_v = (2.5, 2.5, -2.5)
+// ---------------------------------------------------------------------------
+
+TEST(TransformMath, M_sw_3DParallelogram_AllFourCorners)
+{
+    // 3D parallelogram with non-zero Z and non-orthogonal edges
+    glm::vec3 P00{-1.0f,  0.5f, -2.5f};
+    glm::vec3 P10{ 2.0f,  0.5f, -2.5f};
+    glm::vec3 P01{-0.5f,  2.5f, -2.5f};
+    glm::vec3 P11 = P00 + (P10 - P00) + (P01 - P00);  // = (2.5, 2.5, -2.5)
+
+    glm::mat4 M = computeM_sw(P00, P10, P01);
+
+    // Guard: confirm non-orthogonal edges
+    glm::vec3 e_u = P10 - P00;
+    glm::vec3 e_v = P01 - P00;
+    ASSERT_GT(std::abs(glm::dot(e_u, e_v)), 0.5f)
+        << "prerequisite: e_u and e_v must be non-orthogonal for this test";
+
+    // (0,0,0,1) -> P00
+    glm::vec4 r0 = M * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r0), P00)) << "origin did not map to P00";
+
+    // (1,0,0,1) -> P10
+    glm::vec4 r1 = M * glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r1), P10)) << "e_u tip did not map to P10";
+
+    // (0,1,0,1) -> P01
+    glm::vec4 r2 = M * glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r2), P01)) << "e_v tip did not map to P01";
+
+    // (1,1,0,1) -> P11
+    glm::vec4 r3 = M * glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r3), P11)) << "diagonal corner (1,1) did not map to P11";
+}
+
+// ---------------------------------------------------------------------------
 // M_total tests (identity view-projection)
 // ---------------------------------------------------------------------------
 
@@ -361,8 +411,68 @@ TEST(TransformMath, FontSizeInvariance_NonUniformScalePreservesWorldPos)
             << "scaleW=" << sw << " scaleH=" << sh;
         EXPECT_NEAR(worldPos_s.y, worldPos_base.y, 1e-5f)
             << "scaleW=" << sw << " scaleH=" << sh;
-        EXPECT_NEAR(worldPos_s.z, worldPos_base.z, 1e-5f)
+            EXPECT_NEAR(worldPos_s.z, worldPos_base.z, 1e-5f)
             << "scaleW=" << sw << " scaleH=" << sh;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Font-size invariance for parallelogram (skewed) surfaces
+//
+// The existing FontSizeInvariance tests cover rectangular surfaces (orthogonal
+// e_u / e_v). This test verifies the same invariance property holds for a
+// parallelogram where e_u ∦ e_v, as described in direct_ui_rendering.md §4
+// under "Compatible Primitives". The affine M_sw matrix handles non-orthogonal
+// edges without modification, so proportional canvas+quad scaling should still
+// preserve world position.
+//
+//   P_00 = (0, 0, 0)
+//   P_10 = (3, 0, 0)   e_u = (3, 0, 0)
+//   P_01 = (1, 2, 0)   e_v = (1, 2, 0)   dot(e_u, e_v) = 3 ≠ 0
+// ---------------------------------------------------------------------------
+
+TEST(TransformMath, FontSizeInvariance_Parallelogram_ProportionalScalePreservesWorldPos)
+{
+    // When the quad corners and canvas dimensions are both scaled by the same factor,
+    // a glyph at a fixed UI-space position must map to the same world-space location
+    // even for a skewed (non-orthogonal) surface.
+    //
+    // Derivation: M_us x-scale = 1/(W*s), M_sw x-scale = L_u*s  =>  product = L_u/W (s cancels).
+    // This holds regardless of whether e_u and e_v are orthogonal.
+
+    const float W_base = 512.0f, H_base = 128.0f;
+    glm::vec3 P00{0.0f, 0.0f, 0.0f};
+    glm::vec3 P10_base{3.0f, 0.0f, 0.0f};   // e_u = (3, 0, 0)
+    glm::vec3 P01_base{1.0f, 2.0f, 0.0f};   // e_v = (1, 2, 0), dot(e_u, e_v) = 3
+    glm::mat4 identityVP(1.0f);
+
+    // Fixed UI-space glyph position (same vertex coordinates regardless of scale).
+    glm::vec4 uiPos(64.0f, 16.0f, 0.0f, 1.0f);
+
+    // Compute the canonical world-space landing point.
+    auto t_base = computeSurfaceTransforms(P00, P10_base, P01_base, W_base, H_base, identityVP);
+    glm::vec3 worldPos_base = glm::vec3(t_base.M_world * uiPos);
+
+    // Verify the fixture has non-orthogonal edges.
+    glm::vec3 e_u_base = P10_base - P00;
+    glm::vec3 e_v_base = P01_base - P00;
+    ASSERT_GT(std::abs(glm::dot(e_u_base, e_v_base)), 1.0f)
+        << "prerequisite: e_u and e_v must be non-orthogonal for this test";
+
+    // Scale the parallelogram and canvas proportionally; world position must remain invariant.
+    for (float scale : {0.25f, 0.5f, 0.75f, 1.5f, 2.0f, 3.0f}) {
+        glm::vec3 P10_s = P00 + scale * e_u_base;
+        glm::vec3 P01_s = P00 + scale * e_v_base;
+
+        auto t_s = computeSurfaceTransforms(P00, P10_s, P01_s,
+                                            W_base * scale, H_base * scale,
+                                            identityVP);
+        glm::vec3 worldPos_s = glm::vec3(t_s.M_world * uiPos);
+
+        EXPECT_TRUE(vec3Near(worldPos_s, worldPos_base, 1e-5f))
+            << "scale = " << scale
+            << "  expected (" << worldPos_base.x << ", " << worldPos_base.y << ", " << worldPos_base.z << ")"
+            << "  got ("     << worldPos_s.x     << ", " << worldPos_s.y     << ", " << worldPos_s.z     << ")";
     }
 }
 
