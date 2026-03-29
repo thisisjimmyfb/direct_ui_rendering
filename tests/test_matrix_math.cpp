@@ -148,6 +148,76 @@ TEST(TransformMath, M_total_MapsUICorners_PerspectiveVP)
 }
 
 // ---------------------------------------------------------------------------
+// M_total — 3D parallelogram + real perspective VP, all four corners
+//
+// The existing M_total_MapsUICorners_PerspectiveVP test uses a rectangular
+// surface (e_u ⊥ e_v) at Z=0 and checks only three corners.  This test
+// combines the two properties that existing tests cover separately:
+//   • non-zero Z (all corners at Z=-2.5, like the actual scene surface)
+//   • non-orthogonal edges  (dot(e_u, e_v) = 3 ≠ 0, same skew as the
+//     M_sw_Parallelogram_* fixtures)
+// and additionally verifies all four UI-space corners including P11 (the
+// bottom-right, which was absent from the perspective test).
+//
+// The test drives computeSurfaceTransforms with a realistic Vulkan
+// view-projection matrix (glm::lookAt + glm::perspective + Y-flip) and
+// asserts that M_total * ui_corner == vp * world_corner in NDC for every
+// corner.  A bug in M_sw's translation column, in M_us's scale, or in the
+// M_total product would violate at least one of these equalities.
+// ---------------------------------------------------------------------------
+
+TEST(TransformMath, M_total_Parallelogram3D_PerspectiveVP_AllFourCorners)
+{
+    // 3D parallelogram with non-orthogonal edges at Z=-2.5:
+    //   e_u = P10 - P00 = (3, 0, 0)
+    //   e_v = P01 - P00 = (1, 2, 0)   dot(e_u, e_v) = 3 ≠ 0
+    glm::vec3 P00{-1.0f, 0.0f, -2.5f};
+    glm::vec3 P10{ 2.0f, 0.0f, -2.5f};
+    glm::vec3 P01{ 0.0f, 2.0f, -2.5f};
+    glm::vec3 P11 = P00 + (P10 - P00) + (P01 - P00);  // = (3, 2, -2.5)
+
+    // Guard: confirm non-orthogonal edges
+    glm::vec3 e_u = P10 - P00, e_v = P01 - P00;
+    ASSERT_GT(std::abs(glm::dot(e_u, e_v)), 1.0f)
+        << "prerequisite: e_u and e_v must be non-orthogonal";
+
+    const float W = 512.0f, H = 128.0f;
+
+    // Realistic Vulkan perspective VP: camera above-and-behind, looking at
+    // the surface centre; Y-flip applied for Vulkan NDC convention.
+    glm::mat4 view = glm::lookAt(glm::vec3(1.0f, 2.0f, 3.0f),
+                                 glm::vec3(1.0f, 1.0f, -2.5f),
+                                 glm::vec3(0.0f, 1.0f,  0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f), 16.0f / 9.0f, 0.1f, 100.0f);
+    proj[1][1] *= -1.0f;
+    glm::mat4 vp = proj * view;
+
+    auto t = computeSurfaceTransforms(P00, P10, P01, W, H, vp);
+
+    auto ndcOf = [](glm::vec4 c) { return glm::vec3(c) / c.w; };
+
+    // UI (0, 0)  -> P00
+    EXPECT_TRUE(vec3Near(ndcOf(t.M_total * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)),
+                         ndcOf(vp * glm::vec4(P00, 1.0f)), 1e-4f))
+        << "UI top-left (0,0) did not map to P00 in NDC";
+
+    // UI (W, 0)  -> P10
+    EXPECT_TRUE(vec3Near(ndcOf(t.M_total * glm::vec4(W, 0.0f, 0.0f, 1.0f)),
+                         ndcOf(vp * glm::vec4(P10, 1.0f)), 1e-4f))
+        << "UI top-right (W,0) did not map to P10 in NDC";
+
+    // UI (0, H)  -> P01
+    EXPECT_TRUE(vec3Near(ndcOf(t.M_total * glm::vec4(0.0f, H, 0.0f, 1.0f)),
+                         ndcOf(vp * glm::vec4(P01, 1.0f)), 1e-4f))
+        << "UI bottom-left (0,H) did not map to P01 in NDC";
+
+    // UI (W, H)  -> P11
+    EXPECT_TRUE(vec3Near(ndcOf(t.M_total * glm::vec4(W, H, 0.0f, 1.0f)),
+                         ndcOf(vp * glm::vec4(P11, 1.0f)), 1e-4f))
+        << "UI bottom-right (W,H) did not map to P11 in NDC";
+}
+
+// ---------------------------------------------------------------------------
 // Depth bias sensitivity
 // ---------------------------------------------------------------------------
 

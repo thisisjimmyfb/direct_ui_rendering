@@ -623,3 +623,161 @@ TEST_F(ClipPlaneParallelogramTest, TopBottom_AreAntiParallelNormals)
     EXPECT_NEAR(glm::dot(nTop, nBottom), -1.0f, 1e-5f)
         << "top and bottom clip plane normals must be anti-parallel";
 }
+
+// ---------------------------------------------------------------------------
+// computeClipPlanes with a 3D parallelogram (non-zero Z AND non-orthogonal e_u/e_v)
+//
+// All existing clip-plane fixtures cover these properties separately but never
+// combined:
+//   • ClipPlane3DTest: non-zero Z, but rectangular (orthogonal edges)
+//   • ClipPlaneParallelogramTest: non-orthogonal edges, but Z=0
+//
+// This test combines both: a parallelogram at Z=-2.5 with dot(e_u, e_v) = 3.
+// The surface is tilted in Z (normal has Z component) AND skewed in the XY plane.
+// This exercises the full computeClipPlanes implementation where both the
+// surface normal computation and the edge-normal cross products have non-trivial
+// 3D components.
+//
+//   P_00 = (-1, 0.5, -2.5)
+//   P_10 = (2,  0.5, -2.5)   e_u = (3, 0, 0)
+//   P_01 = (-0.5, 2.5, -2.5) e_v = (0.5, 2, 0)   dot(e_u, e_v) = 1.5 ≠ 0
+//   P_11 = P_00 + e_u + e_v = (2.5, 2.5, -2.5)
+//   surface normal = (0, 0, 1) — still axis-aligned normal, but skewed edges
+// ---------------------------------------------------------------------------
+
+class ClipPlane3DParallelogramTest : public ::testing::Test {
+protected:
+    // 3D parallelogram with non-zero Z and non-orthogonal edges:
+    glm::vec3 P00{-1.0f,  0.5f, -2.5f};
+    glm::vec3 P10{ 2.0f,  0.5f, -2.5f};
+    glm::vec3 P01{-0.5f,  2.5f, -2.5f};
+    std::array<glm::vec4, 4> planes;
+
+    void SetUp() override {
+        planes = computeClipPlanes(P00, P10, P01);
+    }
+
+    float clipDot(int i, glm::vec3 p) const {
+        return glm::dot(planes[i], glm::vec4(p, 1.0f));
+    }
+};
+
+TEST_F(ClipPlane3DParallelogramTest, Prerequisite_EdgesAreNonOrthogonal)
+{
+    // Guard: confirm the fixture actually exercises the non-orthogonal path.
+    glm::vec3 e_u = P10 - P00;
+    glm::vec3 e_v = P01 - P00;
+    ASSERT_GT(std::abs(glm::dot(e_u, e_v)), 0.5f)
+        << "prerequisite: e_u and e_v must be non-orthogonal for this fixture";
+}
+
+TEST_F(ClipPlane3DParallelogramTest, SurfaceCenter_AllPlanesNonNegative)
+{
+    // Center = P00 + 0.5*e_u + 0.5*e_v = (0.75, 1.5, -2.5)
+    glm::vec3 center{0.75f, 1.5f, -2.5f};
+    for (int i = 0; i < 4; ++i) {
+        EXPECT_GE(clipDot(i, center), 0.0f) << "plane " << i;
+    }
+}
+
+TEST_F(ClipPlane3DParallelogramTest, AllFourCorners_OnTwoPlanesBoundary)
+{
+    // Each corner lies on exactly the two planes whose edges it belongs to.
+    //   P00 -> left (0) and top (2)
+    //   P10 -> right (1) and top (2)
+    //   P01 -> left (0) and bottom (3)
+    //   P11 = P00 + e_u + e_v = (2.5, 2.5, -2.5) -> right (1) and bottom (3)
+    glm::vec3 P11 = P00 + (P10 - P00) + (P01 - P00);
+
+    EXPECT_NEAR(clipDot(0, P00), 0.0f, 1e-5f) << "P00 on left plane";
+    EXPECT_NEAR(clipDot(2, P00), 0.0f, 1e-5f) << "P00 on top plane";
+    EXPECT_NEAR(clipDot(1, P10), 0.0f, 1e-5f) << "P10 on right plane";
+    EXPECT_NEAR(clipDot(2, P10), 0.0f, 1e-5f) << "P10 on top plane";
+    EXPECT_NEAR(clipDot(0, P01), 0.0f, 1e-5f) << "P01 on left plane";
+    EXPECT_NEAR(clipDot(3, P01), 0.0f, 1e-5f) << "P01 on bottom plane";
+    EXPECT_NEAR(clipDot(1, P11), 0.0f, 1e-5f) << "P11 on right plane";
+    EXPECT_NEAR(clipDot(3, P11), 0.0f, 1e-5f) << "P11 on bottom plane";
+}
+
+TEST_F(ClipPlane3DParallelogramTest, EdgeMidpoints_ZeroForOwnPlane)
+{
+    // Each edge midpoint must lie exactly on its own clip plane.
+    glm::vec3 P11 = P00 + (P10 - P00) + (P01 - P00);
+
+    struct { glm::vec3 pt; int plane; } cases[] = {
+        {P00 + 0.5f * (P01 - P00), 0},   // left edge midpoint -> plane 0
+        {P10 + 0.5f * (P11 - P10), 1},   // right edge midpoint -> plane 1
+        {P00 + 0.5f * (P10 - P00), 2},   // top edge midpoint -> plane 2
+        {P01 + 0.5f * (P11 - P01), 3},   // bottom edge midpoint -> plane 3
+    };
+    for (auto& c : cases) {
+        EXPECT_NEAR(clipDot(c.plane, c.pt), 0.0f, 1e-5f)
+            << "edge midpoint for plane " << c.plane;
+    }
+}
+
+TEST_F(ClipPlane3DParallelogramTest, OutsideLeft_LeftPlaneNegative)
+{
+    // Point to the left of the skewed left edge (P00-P01 line).
+    // At y=1.5, the left edge is at x ≈ -0.75; x=-1.0 is outside.
+    glm::vec3 outside{-1.0f, 1.5f, -2.5f};
+    EXPECT_LT(clipDot(0, outside), 0.0f)
+        << "left plane should be negative for point left of skewed edge";
+}
+
+TEST_F(ClipPlane3DParallelogramTest, OutsideRight_RightPlaneNegative)
+{
+    // Point beyond the right edge.
+    glm::vec3 P11 = P00 + (P10 - P00) + (P01 - P00);
+    glm::vec3 outside{P11.x + 1.0f, P11.y, -2.5f};
+    EXPECT_LT(clipDot(1, outside), 0.0f)
+        << "right plane should be negative for point right of right edge";
+}
+
+TEST_F(ClipPlane3DParallelogramTest, OutsideTop_TopPlaneNegative)
+{
+    // Point above the top edge (P00-P10 line at y=0.5).
+    glm::vec3 outside{0.0f, 0.0f, -2.5f};
+    EXPECT_LT(clipDot(2, outside), 0.0f)
+        << "top plane should be negative for point above top edge";
+}
+
+TEST_F(ClipPlane3DParallelogramTest, OutsideBottom_BottomPlaneNegative)
+{
+    // Point below the bottom edge.
+    glm::vec3 P11 = P00 + (P10 - P00) + (P01 - P00);
+    glm::vec3 outside{P11.x, P11.y + 1.0f, -2.5f};
+    EXPECT_LT(clipDot(3, outside), 0.0f)
+        << "bottom plane should be negative for point below bottom edge";
+}
+
+TEST_F(ClipPlane3DParallelogramTest, PlaneNormals_PerpendicularToSurfaceNormal)
+{
+    // The surface normal must be perpendicular to all clip plane normals.
+    glm::vec3 e_u = P10 - P00;
+    glm::vec3 e_v = P01 - P00;
+    glm::vec3 surfaceNormal = glm::normalize(glm::cross(e_u, e_v));
+
+    for (int i = 0; i < 4; ++i) {
+        glm::vec3 planeNormal = glm::normalize(glm::vec3(planes[i]));
+        float d = std::abs(glm::dot(planeNormal, surfaceNormal));
+        EXPECT_NEAR(d, 0.0f, 1e-5f)
+            << "plane " << i << " normal not perpendicular to surface normal (|dot|=" << d << ")";
+    }
+}
+
+TEST_F(ClipPlane3DParallelogramTest, LeftRight_AreAntiParallelNormals)
+{
+    glm::vec3 nLeft  = glm::normalize(glm::vec3(planes[0]));
+    glm::vec3 nRight = glm::normalize(glm::vec3(planes[1]));
+    EXPECT_NEAR(glm::dot(nLeft, nRight), -1.0f, 1e-5f)
+        << "left and right clip plane normals must be anti-parallel";
+}
+
+TEST_F(ClipPlane3DParallelogramTest, TopBottom_AreAntiParallelNormals)
+{
+    glm::vec3 nTop    = glm::normalize(glm::vec3(planes[2]));
+    glm::vec3 nBottom = glm::normalize(glm::vec3(planes[3]));
+    EXPECT_NEAR(glm::dot(nTop, nBottom), -1.0f, 1e-5f)
+        << "top and bottom clip plane normals must be anti-parallel";
+}
