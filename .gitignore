@@ -1,4 +1,1 @@
-build/
-!build/build.sh
-!build/ralph.sh
-!build/test.sh
+build-*/

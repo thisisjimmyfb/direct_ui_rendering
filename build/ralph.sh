@@ -87,9 +87,7 @@ trap 'echo ""; echo "ralph stopped after $iteration iteration(s)."; exit 0' INT 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 run_local_llm() {
-    export ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL"
-	cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}" 2>&1
-	unset ANTHROPIC_BASE_URL
+	cat "$LOOP" | ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL" claude "${CLAUDE_FLAGS[@]}" 2>&1
 }
 
 is_token_limit_error() {

@@ -25,21 +25,21 @@ direct_ui_rendering/
 │   └── SPEC.md                       # Project specification
 ├── src/
 │   ├── app.h                         # Top-level App class: init, frame loop, cleanup
-│   ├── app.cpp
+│   ├── app.cpp                       # App implementation: window, event loop, render loop
 │   ├── main.cpp                      # Entry point: window creation, event loop, input handling
 │   ├── metrics.h                     # Metrics tracking: frame timer, VMA stats, HUD rendering
-│   ├── metrics.cpp
+│   ├── metrics.cpp                   # Metrics implementation
 │   ├── renderer.h                    # Renderer class declaration: Vulkan device, pipelines, render passes
 │   ├── renderer.cpp                  # Thin coordinator: includes the three renderer modules
-│   ├── renderer_init.cpp             # Device, instance, swapchain, pipelines, render pass setup
+│   ├── renderer_init.cpp             # Device, instance, swapchain, pipelines, render pass setup (1133 lines)
 │   ├── renderer_recording.cpp        # Per-frame command buffer recording and draw calls
 │   ├── renderer_resources.cpp        # Buffer/image allocation, descriptor set updates, VMA wrappers
 │   ├── scene.h                       # Scene class: room geometry, light, animation matrix
-│   ├── scene.cpp
+│   ├── scene.cpp                     # Scene implementation
 │   ├── ui_system.h                   # UISystem class: atlas, glyph quads, vertex buffer, SDF constants
 │   ├── ui_system.cpp                 # stb_truetype SDF atlas generation or PNG fallback
 │   ├── ui_surface.h                  # UI surface transforms: computeSurfaceTransforms(), computeClipPlanes()
-│   ├── ui_surface.cpp
+│   ├── ui_surface.cpp                # UI surface transform calculations
 │   └── vk_utils.h                    # Thin Vulkan helpers: image barriers, buffer upload utilities
 ├── shaders/
 │   ├── composite.frag                # Traditional mode: blend UI render target onto teal quad
