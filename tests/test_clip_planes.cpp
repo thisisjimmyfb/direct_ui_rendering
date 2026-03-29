@@ -343,3 +343,134 @@ TEST(ClipPlaneSymmetry, TopBottom_AreAntiParallelNormals)
     EXPECT_NEAR(glm::dot(nTop, nBottom), -1.0f, 1e-5f)
         << "top and bottom clip plane normals must be anti-parallel";
 }
+
+// ---------------------------------------------------------------------------
+// computeClipPlanes with a Y-axis-rotated 3D surface
+//
+// The existing ClipPlane3DTest covers a surface with normal = (0,0,-1)
+// (axis-aligned at depth), which makes all edge cross-products trivial.
+// This fixture rotates the surface around the Y-axis so that
+//   e_u = (1, 0, -1),  e_v = (0, 1, 0)
+//   n   = normalize(cross(e_u, e_v)) = (1/√2, 0, 1/√2)
+// producing clip plane normals that have both X and Z components, exercising
+// the full 3D normal computation path inside computeClipPlanes.
+// ---------------------------------------------------------------------------
+
+class ClipPlaneYRotatedTest : public ::testing::Test {
+protected:
+    // Y-rotated surface: top-left at origin, top-right at (1,0,-1),
+    // bottom-left at (0,1,0).  Surface normal = (1/√2, 0, 1/√2).
+    glm::vec3 P00{0.0f, 0.0f,  0.0f};
+    glm::vec3 P10{1.0f, 0.0f, -1.0f};
+    glm::vec3 P01{0.0f, 1.0f,  0.0f};
+    std::array<glm::vec4, 4> planes;
+
+    void SetUp() override {
+        planes = computeClipPlanes(P00, P10, P01);
+    }
+
+    float clipDot(int i, glm::vec3 p) const {
+        return glm::dot(planes[i], glm::vec4(p, 1.0f));
+    }
+};
+
+TEST_F(ClipPlaneYRotatedTest, SurfaceCenter_AllPlanesNonNegative)
+{
+    // Center = P00 + 0.5*e_u + 0.5*e_v = (0.5, 0.5, -0.5)
+    glm::vec3 center{0.5f, 0.5f, -0.5f};
+    for (int i = 0; i < 4; ++i) {
+        EXPECT_GE(clipDot(i, center), 0.0f) << "plane " << i;
+    }
+}
+
+TEST_F(ClipPlaneYRotatedTest, LeftEdgeMidpoint_LeftPlaneNearZero)
+{
+    // Midpoint of left edge: P00 + 0.5*e_v = (0, 0.5, 0)
+    glm::vec3 pt{0.0f, 0.5f, 0.0f};
+    EXPECT_NEAR(clipDot(0, pt), 0.0f, 1e-5f) << "left plane (index 0) at left edge midpoint";
+}
+
+TEST_F(ClipPlaneYRotatedTest, RightEdgeMidpoint_RightPlaneNearZero)
+{
+    // Midpoint of right edge: P10 + 0.5*e_v = (1, 0.5, -1)
+    glm::vec3 pt{1.0f, 0.5f, -1.0f};
+    EXPECT_NEAR(clipDot(1, pt), 0.0f, 1e-5f) << "right plane (index 1) at right edge midpoint";
+}
+
+TEST_F(ClipPlaneYRotatedTest, TopEdgeMidpoint_TopPlaneNearZero)
+{
+    // Midpoint of top edge: P00 + 0.5*e_u = (0.5, 0, -0.5)
+    glm::vec3 pt{0.5f, 0.0f, -0.5f};
+    EXPECT_NEAR(clipDot(2, pt), 0.0f, 1e-5f) << "top plane (index 2) at top edge midpoint";
+}
+
+TEST_F(ClipPlaneYRotatedTest, BottomEdgeMidpoint_BottomPlaneNearZero)
+{
+    // Midpoint of bottom edge: P01 + 0.5*e_u = (0.5, 1, -0.5)
+    glm::vec3 pt{0.5f, 1.0f, -0.5f};
+    EXPECT_NEAR(clipDot(3, pt), 0.0f, 1e-5f) << "bottom plane (index 3) at bottom edge midpoint";
+}
+
+TEST_F(ClipPlaneYRotatedTest, OutsideLeft_LeftPlaneNegative)
+{
+    // P00 - e_u = (-1, 0, 1): behind the left edge in the -e_u direction
+    glm::vec3 outside{-1.0f, 0.0f, 1.0f};
+    EXPECT_LT(clipDot(0, outside), 0.0f) << "left plane should be negative outside left edge";
+}
+
+TEST_F(ClipPlaneYRotatedTest, OutsideRight_RightPlaneNegative)
+{
+    // P10 + e_u = (2, 0, -2): beyond the right edge in the +e_u direction
+    glm::vec3 outside{2.0f, 0.0f, -2.0f};
+    EXPECT_LT(clipDot(1, outside), 0.0f) << "right plane should be negative outside right edge";
+}
+
+TEST_F(ClipPlaneYRotatedTest, OutsideTop_TopPlaneNegative)
+{
+    // P00 - e_v = (0, -1, 0): above the top edge in the -e_v direction
+    glm::vec3 outside{0.0f, -1.0f, 0.0f};
+    EXPECT_LT(clipDot(2, outside), 0.0f) << "top plane should be negative outside top edge";
+}
+
+TEST_F(ClipPlaneYRotatedTest, OutsideBottom_BottomPlaneNegative)
+{
+    // P01 + e_v = (0, 2, 0): below the bottom edge in the +e_v direction
+    glm::vec3 outside{0.0f, 2.0f, 0.0f};
+    EXPECT_LT(clipDot(3, outside), 0.0f) << "bottom plane should be negative outside bottom edge";
+}
+
+TEST_F(ClipPlaneYRotatedTest, PlaneNormals_PerpendicularToSurfaceNormal)
+{
+    // The surface normal is (1/√2, 0, 1/√2).  All four clip plane normals must
+    // be perpendicular to it — this validates the cross products inside
+    // computeClipPlanes when the surface normal has both X and Z components.
+    glm::vec3 e_u = P10 - P00;
+    glm::vec3 e_v = P01 - P00;
+    glm::vec3 surfaceNormal = glm::normalize(glm::cross(e_u, e_v));
+
+    for (int i = 0; i < 4; ++i) {
+        glm::vec3 planeNormal = glm::normalize(glm::vec3(planes[i]));
+        float d = std::abs(glm::dot(planeNormal, surfaceNormal));
+        EXPECT_NEAR(d, 0.0f, 1e-5f)
+            << "plane " << i << " normal not perpendicular to surface normal (|dot|=" << d << ")";
+    }
+}
+
+TEST_F(ClipPlaneYRotatedTest, AllFourCorners_OnTwoPlanesBoundary)
+{
+    // Each corner of the surface lies on exactly two clip planes simultaneously.
+    // P00 -> left (0) and top (2)
+    // P10 -> right (1) and top (2)
+    // P01 -> left (0) and bottom (3)
+    // P11 = P00 + e_u + e_v = (1, 1, -1) -> right (1) and bottom (3)
+    glm::vec3 P11 = P00 + (P10 - P00) + (P01 - P00);
+
+    EXPECT_NEAR(clipDot(0, P00), 0.0f, 1e-5f) << "P00 on left plane";
+    EXPECT_NEAR(clipDot(2, P00), 0.0f, 1e-5f) << "P00 on top plane";
+    EXPECT_NEAR(clipDot(1, P10), 0.0f, 1e-5f) << "P10 on right plane";
+    EXPECT_NEAR(clipDot(2, P10), 0.0f, 1e-5f) << "P10 on top plane";
+    EXPECT_NEAR(clipDot(0, P01), 0.0f, 1e-5f) << "P01 on left plane";
+    EXPECT_NEAR(clipDot(3, P01), 0.0f, 1e-5f) << "P01 on bottom plane";
+    EXPECT_NEAR(clipDot(1, P11), 0.0f, 1e-5f) << "P11 on right plane";
+    EXPECT_NEAR(clipDot(3, P11), 0.0f, 1e-5f) << "P11 on bottom plane";
+}
