@@ -297,6 +297,65 @@ TEST(TransformMath, FontSizeInvariance_NonUniformScalePreservesWorldPos)
 }
 
 // ---------------------------------------------------------------------------
+// M_sw parallelogram (non-orthogonal e_u / e_v)
+//
+// All existing M_sw tests use rectangular surfaces where e_u ⊥ e_v.
+// This test uses a parallelogram (dot(e_u,e_v) ≠ 0) to verify that
+// computeM_sw handles the non-orthogonal affine frame correctly — the spec
+// (direct_ui_rendering.md §4) explicitly classifies parallelograms as
+// Compatible Primitives that require no changes to M_sw.
+//
+//   P_00 = (0, 0, 0)
+//   P_10 = (3, 0, 0)   e_u = (3, 0, 0)
+//   P_01 = (1, 2, 0)   e_v = (1, 2, 0)   dot(e_u, e_v) = 3 ≠ 0
+//   P_11 = P_00 + e_u + e_v = (4, 2, 0)
+// ---------------------------------------------------------------------------
+
+TEST(TransformMath, M_sw_Parallelogram_AllFourCorners)
+{
+    glm::vec3 P00{0.0f, 0.0f, 0.0f};
+    glm::vec3 P10{3.0f, 0.0f, 0.0f};
+    glm::vec3 P01{1.0f, 2.0f, 0.0f};
+    glm::vec3 P11 = P00 + (P10 - P00) + (P01 - P00);  // = (4, 2, 0)
+
+    glm::mat4 M = computeM_sw(P00, P10, P01);
+
+    // dot(e_u, e_v) = 3*1 + 0*2 = 3 — non-orthogonal by construction
+    glm::vec3 e_u = P10 - P00;
+    glm::vec3 e_v = P01 - P00;
+    ASSERT_GT(std::abs(glm::dot(e_u, e_v)), 1.0f)
+        << "prerequisite: e_u and e_v must be non-orthogonal";
+
+    glm::vec4 r0 = M * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r0), P00)) << "origin did not map to P00";
+
+    glm::vec4 r1 = M * glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r1), P10)) << "e_u tip did not map to P10";
+
+    glm::vec4 r2 = M * glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r2), P01)) << "e_v tip did not map to P01";
+
+    glm::vec4 r3 = M * glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r3), P11)) << "diagonal corner (1,1) did not map to P11";
+}
+
+TEST(TransformMath, M_sw_Parallelogram_InteriorPoint)
+{
+    // A point at surface parameter (0.5, 0.5) must land at the parallelogram centre.
+    glm::vec3 P00{0.0f, 0.0f, 0.0f};
+    glm::vec3 P10{3.0f, 0.0f, 0.0f};
+    glm::vec3 P01{1.0f, 2.0f, 0.0f};
+    glm::vec3 e_u = P10 - P00;
+    glm::vec3 e_v = P01 - P00;
+    glm::vec3 centre = P00 + 0.5f * e_u + 0.5f * e_v;  // = (2, 1, 0)
+
+    glm::mat4 M = computeM_sw(P00, P10, P01);
+    glm::vec4 r = M * glm::vec4(0.5f, 0.5f, 0.0f, 1.0f);
+    EXPECT_TRUE(vec3Near(glm::vec3(r), centre))
+        << "surface centre (s=0.5,t=0.5) did not map to parallelogram centre";
+}
+
+// ---------------------------------------------------------------------------
 // ShadowBias — slope-scaled bias formula: max(0.005*(1-NdotL), 0.001)
 // ---------------------------------------------------------------------------
 

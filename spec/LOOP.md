@@ -3,8 +3,10 @@ Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md)
 Find the most important task from the following list and implement it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress updates in this file.
 
 ## Pending Tasks
-- Add test for M_sw correctness with a non-orthogonal parallelogram surface (e_u and e_v not perpendicular) in test_matrix_math.cpp, verifying all four corners map correctly.
-- Add test for computeClipPlanes with a parallelogram surface (non-orthogonal e_u and e_v) in test_clip_planes.cpp to verify clip plane correctness for the full Compatible Primitives case described in the spec (all existing fixtures use rectangular surfaces where e_u ⊥ e_v).
+- Add test for M_total (computeSurfaceTransforms) with a parallelogram surface using a real perspective VP matrix in test_matrix_math.cpp, verifying all four UI-space corners map to the correct NDC positions.
+- Add test for computeClipPlanes with a 3D parallelogram (non-zero Z AND non-orthogonal e_u/e_v) in test_clip_planes.cpp — existing fixtures cover these properties separately but never combined.
+- Add font-size invariance test for a parallelogram (skewed) surface in test_matrix_math.cpp, verifying that proportional canvas+quad scaling preserves world position when e_u ∦ e_v.
+- Add test for M_sw with a 3D parallelogram (non-zero Z + non-orthogonal e_u/e_v) in test_matrix_math.cpp, verifying all four corners — existing Z-depth and parallelogram tests cover these properties separately.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
