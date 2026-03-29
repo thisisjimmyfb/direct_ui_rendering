@@ -59,7 +59,7 @@ direct_ui_rendering/
 │   ├── test_clip_planes.cpp          # tests_unit: ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry, ClipPlaneYRotated, ClipPlane3DParallelogram
 │   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes
 │   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing
-│   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), DepthBias, ShadowBias
+│   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), FontSizeInvariance, Parallelogram
 │   ├── test_metrics.cpp              # tests_unit: frame timing ring buffer and GPU memory tracking
 │   ├── test_perf.cpp                 # tests_render: performance regression tests
 │   ├── test_scale_render.cpp         # tests_render: non-uniform scale clip plane tracking and font-size invariance

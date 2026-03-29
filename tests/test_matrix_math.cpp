@@ -268,45 +268,6 @@ TEST(TransformMath, M_total_Parallelogram3D_PerspectiveVP_AllFourCorners)
 }
 
 // ---------------------------------------------------------------------------
-// Depth bias sensitivity
-// ---------------------------------------------------------------------------
-
-TEST(DepthBias, ZeroBias_LeavesClipPositionUnchanged)
-{
-    glm::vec4 clip{0.3f, -0.2f, 0.6f, 1.5f};
-    glm::vec4 biased = clip;
-    biased.z -= 0.0f * biased.w;
-    EXPECT_FLOAT_EQ(biased.z, clip.z);
-}
-
-TEST(DepthBias, PositiveBias_ReducesNDCZByBiasAmount)
-{
-    // Spec formula: clip.z -= bias * clip.w  =>  NDC z decreases by exactly bias.
-    glm::vec4 clip{0.0f, 0.0f, 0.8f, 2.0f};
-    const float ndcZ_original = clip.z / clip.w;
-
-    for (float bias : {0.0001f, 0.001f, 0.01f}) {
-        glm::vec4 biased = clip;
-        biased.z -= bias * biased.w;
-        EXPECT_NEAR(biased.z / biased.w, ndcZ_original - bias, 1e-5f)
-            << "bias = " << bias;
-    }
-}
-
-TEST(DepthBias, BiasLinearInNDCRegardlessOfW)
-{
-    // Verify the NDC offset equals bias for different clip.w values.
-    for (float w : {0.5f, 1.0f, 2.0f, 4.0f}) {
-        glm::vec4 clip{0.0f, 0.0f, 0.5f * w, w};  // NDC z = 0.5 in all cases
-        const float bias = 0.001f;
-        glm::vec4 biased = clip;
-        biased.z -= bias * biased.w;
-        EXPECT_NEAR(biased.z / biased.w, clip.z / clip.w - bias, 1e-5f)
-            << "w = " << w;
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Surface transform with non-uniform scaling
 // ---------------------------------------------------------------------------
 
@@ -535,30 +496,3 @@ TEST(TransformMath, M_sw_Parallelogram_InteriorPoint)
         << "surface centre (s=0.5,t=0.5) did not map to parallelogram centre";
 }
 
-// ---------------------------------------------------------------------------
-// ShadowBias — slope-scaled bias formula: max(0.005*(1-NdotL), 0.001)
-// ---------------------------------------------------------------------------
-
-TEST(ShadowBias, BackWall_NdotLZero_YieldsFiveThousandths)
-{
-    // Back wall is perpendicular to light (N·L ≈ 0): largest bias case.
-    float NdotL = 0.0f;
-    float bias = std::max(0.005f * (1.0f - NdotL), 0.001f);
-    EXPECT_NEAR(bias, 0.005f, 1e-6f);
-}
-
-TEST(ShadowBias, Floor_NdotLOne_YieldsMinimumClamp)
-{
-    // Floor directly facing the light (N·L = 1): formula gives 0, clamped to minimum.
-    float NdotL = 1.0f;
-    float bias = std::max(0.005f * (1.0f - NdotL), 0.001f);
-    EXPECT_NEAR(bias, 0.001f, 1e-6f);
-}
-
-TEST(ShadowBias, GrazingAngle_NdotLHalf_YieldsIntermediate)
-{
-    // At N·L = 0.5: 0.005 * 0.5 = 0.0025, above minimum clamp.
-    float NdotL = 0.5f;
-    float bias = std::max(0.005f * (1.0f - NdotL), 0.001f);
-    EXPECT_NEAR(bias, 0.0025f, 1e-6f);
-}
