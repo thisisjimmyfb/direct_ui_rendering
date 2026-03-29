@@ -103,7 +103,7 @@ commit_work() {
     local commit_msg
     local timestamp
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    commit_msg=$(git diff --cached --quiet && echo "" || git diff --cached --stat | head -20 | claude -p "Generate a concise commit message. Output only the message, no quotes." 2>/dev/null)
+    commit_msg=$(git diff --cached --quiet && echo "" || git diff --cached --stat | head -20 | ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL" claude -p "Generate a concise commit message. Output only the message, no quotes." 2>/dev/null)
     if [[ -n "$commit_msg" ]]; then
         git commit -m "$commit_msg" -m "ralph: $timestamp" || echo "  (nothing to commit)"
     else

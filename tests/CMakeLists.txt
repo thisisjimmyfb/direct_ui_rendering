@@ -5,15 +5,20 @@ include(GoogleTest)
 # ---------------------------------------------------------------------------
 # tests_unit — pure CPU math tests (no Vulkan context required)
 # Sources split by domain:
-#   test_transforms.cpp — TransformMath, ClipPlane, DepthBias, ShadowBias
-#   test_scene.cpp      — SceneInit, WorldCorners, SceneAnimation, LightFrustum
-#   test_ui_system.cpp  — SDFConstants, UISystemUVTable, TessellateString, UISurface
+#   test_matrix_math.cpp — TransformMath, DepthBias, ShadowBias
+#   test_clip_planes.cpp  — ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry
+#   test_scene.cpp        — SceneInit, WorldCorners, SceneAnimation, LightFrustum
+#   test_ui_system.cpp    — SDFConstants, UISystemUVTable, TessellateString, UISurface
+#   test_metrics.cpp      — FrameTimingRollingAverage, UpdateGPUMem, AverageFrameMs
+#   test_hud.cpp          — MetricsTest HUDTessellation_* tests
 # ---------------------------------------------------------------------------
 add_executable(tests_unit
-    test_transforms.cpp
+    test_matrix_math.cpp
+    test_clip_planes.cpp
     test_scene.cpp
     test_ui_system.cpp
     test_metrics.cpp
+    test_hud.cpp
 )
 
 target_link_libraries(tests_unit PRIVATE
@@ -67,12 +72,17 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 
 # ---------------------------------------------------------------------------
 # tests_render — headless Vulkan render tests
-# Sources: test_containment.cpp (UI pixel containment check)
-#          test_perf.cpp (performance regression with skip-if-unset guards)
+# Sources split by theme:
+#   test_containment.cpp   — UI pixel containment (Tests 1-4: direct/trad/angle/animation)
+#   test_shadow_render.cpp — Back wall shadow and PCF symmetry (Tests 5-6)
+#   test_scale_render.cpp  — Non-uniform scale and font-size invariance (Tests 7-8)
+#   test_perf.cpp          — performance regression tests with skip-if-unset guards
 # Uses test shaders (UI_TEST_COLOR) so magenta pixels can be identified.
 # ---------------------------------------------------------------------------
 add_executable(tests_render
     test_containment.cpp
+    test_shadow_render.cpp
+    test_scale_render.cpp
     test_perf.cpp
 )
 

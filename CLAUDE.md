@@ -54,13 +54,18 @@ direct_ui_rendering/
 │   └── ui_ortho.vert                 # Orthographic UI vertex shader (RT pass + metrics overlay)
 ├── tests/
 │   ├── CMakeLists.txt                # Test target configuration (tests_unit, tests_render, tests_sdf)
+│   ├── containment_fixture.h         # Shared ContainmentTest fixture + helpers for render tests
 │   ├── perf_reference.h              # Hardcoded performance regression baselines
-│   ├── test_containment.cpp          # tests_render: UI pixel containment, back wall shadow, clip-plane tracking
-│   ├── test_metrics.cpp              # tests_unit: MetricsTest — ring buffer, HUD tessellation, frame timing
+│   ├── test_clip_planes.cpp          # tests_unit: ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry
+│   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes
+│   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing
+│   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), DepthBias, ShadowBias
+│   ├── test_metrics.cpp              # tests_unit: frame timing ring buffer and GPU memory tracking
 │   ├── test_perf.cpp                 # tests_render: performance regression tests
+│   ├── test_scale_render.cpp         # tests_render: non-uniform scale clip plane tracking and font-size invariance
 │   ├── test_scene.cpp                # tests_unit: SceneInit, WorldCorners, SceneAnimation, LightFrustum
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
-│   ├── test_transforms.cpp           # tests_unit: TransformMath, ClipPlane, ClipPlane3D, ClipPlaneSymmetry
+│   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow and PCF kernel symmetry
 │   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
 └── CMakeLists.txt                    # tests/ subdirectory CMake configuration
 ```
