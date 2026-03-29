@@ -9,14 +9,9 @@
 
 // ---------------------------------------------------------------------------
 // SDF constant and UISystem accessor tests
+// Note: SDF_GLYPH_PADDING, SDF_PIXEL_DIST_SCALE, and SDF_THRESHOLD_DEFAULT
+// constant-property invariants are enforced by static_assert in ui_system.h.
 // ---------------------------------------------------------------------------
-
-TEST(SDFConstants, ThresholdMatchesOnEdgeValueRatio)
-{
-    // SDF_THRESHOLD_DEFAULT should be close to SDF_ON_EDGE_VALUE / 255.0f.
-    float expected = static_cast<float>(SDF_ON_EDGE_VALUE) / 255.0f;
-    EXPECT_NEAR(SDF_THRESHOLD_DEFAULT, expected, 0.01f);
-}
 
 TEST(SDFConstants, SdfThresholdReturnsZeroWhenNotSDF)
 {
@@ -24,22 +19,6 @@ TEST(SDFConstants, SdfThresholdReturnsZeroWhenNotSDF)
     UISystem sys;
     EXPECT_FALSE(sys.isSDF());
     EXPECT_FLOAT_EQ(sys.sdfThreshold(), 0.0f);
-}
-
-TEST(SDFConstants, PixelDistScale_IsPositiveAndInRange)
-{
-    // SDF_PIXEL_DIST_SCALE must be positive and within a sane range so the
-    // distance field has meaningful per-pixel resolution.
-    EXPECT_GT(SDF_PIXEL_DIST_SCALE, 0.0f);
-    EXPECT_GE(SDF_PIXEL_DIST_SCALE, 1.0f);
-    EXPECT_LE(SDF_PIXEL_DIST_SCALE, 100.0f);
-}
-
-TEST(SDFConstants, GlyphPadding_IsPositive)
-{
-    // SDF_GLYPH_PADDING must be at least 1 so the distance field can bleed
-    // beyond the glyph outline and produce correct smoothstep transitions.
-    EXPECT_GT(SDF_GLYPH_PADDING, 0);
 }
 
 // ---------------------------------------------------------------------------

@@ -20,6 +20,14 @@ static constexpr float   SDF_PIXEL_DIST_SCALE = 16.0f; // pixels per SDF distanc
 static constexpr int     SDF_GLYPH_PADDING    = 4;     // border around each glyph for SDF bleed
 static constexpr float   SDF_THRESHOLD_DEFAULT = 0.5f; // normalized threshold = 128/255
 
+static_assert(SDF_GLYPH_PADDING > 0,
+    "SDF_GLYPH_PADDING must be positive for SDF bleed beyond glyph outline");
+static_assert(SDF_PIXEL_DIST_SCALE >= 1.0f && SDF_PIXEL_DIST_SCALE <= 100.0f,
+    "SDF_PIXEL_DIST_SCALE must be in [1, 100] for meaningful per-pixel resolution");
+static_assert(SDF_THRESHOLD_DEFAULT >= static_cast<float>(SDF_ON_EDGE_VALUE) / 255.0f - 0.01f &&
+              SDF_THRESHOLD_DEFAULT <= static_cast<float>(SDF_ON_EDGE_VALUE) / 255.0f + 0.01f,
+    "SDF_THRESHOLD_DEFAULT must be within 0.01 of SDF_ON_EDGE_VALUE/255");
+
 // A single UI vertex: 2D UI-space position + UV into glyph atlas.
 struct UIVertex {
     glm::vec2 pos;   // UI-space pixels, origin top-left
