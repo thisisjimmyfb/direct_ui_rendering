@@ -78,7 +78,8 @@ void Renderer::cleanup()
         if (m_uiRTImage)      { vmaDestroyImage (m_allocator, m_uiRTImage,      m_uiRTAlloc);      m_uiRTImage      = VK_NULL_HANDLE; }
         if (m_roomVtxBuf)     { vmaDestroyBuffer(m_allocator, m_roomVtxBuf,     m_roomVtxAlloc);   m_roomVtxBuf     = VK_NULL_HANDLE; }
         if (m_roomIdxBuf)     { vmaDestroyBuffer(m_allocator, m_roomIdxBuf,     m_roomIdxAlloc);   m_roomIdxBuf     = VK_NULL_HANDLE; }
-        if (m_surfaceQuadBuf) { vmaDestroyBuffer(m_allocator, m_surfaceQuadBuf, m_surfaceQuadAlloc); m_surfaceQuadBuf = VK_NULL_HANDLE; }
+        if (m_surfaceQuadBuf)   { vmaDestroyBuffer(m_allocator, m_surfaceQuadBuf,   m_surfaceQuadAlloc);   m_surfaceQuadBuf   = VK_NULL_HANDLE; }
+        if (m_uiShadowVtxBuf)  { vmaDestroyBuffer(m_allocator, m_uiShadowVtxBuf,  m_uiShadowVtxAlloc);  m_uiShadowVtxBuf  = VK_NULL_HANDLE; }
         vmaDestroyAllocator(m_allocator);
         m_allocator = VK_NULL_HANDLE;
     }
@@ -404,16 +405,37 @@ bool Renderer::createFramebuffers()
 
 bool Renderer::createSurfaceQuadBuffer()
 {
-    VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    bci.size        = sizeof(QuadVertex) * 6;
-    bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    // Composite quad (QuadVertex layout: pos vec3 + uv vec2)
+    {
+        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bci.size        = sizeof(QuadVertex) * 6;
+        bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        VmaAllocationCreateInfo aci{};
+        aci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    return vmaCreateBuffer(m_allocator, &bci, &aci,
-                           &m_surfaceQuadBuf, &m_surfaceQuadAlloc, nullptr) == VK_SUCCESS;
+        if (vmaCreateBuffer(m_allocator, &bci, &aci,
+                            &m_surfaceQuadBuf, &m_surfaceQuadAlloc, nullptr) != VK_SUCCESS)
+            return false;
+    }
+
+    // Shadow quad (room Vertex layout: pos vec3 + normal vec3 + uv vec2)
+    {
+        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bci.size        = sizeof(Vertex) * 6;
+        bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo aci{};
+        aci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+        if (vmaCreateBuffer(m_allocator, &bci, &aci,
+                            &m_uiShadowVtxBuf, &m_uiShadowVtxAlloc, nullptr) != VK_SUCCESS)
+            return false;
+    }
+
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -597,6 +619,36 @@ void Renderer::updateSurfaceQuad(const glm::vec3& P00, const glm::vec3& P10,
     vmaMapMemory(m_allocator, m_surfaceQuadAlloc, &mapped);
     memcpy(mapped, verts, sizeof(verts));
     vmaUnmapMemory(m_allocator, m_surfaceQuadAlloc);
+}
+
+// ---------------------------------------------------------------------------
+// updateUIShadowQuad — write 6 room-Vertex-layout verts for shadow casting
+// ---------------------------------------------------------------------------
+
+void Renderer::updateUIShadowQuad(const glm::vec3& P00, const glm::vec3& P10,
+                                   const glm::vec3& P01, const glm::vec3& P11)
+{
+    if (!m_uiShadowVtxBuf) return;
+
+    // Compute surface normal from edge vectors.
+    glm::vec3 eu = P10 - P00;
+    glm::vec3 ev = P01 - P00;
+    glm::vec3 n  = glm::normalize(glm::cross(eu, ev));
+
+    // Two CCW triangles matching the composite quad winding: (P00, P10, P11) and (P00, P11, P01)
+    Vertex verts[6] = {
+        {P00, n, {0.0f, 0.0f}},
+        {P10, n, {1.0f, 0.0f}},
+        {P11, n, {1.0f, 1.0f}},
+        {P00, n, {0.0f, 0.0f}},
+        {P11, n, {1.0f, 1.0f}},
+        {P01, n, {0.0f, 1.0f}},
+    };
+
+    void* mapped = nullptr;
+    vmaMapMemory(m_allocator, m_uiShadowVtxAlloc, &mapped);
+    memcpy(mapped, verts, sizeof(verts));
+    vmaUnmapMemory(m_allocator, m_uiShadowVtxAlloc);
 }
 
 // ---------------------------------------------------------------------------

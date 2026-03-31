@@ -244,6 +244,8 @@ void App::drawFrame()
 
     // Update animated surface quad for traditional (composite) mode.
     m_renderer.updateSurfaceQuad(P_00, P_10, P_01, P_11);
+    // Update shadow-pass quad so the UI surface casts a shadow onto room geometry.
+    m_renderer.updateUIShadowQuad(P_00, P_10, P_01, P_11);
 
     // Tessellate HUD and upload to GPU buffer.
     m_hudVerts.clear();

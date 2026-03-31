@@ -111,6 +111,9 @@ public:
     // Update the surface quad vertex buffer each frame (for composite/traditional mode).
     void updateSurfaceQuad(const glm::vec3& P00, const glm::vec3& P10,
                            const glm::vec3& P01, const glm::vec3& P11);
+    // Update the shadow-pass quad vertex buffer each frame (room Vertex layout).
+    void updateUIShadowQuad(const glm::vec3& P00, const glm::vec3& P10,
+                            const glm::vec3& P01, const glm::vec3& P11);
     // Get the RenderTarget for the given swapchain image index.
     RenderTarget& getSwapchainRT(uint32_t imageIndex);
     // Semaphore that becomes signalled when the swapchain image is available.
@@ -158,7 +161,7 @@ private:
     bool createShadowResources();
     void destroySwapchain();
     bool createFramebuffers();        // MSAA resources + per-swapchain FBs
-    bool createSurfaceQuadBuffer();   // allocate host-visible surface quad buffer
+    bool createSurfaceQuadBuffer();   // allocate host-visible surface quad buffer (QuadVertex + Vertex for shadow)
     bool ensureUIRTAllocated();       // lazily create offscreen UI RT (traditional mode)
 
     // Instance / device
@@ -239,6 +242,10 @@ private:
     // Surface quad buffer (host-visible, 6 QuadVertices, updated per frame for composite mode)
     VkBuffer      m_surfaceQuadBuf{VK_NULL_HANDLE};
     VmaAllocation m_surfaceQuadAlloc{VK_NULL_HANDLE};
+
+    // Shadow quad buffer (host-visible, 6 room Vertex entries, updated per frame for shadow casting)
+    VkBuffer      m_uiShadowVtxBuf{VK_NULL_HANDLE};
+    VmaAllocation m_uiShadowVtxAlloc{VK_NULL_HANDLE};
 
     // MSAA transient attachments for main pass (shared across all frames)
     VkImage       m_msaaColorImg{VK_NULL_HANDLE};
