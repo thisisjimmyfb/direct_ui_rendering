@@ -4,6 +4,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
     mat4 view;
     mat4 proj;
     mat4 lightViewProj;
+    vec4 lightPos;
     vec4 lightDir;
     vec4 lightColor;
     vec4 ambientColor;
@@ -19,6 +20,7 @@ layout(push_constant) uniform PC {
 
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) in vec4 inShadowCoord;
+layout(location = 2) in vec3 inWorldPos;
 
 layout(location = 0) out vec4 outColor;
 
@@ -36,12 +38,26 @@ float sampleShadowPCF(vec4 shadowCoord) {
     return shadow * 0.25;
 }
 
+// Compute spotlight cone attenuation for a fragment.
+// inWorldPos is the fragment position in world space.
+float spotlightAttenuation(vec3 inWorldPos) {
+    vec3 toLight = lightPos.xyz - inWorldPos;
+    vec3 L       = normalize(toLight);
+
+    // Spotlight cone attenuation: smoothstep from outer to inner cone angle.
+    float cosAngle   = dot(-L, normalize(lightDir.xyz));
+    float outerCos   = lightDir.w;   // cos(outerConeAngle)
+    float innerCos   = lightColor.w; // cos(innerConeAngle)
+    return smoothstep(outerCos, innerCos, cosAngle);
+}
+
 void main() {
 #ifdef UI_TEST_COLOR
     outColor = vec4(1.0, 0.0, 1.0, 1.0);
 #else
     float shadow = sampleShadowPCF(inShadowCoord);
-    vec3  lit    = clamp(ambientColor.rgb + shadow * lightColor.rgb, 0.0, 1.0);
+    float spot   = spotlightAttenuation(inWorldPos);
+    vec3  lit    = clamp(ambientColor.rgb + shadow * spot * lightColor.rgb, 0.0, 1.0);
 
     if (sdfThreshold > 0.0) {
         float dist  = texture(uiAtlas, inTexCoord).r;

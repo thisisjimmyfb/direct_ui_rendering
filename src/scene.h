@@ -27,11 +27,14 @@ struct UISurface {
     glm::vec3 P_11_local{ 2.0f, -1.0f, 0.0f};
 };
 
-// Directional light parameters.
-struct DirectionalLight {
-    glm::vec3 direction{glm::normalize(glm::vec3(-0.5f, -1.0f, -0.5f))};
+// Spotlight parameters.
+struct SpotLight {
+    glm::vec3 position{0.0f, 2.8f, 0.5f};
+    glm::vec3 direction{glm::normalize(glm::vec3(0.0f, -1.3f, -3.5f))};
     glm::vec3 color{1.0f, 0.95f, 0.85f};
-    glm::vec3 ambient{0.15f, 0.15f, 0.2f};
+    glm::vec3 ambient{0.08f, 0.08f, 0.12f};
+    float innerConeAngle{glm::radians(35.0f)};
+    float outerConeAngle{glm::radians(50.0f)};
 };
 
 // Scene owns room mesh data, UI surface corner definitions, and light setup.
@@ -58,10 +61,10 @@ public:
 
     const RoomMesh&       roomMesh()  const { return m_room; }
     const UISurface&      uiSurface() const { return m_uiSurface; }
-    const DirectionalLight& light()   const { return m_light; }
+    const SpotLight& light()   const { return m_light; }
 
 private:
     RoomMesh        m_room;
     UISurface       m_uiSurface;
-    DirectionalLight m_light;
+    SpotLight m_light;
 };

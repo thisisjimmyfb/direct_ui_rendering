@@ -4,6 +4,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
     mat4 view;
     mat4 proj;
     mat4 lightViewProj;
+    vec4 lightPos;
     vec4 lightDir;
     vec4 lightColor;
     vec4 ambientColor;
@@ -20,6 +21,7 @@ layout(location = 0) in vec2 inUIPos;
 layout(location = 1) in vec2 inUITexCoord;
 layout(location = 0) out vec2 outTexCoord;
 layout(location = 1) out vec4 outShadowCoord;
+layout(location = 2) out vec3 outWorldPos;
 
 out gl_PerVertex {
     vec4  gl_Position;
@@ -46,6 +48,7 @@ void main() {
     gl_Position    = totalMatrix * uiVert;
     gl_Position.z -= depthBias * gl_Position.w;
 
-    outTexCoord   = inUITexCoord;
-    outShadowCoord = biasMat * lightViewProj * worldPos;
+    outTexCoord     = inUITexCoord;
+    outShadowCoord  = biasMat * lightViewProj * worldPos;
+    outWorldPos     = worldPos.xyz;
 }

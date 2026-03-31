@@ -4,8 +4,9 @@ layout(set = 0, binding = 0) uniform SceneUBO {
     mat4 view;
     mat4 proj;
     mat4 lightViewProj;
-    vec4 lightDir;
-    vec4 lightColor;
+    vec4 lightPos;       // xyz = spotlight world position
+    vec4 lightDir;       // xyz = spotlight direction, w = cos(outerConeAngle)
+    vec4 lightColor;     // rgb = color, w = cos(innerConeAngle)
     vec4 ambientColor;
 };
 
@@ -18,9 +19,7 @@ layout(location = 3) in vec2 inUV;
 
 layout(location = 0) out vec4 outColor;
 
-// 2x2 PCF tap over the shadow map with slope-scaled depth bias to prevent
-// shadow acne. The bias is larger for surfaces nearly perpendicular to the
-// light (low N·L), matching the slope of the shadow-map depth gradient.
+// 2x2 PCF with slope-scaled depth bias.
 float sampleShadowPCF(vec4 shadowCoord, vec3 N, vec3 L) {
     vec3 proj = shadowCoord.xyz / shadowCoord.w;
     float bias = max(0.005 * (1.0 - dot(N, L)), 0.001);
@@ -38,14 +37,23 @@ float sampleShadowPCF(vec4 shadowCoord, vec3 N, vec3 L) {
 
 void main() {
     vec3 N = normalize(inNormal);
-    vec3 L = normalize(-lightDir.xyz);
+
+    // Per-fragment light vector for the spotlight.
+    vec3 toLight = lightPos.xyz - inWorldPos;
+    vec3 L       = normalize(toLight);
+
+    // Spotlight cone attenuation: smoothstep from outer to inner cone angle.
+    float cosAngle   = dot(-L, normalize(lightDir.xyz));
+    float outerCos   = lightDir.w;   // cos(outerConeAngle)
+    float innerCos   = lightColor.w; // cos(innerConeAngle)
+    float spotFactor = smoothstep(outerCos, innerCos, cosAngle);
 
     // Blinn-Phong diffuse
     float diff   = max(dot(N, L), 0.0);
     float shadow = sampleShadowPCF(inShadowCoord, N, L);
 
     vec3 ambient = ambientColor.rgb;
-    vec3 diffuse = diff * shadow * lightColor.rgb;
+    vec3 diffuse = diff * shadow * spotFactor * lightColor.rgb;
 
     // Flat grey room surface
     vec3 surfaceColor = vec3(0.75);

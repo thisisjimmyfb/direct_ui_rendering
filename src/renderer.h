@@ -14,8 +14,9 @@ struct SceneUBO {
     glm::mat4 view;
     glm::mat4 proj;
     glm::mat4 lightViewProj;
-    glm::vec4 lightDir;
-    glm::vec4 lightColor;
+    glm::vec4 lightPos;      // xyz = spotlight world position
+    glm::vec4 lightDir;      // xyz = spotlight direction, w = cos(outerConeAngle)
+    glm::vec4 lightColor;    // rgb = color, w = cos(innerConeAngle)
     glm::vec4 ambientColor;
 };
 

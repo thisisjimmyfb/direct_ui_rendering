@@ -12,6 +12,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <cstdint>
+#include <cmath>
 
 // Number of headless frames to render for each measurement.
 static constexpr int PERF_FRAME_COUNT = 60;
@@ -144,8 +145,11 @@ protected:
         sceneUBO.view         = view;
         sceneUBO.proj         = proj;
         sceneUBO.lightViewProj = scene.lightViewProj();
-        sceneUBO.lightDir     = glm::vec4(scene.light().direction, 0.0f);
-        sceneUBO.lightColor   = glm::vec4(scene.light().color,     1.0f);
+        sceneUBO.lightPos     = glm::vec4(scene.light().position, 1.0f);
+        sceneUBO.lightDir     = glm::vec4(scene.light().direction,
+                                          std::cos(scene.light().outerConeAngle));
+        sceneUBO.lightColor   = glm::vec4(scene.light().color,
+                                          std::cos(scene.light().innerConeAngle));
         sceneUBO.ambientColor = glm::vec4(scene.light().ambient,   1.0f);
         renderer.updateSceneUBO(sceneUBO);
 

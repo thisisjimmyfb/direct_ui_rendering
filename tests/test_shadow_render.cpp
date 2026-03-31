@@ -37,8 +37,11 @@ TEST_F(ContainmentTest, BackWall_NotSelfShadowed)
     sceneUBO.view          = view;
     sceneUBO.proj          = proj;
     sceneUBO.lightViewProj = scene.lightViewProj();
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction, 0.0f);
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
+    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
+                                       std::cos(scene.light().outerConeAngle));
+    sceneUBO.lightColor    = glm::vec4(scene.light().color,
+                                       std::cos(scene.light().innerConeAngle));
     sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
     renderer.updateSceneUBO(sceneUBO);
 
@@ -109,10 +112,11 @@ TEST_F(ContainmentTest, BackWall_NotSelfShadowed)
 // ---------------------------------------------------------------------------
 TEST_F(ContainmentTest, PCFShadow_Symmetry_CenteredKernel)
 {
-    // Camera looking at the room from a position that shows visible lighting variation.
-    // Position: outside the room, looking at the front wall corner.
-    glm::mat4 view = glm::lookAt(glm::vec3(5.0f, 2.0f, 8.0f),
-                                 glm::vec3(0.0f, 1.5f, 3.0f),
+    // Camera inside the room looking at the back wall — the spotlight illuminates
+    // the back wall and the UI quad's shadow falls onto it, creating a visible
+    // lit/shadow boundary that exercises the PCF penumbra.
+    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.5f, 0.5f),
+                                 glm::vec3(0.0f, 1.5f, -3.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f),
                                       static_cast<float>(FB_WIDTH) / FB_HEIGHT,
@@ -123,8 +127,11 @@ TEST_F(ContainmentTest, PCFShadow_Symmetry_CenteredKernel)
     sceneUBO.view          = view;
     sceneUBO.proj          = proj;
     sceneUBO.lightViewProj = scene.lightViewProj();
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction, 0.0f);
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
+    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
+                                       std::cos(scene.light().outerConeAngle));
+    sceneUBO.lightColor    = glm::vec4(scene.light().color,
+                                       std::cos(scene.light().innerConeAngle));
     sceneUBO.ambientColor  = glm::vec4(scene.light().ambient, 1.0f);
     renderer.updateSceneUBO(sceneUBO);
 

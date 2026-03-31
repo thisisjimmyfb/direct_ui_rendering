@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cmath>
 #include "containment_fixture.h"
 
 // ---------------------------------------------------------------------------
@@ -32,8 +33,11 @@ TEST_F(ContainmentTest, NonUniformScale_DirectMode_ClipPlanesTrackReshapedSurfac
     sceneUBO.view          = view;
     sceneUBO.proj          = proj;
     sceneUBO.lightViewProj = scene.lightViewProj();
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction, 0.0f);
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
+    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
+                                       std::cos(scene.light().outerConeAngle));
+    sceneUBO.lightColor    = glm::vec4(scene.light().color,
+                                       std::cos(scene.light().innerConeAngle));
     sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
     renderer.updateSceneUBO(sceneUBO);
 
@@ -104,8 +108,11 @@ TEST_F(ContainmentTest, FontSizeInvariance_DirectVsTraditional_ScaledQuad)
     sceneUBO.view          = view;
     sceneUBO.proj          = proj;
     sceneUBO.lightViewProj = scene.lightViewProj();
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction, 0.0f);
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,     1.0f);
+    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
+    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
+                                       std::cos(scene.light().outerConeAngle));
+    sceneUBO.lightColor    = glm::vec4(scene.light().color,
+                                       std::cos(scene.light().innerConeAngle));
     sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
     renderer.updateSceneUBO(sceneUBO);
 

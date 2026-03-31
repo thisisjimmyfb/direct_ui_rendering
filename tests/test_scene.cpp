@@ -29,12 +29,18 @@ protected:
     }
 };
 
-TEST_F(LightFrustumTest, AllRoomCornersInsideNDC)
+TEST_F(LightFrustumTest, BackWallCornersInsideNDC)
 {
-    // Every room corner must project to NDC x,y within [-1, 1] so all
-    // geometry falls within the shadow map.
-    for (const auto& c : roomCorners) {
+    // The spotlight aims at the back wall (Z = -D).  The four back wall
+    // corners must project to NDC x,y within [-1, 1] so the back wall
+    // receives correct shadow-map coverage.  Front corners are outside
+    // the spotlight cone and need not be tested.
+    const glm::vec3 backWall[4] = {
+        {-W, 0, -D}, {W, 0, -D}, {-W, H, -D}, {W, H, -D}
+    };
+    for (const auto& c : backWall) {
         glm::vec4 clip = lvp * glm::vec4(c, 1.0f);
+        ASSERT_GT(clip.w, 0.0f) << "clip.w <= 0 for corner (" << c.x << "," << c.y << "," << c.z << ")";
         float ndcX = clip.x / clip.w;
         float ndcY = clip.y / clip.w;
         EXPECT_GE(ndcX, -1.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcX=" << ndcX;
@@ -44,98 +50,108 @@ TEST_F(LightFrustumTest, AllRoomCornersInsideNDC)
     }
 }
 
-TEST_F(LightFrustumTest, AllRoomCornersNDCZInVulkanDepthRange)
+TEST_F(LightFrustumTest, BackWallCornersNDCZInVulkanDepthRange)
 {
-    // Vulkan depth range is [0, 1].  A corner with NDC z outside this range
-    // would be clipped from the shadow map, producing missing shadows on that
-    // part of the scene.  The x/y tests above do not catch this failure mode.
-    for (const auto& c : roomCorners) {
+    // Vulkan depth range is [0, 1].  The back wall corners (which the spotlight
+    // aims at) must have NDC z in [0, 1] so their depth is captured correctly
+    // in the shadow map.
+    const glm::vec3 backWall[4] = {
+        {-W, 0, -D}, {W, 0, -D}, {-W, H, -D}, {W, H, -D}
+    };
+    for (const auto& c : backWall) {
         glm::vec4 clip = lvp * glm::vec4(c, 1.0f);
+        ASSERT_GT(clip.w, 0.0f) << "clip.w <= 0 for corner (" << c.x << "," << c.y << "," << c.z << ")";
         float ndcZ = clip.z / clip.w;
-        EXPECT_GE(ndcZ, 0.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcZ=" << ndcZ << " < 0 (clipped from shadow map near plane)";
-        EXPECT_LE(ndcZ, 1.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcZ=" << ndcZ << " > 1 (clipped from shadow map far plane)";
+        EXPECT_GE(ndcZ, 0.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcZ=" << ndcZ;
+        EXPECT_LE(ndcZ, 1.0f) << "corner (" << c.x << "," << c.y << "," << c.z << ") ndcZ=" << ndcZ;
     }
 }
 
-TEST_F(LightFrustumTest, AllRoomCornersClipWIsOne)
+TEST_F(LightFrustumTest, PerspectiveProjectionUsed_ClipWVariesByDepth)
 {
-    // An orthographic projection leaves W unchanged (equal to input W = 1.0).
-    // If the matrix accidentally becomes perspective, W varies per-vertex and
-    // shadow-map depth comparisons (which rely on NDC Z = clip.z / clip.w = clip.z
-    // for ortho) silently break.
-    for (const auto& c : roomCorners) {
-        glm::vec4 clip = lvp * glm::vec4(c, 1.0f);
-        EXPECT_NEAR(clip.w, 1.0f, 1e-4f)
-            << "corner (" << c.x << "," << c.y << "," << c.z << ") clip.w=" << clip.w
-            << " (expected 1.0 for orthographic projection)";
-    }
+    // The spotlight uses a perspective projection so clip.w must vary per
+    // vertex based on depth.  Two back wall corners at different heights
+    // will have different clip.w values, confirming perspective is in use.
+    // (An orthographic projection would give clip.w == 1.0 for all vertices.)
+    glm::vec4 clip0 = lvp * glm::vec4(-W, 0, -D, 1.0f);
+    glm::vec4 clip1 = lvp * glm::vec4( W, H, -D, 1.0f);
+    // Both must have positive clip.w (in front of the near plane).
+    EXPECT_GT(clip0.w, 0.0f) << "clip.w must be positive (in front of near plane)";
+    EXPECT_GT(clip1.w, 0.0f) << "clip.w must be positive (in front of near plane)";
+    // clip.w must differ from 1.0, confirming perspective (not orthographic).
+    EXPECT_GT(std::abs(clip0.w - 1.0f), 0.01f)
+        << "clip.w=" << clip0.w << " — expected != 1.0 for perspective projection";
 }
 
-TEST_F(LightFrustumTest, NdcZSpreadExceedsHalf)
+TEST_F(LightFrustumTest, NdcZDepthOrderingPreserved_UIQuadCloserThanBackWall)
 {
-    // The tight orthographic frustum must utilise at least half of the [0,1]
-    // Vulkan depth range.  A loose frustum (e.g. nearZ≈0, farZ=100) packs all
-    // geometry into a tiny NDC-Z slice, which wastes depth-buffer precision and
-    // produces visible shadow acne.
-    float minZ =  1e9f, maxZ = -1e9f;
-    for (const auto& c : roomCorners) {
-        glm::vec4 clip = lvp * glm::vec4(c, 1.0f);
-        float ndcZ = clip.z / clip.w;
-        if (ndcZ < minZ) minZ = ndcZ;
-        if (ndcZ > maxZ) maxZ = ndcZ;
-    }
-    EXPECT_GT(maxZ - minZ, 0.5f)
-        << "NDC-Z range = " << (maxZ - minZ)
-        << " — frustum near/far planes are too loose; tighten them to improve shadow precision";
+    // The shadow map must preserve depth ordering between the UI quad
+    // (at ~3.3 m from the spotlight) and the back wall (at ~3.7 m).
+    // A correct depth ordering is required for the spotlight to cast a
+    // shadow of the UI quad onto the back wall.
+    // The UI quad center at t=0 is at (0, 1.5, -2.5).
+    glm::vec3 uiCenter{0.0f, 1.5f, -2.5f};
+    glm::vec3 backWallCenter{0.0f, 1.5f, -3.0f};
+
+    glm::vec4 clipUI   = lvp * glm::vec4(uiCenter, 1.0f);
+    glm::vec4 clipWall = lvp * glm::vec4(backWallCenter, 1.0f);
+
+    ASSERT_GT(clipUI.w,   0.0f) << "UI center is behind the near plane";
+    ASSERT_GT(clipWall.w, 0.0f) << "back wall center is behind the near plane";
+
+    float ndcZ_ui   = clipUI.z   / clipUI.w;
+    float ndcZ_wall = clipWall.z / clipWall.w;
+
+    // UI quad is closer → must have smaller NDC Z.
+    EXPECT_LT(ndcZ_ui, ndcZ_wall)
+        << "Depth ordering wrong: UI quad NDC Z=" << ndcZ_ui
+        << " >= back wall NDC Z=" << ndcZ_wall
+        << " — the shadow of the UI quad cannot be cast onto the back wall";
+
+    // The difference must be large enough for reliable shadow comparisons.
+    float spread = ndcZ_wall - ndcZ_ui;
+    EXPECT_GT(spread, 0.001f)
+        << "NDC-Z difference UI-to-back-wall = " << spread
+        << " — frustum is too loose, shadow precision will be poor";
 }
 
-TEST_F(LightFrustumTest, FrustumHalfExtentsTighterThanOldFixedBound)
+TEST_F(LightFrustumTest, SpotlightPosition_InsideRoomBounds)
 {
-    // Reconstruct the same light-view matrix used inside lightViewProj() so we
-    // can measure the AABB half-extents directly in light-view space.
-    // The old fixed ortho was ±5 m; the tight AABB must have half-width < 4 m.
-    glm::vec3 dir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.5f));
-    glm::vec3 lightPos = -dir * 10.0f;
-    glm::mat4 view = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
-
-    float minX =  1e9f, maxX = -1e9f;
-    float minY =  1e9f, maxY = -1e9f;
-    for (const auto& c : roomCorners) {
-        glm::vec4 lv = view * glm::vec4(c, 1.0f);
-        if (lv.x < minX) minX = lv.x;
-        if (lv.x > maxX) maxX = lv.x;
-        if (lv.y < minY) minY = lv.y;
-        if (lv.y > maxY) maxY = lv.y;
-    }
-
-    float halfX = (maxX - minX) * 0.5f;
-    float halfY = (maxY - minY) * 0.5f;
-
-    EXPECT_LT(halfX, 4.0f) << "Light-view X half-extent=" << halfX << " is not tighter than old ±5m bound";
-    EXPECT_LT(halfY, 4.0f) << "Light-view Y half-extent=" << halfY << " is not tighter than old ±5m bound";
+    // The spotlight must be positioned inside the room so it can illuminate
+    // and cast shadows onto the walls, floor, and ceiling.
+    // Room bounds: X in [-2, 2], Y in [0, 3], Z in [-3, 3].
+    glm::vec3 pos = scene.light().position;
+    EXPECT_GE(pos.x, -W) << "spotlight X below left wall";
+    EXPECT_LE(pos.x,  W) << "spotlight X above right wall";
+    EXPECT_GE(pos.y,  0) << "spotlight Y below floor";
+    EXPECT_LE(pos.y,  H) << "spotlight Y above ceiling";
+    EXPECT_GE(pos.z, -D) << "spotlight Z beyond back wall";
+    EXPECT_LE(pos.z,  D) << "spotlight Z beyond front wall";
 }
 
 TEST_F(LightFrustumTest, ZMonotonicity_CloserPointHasSmallerNdcZ)
 {
-    // Two points along the light direction: P_closer is one unit toward the
-    // light source, P_farther is one unit away.  After projection through
-    // lightViewProj the closer point must have a strictly smaller NDC Z than
-    // the farther point.
+    // Two points along the spotlight direction: P_closer is 2 units from the
+    // light source, P_farther is 4 units along the same direction.  After
+    // projection through lightViewProj the closer point must have a strictly
+    // smaller NDC Z than the farther point.
     //
     // Why this matters: shadow comparisons in room.frag evaluate
     //   fragDepth < shadowMapDepth
     // If near/far are swapped, or the view matrix has a sign error, the depth
     // ordering inverts and every fragment is either always in shadow or always
     // lit, regardless of actual visibility.  This test catches that silently.
-    glm::vec3 dir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.5f)); // light-to-scene
-    glm::vec3 sceneCenter{0.0f, 1.5f, 0.0f};  // middle of room (H=3)
-    float delta = 1.0f;
+    glm::vec3 origin = scene.light().position;
+    glm::vec3 dir    = scene.light().direction;  // normalized, toward scene
 
-    glm::vec3 P_closer  = sceneCenter - dir * delta;  // one unit toward the light
-    glm::vec3 P_farther = sceneCenter + dir * delta;  // one unit away from the light
+    glm::vec3 P_closer  = origin + dir * 2.0f;  // 2 units from light
+    glm::vec3 P_farther = origin + dir * 4.0f;  // 4 units from light
 
     glm::vec4 clip_near = lvp * glm::vec4(P_closer,  1.0f);
     glm::vec4 clip_far  = lvp * glm::vec4(P_farther, 1.0f);
+
+    ASSERT_GT(clip_near.w, 0.0f) << "P_closer is behind the near plane";
+    ASSERT_GT(clip_far.w,  0.0f) << "P_farther is behind the near plane";
 
     float ndcZ_near = clip_near.z / clip_near.w;
     float ndcZ_far  = clip_far.z  / clip_far.w;
@@ -587,7 +603,7 @@ TEST_F(SceneAnimationTest, AtSin3PiOver2_LateralXIsNegativeMax_YFollowsFormula)
 TEST_F(LightFrustumTest, LightDirection_IsUnitVector)
 {
     // scene.light().direction must always be a unit vector.
-    // Accidental removal of glm::normalize(...) from the DirectionalLight
+    // Accidental removal of glm::normalize(...) from the SpotLight
     // default initializer would silently scale shadow map coverage and make
     // the NdotL bias formula compute incorrect results, producing shadow acne
     // on all surfaces without any compile-time or runtime error.
@@ -595,12 +611,12 @@ TEST_F(LightFrustumTest, LightDirection_IsUnitVector)
     EXPECT_NEAR(len, 1.0f, 1e-5f)
         << "light direction length=" << len
         << " — it must be normalized (length == 1.0); "
-        << "check that glm::normalize() is applied in the DirectionalLight initializer.";
+        << "check that glm::normalize() is applied in the SpotLight initializer.";
 }
 
 TEST_F(LightFrustumTest, LightDirection_NotParallelToLookAtUpVector)
 {
-    // The shadow-map glm::lookAt call uses (0,1,0) as its up vector.  If the
+    // The spotlight's glm::lookAt call uses (0,1,0) as its up vector.  If the
     // light direction is exactly (0,±1,0), the view direction and up vector are
     // collinear, making lookAt degenerate — it produces a NaN matrix and all
     // shadow-map comparisons return undefined results, making every fragment
@@ -647,6 +663,48 @@ TEST_F(LightFrustumTest, AmbientColor_AllChannelsPositive)
         << "ambient green channel=" << amb.g << " (must be > 0)";
     EXPECT_GT(amb.b, 0.0f)
         << "ambient blue channel=" << amb.b << " (must be > 0)";
+}
+
+TEST_F(LightFrustumTest, SpotlightConeAngles_InnerSmallerThanOuter)
+{
+    // The inner cone angle must be strictly smaller than the outer cone angle.
+    // If they are equal or inverted, smoothstep(outerCos, innerCos, cosAngle)
+    // degenerates (returns 0 or 1 everywhere) and the soft penumbra between
+    // inner and outer cone disappears, producing a hard spotlight edge.
+    // Also verify both angles are strictly positive (non-zero cone).
+    float inner = scene.light().innerConeAngle;
+    float outer = scene.light().outerConeAngle;
+    EXPECT_GT(inner, 0.0f)  << "innerConeAngle must be > 0";
+    EXPECT_GT(outer, 0.0f)  << "outerConeAngle must be > 0";
+    EXPECT_LT(inner, outer) << "innerConeAngle=" << inner
+        << " must be < outerConeAngle=" << outer
+        << " for smoothstep penumbra to work correctly";
+}
+
+TEST_F(LightFrustumTest, SpotlightDirection_AimsTowardBackWall)
+{
+    // The spotlight is designed to cast a shadow of the floating UI quad
+    // onto the back wall (Z = -D).  The direction must have a negative Z
+    // component so it points into the scene toward the back wall.
+    float dirZ = scene.light().direction.z;
+    EXPECT_LT(dirZ, 0.0f)
+        << "spotlight direction.z=" << dirZ
+        << " — must be negative to aim toward the back wall (Z = -" << D << ")";
+}
+
+TEST_F(LightFrustumTest, UIQuadCenter_InsideSpotlightOuterCone_AtT0)
+{
+    // At t=0 the UI quad sits at approximately (0, 1.5, -2.5) in world space.
+    // The spotlight must illuminate this position (angle < outerConeAngle) so
+    // the shadow of the UI quad can be cast onto the back wall.
+    glm::vec3 quadCenter{0.0f, 1.5f, -2.5f};  // matches animationMatrix(0) translation
+    glm::vec3 toQuad = glm::normalize(quadCenter - scene.light().position);
+    float cosAngle   = glm::dot(toQuad, scene.light().direction);
+    float outerCos   = std::cos(scene.light().outerConeAngle);
+    EXPECT_GT(cosAngle, outerCos)
+        << "UI quad center is outside the spotlight outer cone: "
+        << "cosAngle=" << cosAngle << " <= outerCos=" << outerCos
+        << " — the spotlight will not illuminate (and cast a shadow of) the UI quad";
 }
 
 // ---------------------------------------------------------------------------

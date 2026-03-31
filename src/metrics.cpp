@@ -57,22 +57,30 @@ uint32_t Metrics::tessellateHUD(const UISystem& uiSystem,
     snprintf(buf, sizeof(buf), "Mode: %s", modeName);
     total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 0 * lineHeight, outVerts);
 
-    // Line 1: frame time
-    snprintf(buf, sizeof(buf), "Frame: %.1f ms", averageFrameMs());
+    // Line 1: toggle instruction (Space to toggle modes)
+    snprintf(buf, sizeof(buf), "Toggle: [Space]");
     total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 1 * lineHeight, outVerts);
 
-    // Line 2: GPU memory
-    double mb = static_cast<double>(m_gpuBytes) / (1024.0 * 1024.0);
-    snprintf(buf, sizeof(buf), "GPU Mem: %.1f MB", mb);
+    // Line 2: frame time
+    snprintf(buf, sizeof(buf), "Frame: %.1f ms", averageFrameMs());
     total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 2 * lineHeight, outVerts);
 
-    // Line 3: MSAA
-    snprintf(buf, sizeof(buf), "MSAA: %ux", msaaSamples);
+    // Line 3: GPU memory
+    double mb = static_cast<double>(m_gpuBytes) / (1024.0 * 1024.0);
+    snprintf(buf, sizeof(buf), "GPU Mem: %.1f MB", mb);
     total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 3 * lineHeight, outVerts);
 
-    // Line 4: input mode (optional) - aligned with same left margin as other HUD lines
+    // Line 4: MSAA
+    snprintf(buf, sizeof(buf), "MSAA: %ux", msaaSamples);
+    total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 4 * lineHeight, outVerts);
+
+    // Line 5: depth bias adjustment hint
+    snprintf(buf, sizeof(buf), "Bias: [+] [-]");
+    total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 5 * lineHeight, outVerts);
+
+    // Line 6: input mode (optional) - aligned with same left margin as other HUD lines
     if (inputModeStr) {
-        total += uiSystem.tessellateString(inputModeStr, leftMargin, leftMargin + 4 * lineHeight, outVerts);
+        total += uiSystem.tessellateString(inputModeStr, leftMargin, leftMargin + 6 * lineHeight, outVerts);
     }
 
     return total;

@@ -216,8 +216,11 @@ void App::drawFrame()
     sceneUBO.view        = view;
     sceneUBO.proj        = proj;
     sceneUBO.lightViewProj = m_scene.lightViewProj();
-    sceneUBO.lightDir    = glm::vec4(m_scene.light().direction, 0.0f);
-    sceneUBO.lightColor  = glm::vec4(m_scene.light().color, 1.0f);
+    sceneUBO.lightPos     = glm::vec4(m_scene.light().position, 1.0f);
+    sceneUBO.lightDir     = glm::vec4(m_scene.light().direction,
+                                      std::cos(m_scene.light().outerConeAngle));
+    sceneUBO.lightColor   = glm::vec4(m_scene.light().color,
+                                      std::cos(m_scene.light().innerConeAngle));
     sceneUBO.ambientColor = glm::vec4(m_scene.light().ambient, 1.0f);
     m_renderer.updateSceneUBO(sceneUBO);
 
