@@ -5,7 +5,6 @@ Find the most important task from the following list and work on it. After task 
 ## Pending Tasks
 - Make all toggle obvious on the overlay UI. Tell the user which key to press to toggle each mode.
 - Make the shadowmap a spotlight (instead of a parallel light) that casts a shadow inside the room. The spotlight should be casting a shadow of the floating UI quad onto the wall.
-- Add test: verify SurfaceTransforms struct fields from computeSurfaceTransforms match individual computations (M_world == M_sw * M_us, M_total == viewProj * M_sw * M_us).
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section

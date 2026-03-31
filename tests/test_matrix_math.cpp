@@ -496,3 +496,66 @@ TEST(TransformMath, M_sw_Parallelogram_InteriorPoint)
         << "surface centre (s=0.5,t=0.5) did not map to parallelogram centre";
 }
 
+// ---------------------------------------------------------------------------
+// computeSurfaceTransforms struct field correctness
+//
+// Verify that the SurfaceTransforms fields returned by computeSurfaceTransforms
+// match what individual computations produce:
+//   M_world == M_sw * M_us
+//   M_total == viewProj * M_sw * M_us
+//
+// These tests catch bugs in computeSurfaceTransforms itself (e.g., wrong
+// multiplication order) that would not be caught by the corner-mapping tests.
+// ---------------------------------------------------------------------------
+
+static bool mat4Near(const glm::mat4& a, const glm::mat4& b, float eps = 1e-5f)
+{
+    for (int col = 0; col < 4; ++col)
+        for (int row = 0; row < 4; ++row)
+            if (std::abs(a[col][row] - b[col][row]) > eps)
+                return false;
+    return true;
+}
+
+TEST(TransformMath, SurfaceTransforms_MWorldEqualsMswTimesMus)
+{
+    glm::vec3 P00{-1.0f, 0.5f, -2.5f};
+    glm::vec3 P10{ 2.0f, 0.5f, -2.5f};
+    glm::vec3 P01{-0.5f, 2.5f, -2.5f};
+    const float W = 512.0f, H = 128.0f;
+    glm::mat4 identityVP(1.0f);
+
+    auto t       = computeSurfaceTransforms(P00, P10, P01, W, H, identityVP);
+    glm::mat4 expected = computeM_sw(P00, P10, P01) * computeM_us(W, H);
+
+    for (int col = 0; col < 4; ++col)
+        for (int row = 0; row < 4; ++row)
+            EXPECT_NEAR(t.M_world[col][row], expected[col][row], 1e-5f)
+                << "M_world[" << col << "][" << row << "] != M_sw*M_us["
+                << col << "][" << row << "]";
+}
+
+TEST(TransformMath, SurfaceTransforms_MTotalEqualsViewProjTimesMswTimesMus)
+{
+    glm::vec3 P00{-1.0f, 0.5f, -2.5f};
+    glm::vec3 P10{ 2.0f, 0.5f, -2.5f};
+    glm::vec3 P01{-0.5f, 2.5f, -2.5f};
+    const float W = 512.0f, H = 128.0f;
+
+    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 2.0f, 5.0f),
+                                 glm::vec3(0.0f, 1.0f, 0.0f),
+                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f), 16.0f / 9.0f, 0.1f, 100.0f);
+    proj[1][1] *= -1.0f;  // Vulkan Y-flip
+    glm::mat4 vp = proj * view;
+
+    auto t       = computeSurfaceTransforms(P00, P10, P01, W, H, vp);
+    glm::mat4 expected = vp * computeM_sw(P00, P10, P01) * computeM_us(W, H);
+
+    for (int col = 0; col < 4; ++col)
+        for (int row = 0; row < 4; ++row)
+            EXPECT_NEAR(t.M_total[col][row], expected[col][row], 1e-4f)
+                << "M_total[" << col << "][" << row << "] != vp*M_sw*M_us["
+                << col << "][" << row << "]";
+}
+
