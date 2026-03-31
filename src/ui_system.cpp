@@ -284,7 +284,7 @@ bool UISystem::init(VmaAllocator allocator,
 
     // Tessellate "Hello World" and upload to device-local vertex buffer.
     std::vector<UIVertex> helloVerts;
-    tessellateString("Hello World", 8.0f, 8.0f, helloVerts);
+    tessellateString("Hello World", -7.0f, 0.0f, helloVerts);
     m_helloVertCount = static_cast<uint32_t>(helloVerts.size());
 
     VkDeviceSize vtxSize = m_helloVertCount * sizeof(UIVertex);
@@ -323,7 +323,7 @@ void UISystem::cleanup()
 
 GlyphRect UISystem::uvForChar(char c) const
 {
-    int idx = static_cast<unsigned char>(c) - 32;
+    int idx = static_cast<unsigned char>(c) - ' ';
     if (idx < 0 || idx >= 95) idx = 0;   // fallback to space
     return m_glyphTable[idx];
 }
