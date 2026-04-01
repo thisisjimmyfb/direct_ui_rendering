@@ -119,3 +119,45 @@ TEST(MetricsTest, AverageFrameMs_SingleFrame_ReturnsPositiveValue)
            "dividing by zero or discarding the first sample (count == 0 guard "
            "triggered when m_frameIndex should be 1 and m_filled is false)";
 }
+
+// ---------------------------------------------------------------------------
+// MetricsTest — averageFrameMs uses count=N for partial fill (N < HISTORY_SIZE)
+// ---------------------------------------------------------------------------
+
+// Record exactly 30 fast frames followed by 1 slow frame (1 ms sleep), so the
+// ring buffer is partially filled (31 samples out of 60).  The average must
+// reflect all 31 samples, not HISTORY_SIZE (60).
+//
+// Failure mode this test guards against:
+//   Bug: count = HISTORY_SIZE regardless of m_filled
+//   Effect: The 29 zero-initialized slots dilute the sum, making avg ≈ 1ms/60
+//           instead of the correct avg ≈ 1ms/31.  We distinguish the two cases
+//           by checking avg > 1ms/40 (a threshold between 1/31 and 1/60).
+TEST(MetricsTest, AverageFrameMs_PartialFill_UsesRecordedCountNotHistorySize)
+{
+    Metrics m;
+
+    // Record 30 near-instant frames.
+    for (int i = 0; i < 30; ++i) {
+        m.beginFrame();
+        m.endFrame();
+    }
+
+    // Record one slow frame (~1 ms).
+    m.beginFrame();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    m.endFrame();
+
+    // Buffer has 31 samples; m_filled is still false.
+    float avg = m.averageFrameMs();
+    EXPECT_GT(avg, 0.0f)
+        << "averageFrameMs() returned 0 with 31 frames — partial-fill path broken";
+
+    // If count were HISTORY_SIZE (60) the average would be ~1ms/60 ≈ 0.017 ms.
+    // With the correct count (31) the average is ~1ms/31 ≈ 0.032 ms.
+    // Threshold 1ms/40 = 0.025 ms sits between the two cases.
+    EXPECT_GT(avg, 1.0f / 40.0f)
+        << "averageFrameMs() too small — count may be HISTORY_SIZE (60) instead "
+           "of the actual 31 recorded samples; partial-fill branch not using "
+           "m_frameIndex as the divisor";
+}

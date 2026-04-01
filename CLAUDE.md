@@ -67,5 +67,4 @@ direct_ui_rendering/
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI quad shadow casting
 │   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
-└── CMakeLists.txt                    # tests/ subdirectory CMake configuration
 ```
