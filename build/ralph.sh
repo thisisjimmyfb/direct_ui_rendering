@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ralph.sh — spec-driven development loop
 #
-# Always tries Claude CLI first, falls back to local LLM only when token limit is reached.
-# Each iteration retries the standard Claude endpoint.
+# Uses local LLM during peak hours (5am-11am, 1pm-7pm) to avoid double token pricing.
+# Falls back to standard Claude endpoint during off-peak hours.
 #
 # Usage:
 #   ./ralph.sh [LOOP.md] [options]
@@ -22,6 +22,17 @@ AUTO=false
 SKIP_PERMISSIONS=true
 MODEL=""
 OFFLINE_LLM_URL="http://localhost:8088"
+
+# Peak hours: 5am-11am and 1pm-7pm (13:00-19:00) — double token pricing
+is_peak_hours() {
+    local hour
+    hour=$(date +%H)
+    hour=$((10#$hour))
+    if [[ $hour -ge 5 && $hour -lt 11 ]] || [[ $hour -ge 13 && $hour -lt 19 ]]; then
+        return 0
+    fi
+    return 1
+}
 
 # ── argument parsing ──────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -85,6 +96,27 @@ $SKIP_PERMISSIONS && CLAUDE_FLAGS+=("--dangerously-skip-permissions")
 # ── signal handling ───────────────────────────────────────────────────────────
 trap 'echo ""; echo "ralph stopped after $iteration iteration(s)."; exit 0' INT TERM
 
+# Peak hours: 5am-11am and 1pm-7pm (13:00-19:00) — double token pricing
+is_peak_hours() {
+    local hour
+    hour=$(date +%H)
+    hour=$((10#$hour))
+    if [[ $hour -ge 5 && $hour -lt 11 ]] || [[ $hour -ge 13 && $hour -lt 19 ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# ── determine LLM mode ────────────────────────────────────────────────────────
+if is_peak_hours; then
+    USE_LOCAL=true
+    echo "  mode: local LLM (peak hours: double token pricing)"
+else
+    USE_LOCAL=false
+    echo "  mode: standard Claude (off-peak hours)"
+fi
+echo ""
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 run_local_llm() {
 	cat "$LOOP" | ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL" claude "${CLAUDE_FLAGS[@]}" 2>&1
@@ -117,7 +149,11 @@ echo "ralph"
 echo "  loop : $LOOP"
 echo "  mode : $( $AUTO && echo 'auto (ctrl+c to stop)' || echo 'manual (enter to advance)' )"
 $SKIP_PERMISSIONS && echo "  perms: bypassed"
-echo "  local llm: $OFFLINE_LLM_URL (fallback only)"
+if $USE_LOCAL; then
+    echo "  llm  : local ($OFFLINE_LLM_URL)"
+else
+    echo "  llm  : standard Claude"
+fi
 echo ""
 
 while true; do
@@ -128,7 +164,7 @@ while true; do
 
     # Always try Claude first
 	set +e
-	output=$(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}")
+	output=$(cat "$LOOP" | CLAUDE_CODE_DISABLE_1M_CONTEXT=1 claude "${CLAUDE_FLAGS[@]}")
     exit_code=$?
 	set -e
 	
