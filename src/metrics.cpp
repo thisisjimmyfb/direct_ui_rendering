@@ -61,20 +61,28 @@ uint32_t Metrics::tessellateHUD(const UISystem& uiSystem,
     snprintf(buf, sizeof(buf), "  [Space] toggle render mode");
     total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 1 * lineHeight, outVerts);
 
-    // Line 2: depth bias adjustment
-    snprintf(buf, sizeof(buf), "  [+] [-] adjust depth bias");
+    // Line 2: input mode toggle (Camera/Terminal)
+    snprintf(buf, sizeof(buf), "  [Tab] toggle input mode");
     total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 2 * lineHeight, outVerts);
 
-    // Line 3: quad scale controls
-    snprintf(buf, sizeof(buf), "  [Left] [Right] quad width");
+    // Line 3: depth bias adjustment
+    snprintf(buf, sizeof(buf), "  [+] [-] adjust depth bias");
     total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 3 * lineHeight, outVerts);
 
-    // Line 4: quad height controls
-    snprintf(buf, sizeof(buf), "  [O] [P] quad height");
+    // Line 4: quad width controls ([ and ] keys)
+    snprintf(buf, sizeof(buf), "  [[] []] quad width");
     total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 4 * lineHeight, outVerts);
 
-    // Line 5: input mode toggle (optional, non-empty)
-    int nextLine = 5;
+    // Line 5: quad height controls
+    snprintf(buf, sizeof(buf), "  [O] [P] quad height");
+    total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 5 * lineHeight, outVerts);
+
+    // Line 6: mouse look toggle
+    snprintf(buf, sizeof(buf), "  [RClick] mouse look");
+    total += uiSystem.tessellateString(buf, leftMargin, leftMargin + 6 * lineHeight, outVerts);
+
+    // Line 7: input mode toggle (optional, non-empty)
+    int nextLine = 7;
     if (inputModeStr && inputModeStr[0] != '\0') {
         total += uiSystem.tessellateString(inputModeStr, leftMargin, leftMargin + nextLine * lineHeight, outVerts);
         ++nextLine;

@@ -105,7 +105,7 @@ bool App::initSubsystems()
     // Allocate host-visible HUD vertex buffer (max 1024 UIVertex)
     {
         VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-        bci.size        = sizeof(UIVertex) * 1024;
+        bci.size        = sizeof(UIVertex) * 2048;
         bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 

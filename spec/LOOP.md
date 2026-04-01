@@ -4,7 +4,7 @@ Find the most important task from the following list and work on it. After task 
 
 ## Pending Tasks
 - Make all toggle obvious on the overlay UI. Tell the user which key to press to toggle each mode.
-
+- Make the UI quad a shadow caster and cast shadows onto the walls in the room.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section

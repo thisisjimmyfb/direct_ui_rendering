@@ -20,18 +20,20 @@ TEST(MetricsTest, HUDTessellation_VertexCountMatchesLineCount)
     // With RenderMode::Direct, msaaSamples=4, no inputModeStr:
     //   Line 0: "Mode: DIRECT"              = 12 chars
     //   Line 1: "  [Space] toggle render mode" = 28 chars
-    //   Line 2: "  [+] [-] adjust depth bias"  = 27 chars
-    //   Line 3: "  [Left] [Right] quad width"  = 27 chars
-    //   Line 4: "  [O] [P] quad height"        = 21 chars
-    //   Line 5: "Frame: 0.0 ms"                = 13 chars
-    //   Line 6: "GPU Mem: 0.0 MB"              = 15 chars
-    //   Line 7: "MSAA: 4x"                     =  8 chars
-    //   Total                                   = 151 chars  ->  906 vertices
+    //   Line 2: "  [Tab] toggle input mode"     = 27 chars
+    //   Line 3: "  [+] [-] adjust depth bias"  = 27 chars
+    //   Line 4: "  [[] []] quad width"         = 20 chars
+    //   Line 5: "  [O] [P] quad height"        = 21 chars
+    //   Line 6: "  [RClick] mouse look"         = 21 chars
+    //   Line 7: "Frame: 0.0 ms"                = 13 chars
+    //   Line 8: "GPU Mem: 0.0 MB"              = 15 chars
+    //   Line 9: "MSAA: 4x"                     =  8 chars
+    //   Total                                   = 190 chars  -> 1140 vertices
     Metrics metrics;
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
 
-    constexpr int expectedChars = 12 + 28 + 27 + 27 + 21 + 13 + 15 + 8;
+    constexpr int expectedChars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8;
     constexpr uint32_t expectedVerts = 6u * static_cast<uint32_t>(expectedChars);
 
     EXPECT_EQ(count, expectedVerts)
@@ -56,18 +58,20 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_VertexCount)
     // With RenderMode::Traditional, msaaSamples=4, no inputModeStr:
     //   Line 0: "Mode: TRADITIONAL"           = 17 chars
     //   Line 1: "  [Space] toggle render mode" = 28 chars
-    //   Line 2: "  [+] [-] adjust depth bias"  = 27 chars
-    //   Line 3: "  [Left] [Right] quad width"  = 27 chars
-    //   Line 4: "  [O] [P] quad height"        = 21 chars
-    //   Line 5: "Frame: 0.0 ms"                = 13 chars
-    //   Line 6: "GPU Mem: 0.0 MB"              = 15 chars
-    //   Line 7: "MSAA: 4x"                     =  8 chars
-    //   Total                                   = 156 chars  ->  936 vertices
+    //   Line 2: "  [Tab] toggle input mode"     = 27 chars
+    //   Line 3: "  [+] [-] adjust depth bias"  = 27 chars
+    //   Line 4: "  [[] []] quad width"         = 20 chars
+    //   Line 5: "  [O] [P] quad height"        = 21 chars
+    //   Line 6: "  [RClick] mouse look"         = 21 chars
+    //   Line 7: "Frame: 0.0 ms"                = 13 chars
+    //   Line 8: "GPU Mem: 0.0 MB"              = 15 chars
+    //   Line 9: "MSAA: 4x"                     =  8 chars
+    //   Total                                   = 195 chars  -> 1170 vertices
     Metrics metrics;
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts);
 
-    constexpr int expectedChars = 17 + 28 + 27 + 27 + 21 + 13 + 15 + 8;
+    constexpr int expectedChars = 17 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8;
     constexpr uint32_t expectedVerts = 6u * static_cast<uint32_t>(expectedChars);
 
     EXPECT_EQ(count, expectedVerts)
@@ -90,25 +94,27 @@ TEST(MetricsTest, HUDTessellation_WithInputModeStr_AddsExtraLine)
 
     // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
     // With RenderMode::Direct, msaaSamples=4, inputModeStr="Input: CAMERA":
-    //   8-line base (same as HUDTessellation_VertexCountMatchesLineCount):
+    //   10-line base (same as HUDTessellation_VertexCountMatchesLineCount):
     //     Mode: DIRECT              = 12 chars
     //     [Space] toggle...         = 28 chars
+    //     [Tab] toggle...           = 27 chars
     //     [+] [-] adjust...         = 27 chars
-    //     [Left] [Right]...         = 27 chars
+    //     [[] []] quad width        = 20 chars
     //     [O] [P] quad height       = 21 chars
+    //     [RClick] mouse look       = 21 chars
     //     Frame: 0.0 ms             = 13 chars
     //     GPU Mem: 0.0 MB           = 15 chars
     //     MSAA: 4x                  =  8 chars
-    //   Line 5: "Input: CAMERA"         = 13 chars
-    //   Total                              = 164 chars  ->  984 vertices
+    //   Line 10: "Input: CAMERA"       = 13 chars
+    //   Total                              = 203 chars  -> 1218 vertices
     const char* inputStr = "Input: CAMERA";
     Metrics metrics;
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, inputStr);
 
-    constexpr int baseLine8Chars = 12 + 28 + 27 + 27 + 21 + 13 + 15 + 8;
+    constexpr int baseLine10Chars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8;
     const int extraChars = static_cast<int>(std::strlen(inputStr));
-    const uint32_t expectedVerts = 6u * static_cast<uint32_t>(baseLine8Chars + extraChars);
+    const uint32_t expectedVerts = 6u * static_cast<uint32_t>(baseLine10Chars + extraChars);
 
     EXPECT_EQ(count, expectedVerts)
         << "tessellateHUD returned wrong vertex count when inputModeStr is set";
@@ -133,10 +139,10 @@ TEST(MetricsTest, HUDTessellation_AppendsToExistingVector)
     verts.resize(preExistingCount);
 
     // tessellateHUD with RenderMode::Direct, msaaSamples=4, no inputModeStr
-    // produces 918 vertices (same as HUDTessellation_VertexCountMatchesLineCount).
+    // produces 1140 vertices (same as HUDTessellation_VertexCountMatchesLineCount).
     uint32_t appended = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
 
-    constexpr uint32_t expectedAppended = 6u * (12u + 28u + 27u + 27u + 21u + 13u + 15u + 8u); // 906
+    constexpr uint32_t expectedAppended = 6u * (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 8u); // 1140
     EXPECT_EQ(appended, expectedAppended)
         << "tessellateHUD returned wrong appended vertex count";
     EXPECT_EQ(verts.size(), static_cast<size_t>(preExistingCount + expectedAppended))
@@ -269,25 +275,29 @@ TEST(MetricsTest, HUDTessellation_LineHeightSpacing_VerticalSeparation)
     std::vector<UIVertex> verts;
     metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
 
-    // Character counts for each line (no inputModeStr):
+     // Character counts for each line (no inputModeStr):
     //   Line 0: "Mode: DIRECT"              = 12 chars  ->  72 vertices (offset   0)
     //   Line 1: "  [Space] toggle render mode" = 28 chars  -> 168 vertices (offset  72)
-    //   Line 2: "  [+] [-] adjust depth bias"  = 27 chars  -> 162 vertices (offset 240)
-    //   Line 3: "  [Left] [Right] quad width"  = 27 chars  -> 162 vertices (offset 402)
-    //   Line 4: "  [O] [P] quad height"        = 21 chars  -> 138 vertices (offset 564)
-    //   Line 5: "Frame: 0.0 ms"                = 13 chars  ->  78 vertices (offset 690)
-    //   Line 6: "GPU Mem: 0.0 MB"              = 15 chars  ->  90 vertices (offset 780)
-    //   Line 7: "MSAA: 4x"                     =  8 chars  ->  48 vertices (offset 870)
+    //   Line 2: "  [Tab] toggle input mode"     = 25 chars  -> 150 vertices (offset 240)
+    //   Line 3: "  [+] [-] adjust depth bias"  = 27 chars  -> 162 vertices (offset 390)
+    //   Line 4: "  [[] []] quad width"         = 20 chars  -> 120 vertices (offset 552)
+    //   Line 5: "  [O] [P] quad height"        = 21 chars  -> 126 vertices (offset 672)
+    //   Line 6: "  [RClick] mouse look"         = 21 chars  -> 126 vertices (offset 798)
+    //   Line 7: "Frame: 0.0 ms"                = 13 chars  ->  78 vertices (offset 924)
+    //   Line 8: "GPU Mem: 0.0 MB"              = 15 chars  ->  90 vertices (offset 1002)
+    //   Line 9: "MSAA: 4x"                     =  8 chars  ->  48 vertices (offset 1092)
     constexpr size_t line0Start = 0;
     constexpr size_t line1Start = 72;        // 12 * 6
     constexpr size_t line2Start = 240;       // (12 + 28) * 6
-    constexpr size_t line3Start = 402;       // (12 + 28 + 27) * 6
-    constexpr size_t line4Start = 564;       // (12 + 28 + 27 + 27) * 6
-    constexpr size_t line5Start = 690;       // (12 + 28 + 27 + 27 + 21) * 6
-    constexpr size_t line6Start = 768;       // (12 + 28 + 27 + 27 + 21 + 13) * 6
-    constexpr size_t line7Start = 858;       // (12 + 28 + 27 + 27 + 21 + 13 + 15) * 6
+    constexpr size_t line3Start = 390;       // (12 + 28 + 25) * 6
+    constexpr size_t line4Start = 552;       // (12 + 28 + 25 + 27) * 6
+    constexpr size_t line5Start = 672;       // (12 + 28 + 25 + 27 + 20) * 6
+    constexpr size_t line6Start = 798;       // (12 + 28 + 25 + 27 + 20 + 21) * 6
+    constexpr size_t line7Start = 924;       // (12 + 28 + 25 + 27 + 20 + 21 + 21) * 6
+    constexpr size_t line8Start = 1002;      // (12 + 28 + 25 + 27 + 20 + 21 + 21 + 13) * 6
+    constexpr size_t line9Start = 1092;      // (12 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15) * 6
 
-    ASSERT_GE(verts.size(), line7Start + 6u)
+    ASSERT_GE(verts.size(), line9Start + 6u)
         << "tessellateHUD produced too few vertices to check all line starts";
 
     constexpr float leftMargin = 8.0f;
@@ -301,6 +311,8 @@ TEST(MetricsTest, HUDTessellation_LineHeightSpacing_VerticalSeparation)
     const float expectedY5 = leftMargin + 5 * lineHeight;   // 208.0f
     const float expectedY6 = leftMargin + 6 * lineHeight;   // 248.0f
     const float expectedY7 = leftMargin + 7 * lineHeight;   // 288.0f
+    const float expectedY8 = leftMargin + 8 * lineHeight;   // 328.0f
+    const float expectedY9 = leftMargin + 9 * lineHeight;   // 368.0f
 
     EXPECT_NEAR(verts[line0Start].pos.y, expectedY0, 1e-5f) << "Line 0 TL y != " << expectedY0;
     EXPECT_NEAR(verts[line1Start].pos.y, expectedY1, 1e-5f) << "Line 1 TL y != " << expectedY1;
@@ -310,6 +322,8 @@ TEST(MetricsTest, HUDTessellation_LineHeightSpacing_VerticalSeparation)
     EXPECT_NEAR(verts[line5Start].pos.y, expectedY5, 1e-5f) << "Line 5 TL y != " << expectedY5;
     EXPECT_NEAR(verts[line6Start].pos.y, expectedY6, 1e-5f) << "Line 6 TL y != " << expectedY6;
     EXPECT_NEAR(verts[line7Start].pos.y, expectedY7, 1e-5f) << "Line 7 TL y != " << expectedY7;
+    EXPECT_NEAR(verts[line8Start].pos.y, expectedY8, 1e-5f) << "Line 8 TL y != " << expectedY8;
+    EXPECT_NEAR(verts[line9Start].pos.y, expectedY9, 1e-5f) << "Line 9 TL y != " << expectedY9;
 
     // Cross-check: successive line y-values must differ by exactly lineHeight.
     float diff01 = verts[line1Start].pos.y - verts[line0Start].pos.y;
@@ -319,6 +333,8 @@ TEST(MetricsTest, HUDTessellation_LineHeightSpacing_VerticalSeparation)
     float diff45 = verts[line5Start].pos.y - verts[line4Start].pos.y;
     float diff56 = verts[line6Start].pos.y - verts[line5Start].pos.y;
     float diff67 = verts[line7Start].pos.y - verts[line6Start].pos.y;
+    float diff78 = verts[line8Start].pos.y - verts[line7Start].pos.y;
+    float diff89 = verts[line9Start].pos.y - verts[line8Start].pos.y;
 
     EXPECT_NEAR(diff01, lineHeight, 1e-5f) << "Line 0->1 y gap != lineHeight";
     EXPECT_NEAR(diff12, lineHeight, 1e-5f) << "Line 1->2 y gap != lineHeight";
@@ -327,6 +343,8 @@ TEST(MetricsTest, HUDTessellation_LineHeightSpacing_VerticalSeparation)
     EXPECT_NEAR(diff45, lineHeight, 1e-5f) << "Line 4->5 y gap != lineHeight";
     EXPECT_NEAR(diff56, lineHeight, 1e-5f) << "Line 5->6 y gap != lineHeight";
     EXPECT_NEAR(diff67, lineHeight, 1e-5f) << "Line 6->7 y gap != lineHeight";
+    EXPECT_NEAR(diff78, lineHeight, 1e-5f) << "Line 7->8 y gap != lineHeight";
+    EXPECT_NEAR(diff89, lineHeight, 1e-5f) << "Line 8->9 y gap != lineHeight";
 }
 
 // ---------------------------------------------------------------------------
@@ -343,18 +361,18 @@ TEST(MetricsTest, HUDTessellation_LineHeightSpacing_WithInputModeStr_FifthLineSe
     std::vector<UIVertex> verts;
     metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, inputStr);
 
-    // Line 5 starts after lines 0-4: (12+28+27+27+21)*6 = 690 vertices.
-    constexpr size_t line5Start = (12u + 28u + 27u + 27u + 21u) * 6u; // 702
+   // inputModeStr starts after lines 0-6: (12+28+25+27+20+21+21)*6 = 924 vertices.
+    constexpr size_t line7Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u) * 6u; // 924
 
-    ASSERT_GE(verts.size(), line5Start + 6u)
-        << "tessellateHUD produced too few vertices to check line 5 start";
+    ASSERT_GE(verts.size(), line7Start + 6u)
+        << "tessellateHUD produced too few vertices to check inputModeStr line start";
 
     constexpr float leftMargin = 8.0f;
     constexpr float lineHeight = 40.0f;
-    const float expectedY5 = leftMargin + 5.0f * lineHeight; // 208.0f
+    const float expectedY7 = leftMargin + 7.0f * lineHeight; // 288.0f
 
-    EXPECT_NEAR(verts[line5Start].pos.y, expectedY5, 1e-5f)
-        << "Line 5 TL y != " << expectedY5;
+    EXPECT_NEAR(verts[line7Start].pos.y, expectedY7, 1e-5f)
+        << "inputModeStr line TL y != " << expectedY7;
 }
 
 // ---------------------------------------------------------------------------
@@ -373,26 +391,27 @@ TEST(MetricsTest, HUDTessellation_WithInputModeStr_AllLinesYSpacing)
     metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, inputStr);
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 12u * 6u;                        // 72
-    constexpr size_t line2Start = (12u + 28u) * 6u;               // 240
-    constexpr size_t line3Start = (12u + 28u + 27u) * 6u;         // 402
-    constexpr size_t line4Start = (12u + 28u + 27u + 27u) * 6u;   // 564
-    constexpr size_t line5Start = (12u + 28u + 27u + 27u + 21u) * 6u; // 702
+    constexpr size_t line1Start = 12u * 6u;                              // 72
+    constexpr size_t line2Start = (12u + 28u) * 6u;                     // 240
+    constexpr size_t line3Start = (12u + 28u + 25u) * 6u;               // 390
+    constexpr size_t line4Start = (12u + 28u + 25u + 27u) * 6u;         // 564
+    constexpr size_t line5Start = (12u + 28u + 25u + 27u + 20u) * 6u;   // 684
+    constexpr size_t line6Start = (12u + 28u + 25u + 27u + 20u + 21u) * 6u;  // 798
 
-    ASSERT_GE(verts.size(), line5Start + 6u)
+    ASSERT_GE(verts.size(), line6Start + 6u)
         << "tessellateHUD produced too few vertices to check all lines";
 
     constexpr float leftMargin = 8.0f;
     constexpr float lineHeight = 40.0f;
 
-    const size_t lineStarts[6] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start };
-    for (int i = 0; i < 6; ++i) {
+    const size_t lineStarts[7] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start };
+    for (int i = 0; i < 7; ++i) {
         const float expectedY = leftMargin + static_cast<float>(i) * lineHeight;
         EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
             << "Line " << i << " TL y != " << expectedY;
     }
 
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         const float diff = verts[lineStarts[i + 1]].pos.y - verts[lineStarts[i]].pos.y;
         EXPECT_NEAR(diff, lineHeight, 1e-5f)
             << "Line " << i << " -> " << (i + 1) << " y gap != lineHeight";
@@ -415,26 +434,27 @@ TEST(MetricsTest, HUDTessellation_WithInputModeStr_AllLinesXPositions)
     metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, inputStr);
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 12u * 6u;                        // 72
-    constexpr size_t line2Start = (12u + 28u) * 6u;               // 240
-    constexpr size_t line3Start = (12u + 28u + 27u) * 6u;         // 402
-    constexpr size_t line4Start = (12u + 28u + 27u + 27u) * 6u;   // 564
-    constexpr size_t line5Start = (12u + 28u + 27u + 27u + 21u) * 6u; // 702
+    constexpr size_t line1Start = 12u * 6u;                              // 72
+    constexpr size_t line2Start = (12u + 28u) * 6u;                     // 240
+    constexpr size_t line3Start = (12u + 28u + 25u) * 6u;               // 390
+    constexpr size_t line4Start = (12u + 28u + 25u + 27u) * 6u;         // 564
+    constexpr size_t line5Start = (12u + 28u + 25u + 27u + 20u) * 6u;   // 684
+    constexpr size_t line6Start = (12u + 28u + 25u + 27u + 20u + 21u) * 6u;  // 798
 
-    ASSERT_GE(verts.size(), line5Start + 6u)
+    ASSERT_GE(verts.size(), line6Start + 6u)
         << "tessellateHUD produced too few vertices to check all lines";
 
     constexpr float leftMargin = 8.0f;
 
-    const size_t lineStarts[6] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start };
-    for (int i = 0; i < 6; ++i) {
+    const size_t lineStarts[7] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start };
+    for (int i = 0; i < 7; ++i) {
         EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
             << "Line " << i << " TL x != " << leftMargin;
     }
 }
 
 // ---------------------------------------------------------------------------
-// MetricsTest — all eight lines follow the arithmetic y-sequence when no
+// MetricsTest — all nine lines follow the arithmetic y-sequence when no
 // inputModeStr is supplied
 // ---------------------------------------------------------------------------
 
@@ -448,28 +468,30 @@ TEST(MetricsTest, HUDTessellation_EightLines_AllLinesYSpacing)
     metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, nullptr);
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 12u * 6u;                        // 72
-    constexpr size_t line2Start = (12u + 28u) * 6u;               // 240
-    constexpr size_t line3Start = (12u + 28u + 27u) * 6u;         // 402
-    constexpr size_t line4Start = (12u + 28u + 27u + 27u) * 6u;   // 564
-    constexpr size_t line5Start = (12u + 28u + 27u + 27u + 21u) * 6u; // 702
-    constexpr size_t line6Start = (12u + 28u + 27u + 27u + 21u + 13u) * 6u; // 768
-    constexpr size_t line7Start = (12u + 28u + 27u + 27u + 21u + 13u + 15u) * 6u; // 858
+    constexpr size_t line1Start = 12u * 6u;                                        // 72
+    constexpr size_t line2Start = (12u + 28u) * 6u;                               // 240
+    constexpr size_t line3Start = (12u + 28u + 25u) * 6u;                         // 390
+    constexpr size_t line4Start = (12u + 28u + 25u + 27u) * 6u;                   // 552
+    constexpr size_t line5Start = (12u + 28u + 25u + 27u + 20u) * 6u;             // 672
+    constexpr size_t line6Start = (12u + 28u + 25u + 27u + 20u + 21u) * 6u;       // 798
+    constexpr size_t line7Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u) * 6u; // 924
+    constexpr size_t line8Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u) * 6u; // 1002
+    constexpr size_t line9Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u) * 6u; // 1092
 
-    ASSERT_GE(verts.size(), line7Start + 6u)
-        << "tessellateHUD produced too few vertices to check all eight lines";
+    ASSERT_GE(verts.size(), line9Start + 6u)
+        << "tessellateHUD produced too few vertices to check all ten lines";
 
     constexpr float leftMargin = 8.0f;
     constexpr float lineHeight = 40.0f;
 
-    const size_t lineStarts[8] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start };
-    for (int i = 0; i < 8; ++i) {
+    const size_t lineStarts[10] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start, line8Start, line9Start };
+    for (int i = 0; i < 10; ++i) {
         const float expectedY = leftMargin + static_cast<float>(i) * lineHeight;
         EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
             << "Line " << i << " TL y != " << expectedY;
     }
 
-    for (int i = 0; i < 7; ++i) {
+    for (int i = 0; i < 9; ++i) {
         const float diff = verts[lineStarts[i + 1]].pos.y - verts[lineStarts[i]].pos.y;
         EXPECT_NEAR(diff, lineHeight, 1e-5f)
             << "Line " << i << " -> " << (i + 1) << " y gap != lineHeight";
@@ -477,7 +499,7 @@ TEST(MetricsTest, HUDTessellation_EightLines_AllLinesYSpacing)
 }
 
 // ---------------------------------------------------------------------------
-// MetricsTest — all eight lines share leftMargin x-position when no
+// MetricsTest — all nine lines share leftMargin x-position when no
 // inputModeStr is supplied
 // ---------------------------------------------------------------------------
 
@@ -491,21 +513,23 @@ TEST(MetricsTest, HUDTessellation_EightLines_AllLinesXPositions)
     metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, nullptr);
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 12u * 6u;                        // 72
-    constexpr size_t line2Start = (12u + 28u) * 6u;               // 240
-    constexpr size_t line3Start = (12u + 28u + 27u) * 6u;         // 402
-    constexpr size_t line4Start = (12u + 28u + 27u + 27u) * 6u;   // 564
-    constexpr size_t line5Start = (12u + 28u + 27u + 27u + 21u) * 6u; // 702
-    constexpr size_t line6Start = (12u + 28u + 27u + 27u + 21u + 13u) * 6u; // 768
-    constexpr size_t line7Start = (12u + 28u + 27u + 27u + 21u + 13u + 15u) * 6u; // 858
+    constexpr size_t line1Start = 12u * 6u;                                        // 72
+    constexpr size_t line2Start = (12u + 28u) * 6u;                               // 240
+    constexpr size_t line3Start = (12u + 28u + 25u) * 6u;                         // 390
+    constexpr size_t line4Start = (12u + 28u + 25u + 27u) * 6u;                   // 552
+    constexpr size_t line5Start = (12u + 28u + 25u + 27u + 20u) * 6u;             // 672
+    constexpr size_t line6Start = (12u + 28u + 25u + 27u + 20u + 21u) * 6u;       // 798
+    constexpr size_t line7Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u) * 6u; // 924
+    constexpr size_t line8Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u) * 6u; // 1002
+    constexpr size_t line9Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u) * 6u; // 1092
 
-    ASSERT_GE(verts.size(), line7Start + 6u)
-        << "tessellateHUD produced too few vertices to check all eight lines";
+    ASSERT_GE(verts.size(), line9Start + 6u)
+        << "tessellateHUD produced too few vertices to check all ten lines";
 
     constexpr float leftMargin = 8.0f;
 
-    const size_t lineStarts[8] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start };
-    for (int i = 0; i < 8; ++i) {
+    const size_t lineStarts[10] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start, line8Start, line9Start };
+    for (int i = 0; i < 10; ++i) {
         EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
             << "Line " << i << " TL x != " << leftMargin;
     }
@@ -526,28 +550,30 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_AllLinesYSpacing)
     metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, nullptr);
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 17u * 6u;                             // 102
-    constexpr size_t line2Start = (17u + 28u) * 6u;                    // 270
-    constexpr size_t line3Start = (17u + 28u + 27u) * 6u;              // 432
-    constexpr size_t line4Start = (17u + 28u + 27u + 27u) * 6u;        // 594
-    constexpr size_t line5Start = (17u + 28u + 27u + 27u + 21u) * 6u;  // 720
-    constexpr size_t line6Start = (17u + 28u + 27u + 27u + 21u + 13u) * 6u; // 798
-    constexpr size_t line7Start = (17u + 28u + 27u + 27u + 21u + 13u + 15u) * 6u; // 888
+    constexpr size_t line1Start = 17u * 6u;                                         // 102
+    constexpr size_t line2Start = (17u + 28u) * 6u;                                // 270
+    constexpr size_t line3Start = (17u + 28u + 25u) * 6u;                          // 420
+    constexpr size_t line4Start = (17u + 28u + 25u + 27u) * 6u;                    // 582
+    constexpr size_t line5Start = (17u + 28u + 25u + 27u + 20u) * 6u;              // 702
+    constexpr size_t line6Start = (17u + 28u + 25u + 27u + 20u + 21u) * 6u;        // 828
+    constexpr size_t line7Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u) * 6u;  // 954
+    constexpr size_t line8Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u) * 6u; // 1032
+    constexpr size_t line9Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u) * 6u; // 1122
 
-    ASSERT_GE(verts.size(), line7Start + 6u)
-        << "tessellateHUD (Traditional) produced too few vertices to check all eight lines";
+    ASSERT_GE(verts.size(), line9Start + 6u)
+        << "tessellateHUD (Traditional) produced too few vertices to check all ten lines";
 
     constexpr float leftMargin = 8.0f;
     constexpr float lineHeight = 40.0f;
 
-    const size_t lineStarts[8] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start };
-    for (int i = 0; i < 8; ++i) {
+    const size_t lineStarts[10] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start, line8Start, line9Start };
+    for (int i = 0; i < 10; ++i) {
         const float expectedY = leftMargin + static_cast<float>(i) * lineHeight;
         EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
             << "Traditional mode Line " << i << " TL y != " << expectedY;
     }
 
-    for (int i = 0; i < 7; ++i) {
+    for (int i = 0; i < 9; ++i) {
         const float diff = verts[lineStarts[i + 1]].pos.y - verts[lineStarts[i]].pos.y;
         EXPECT_NEAR(diff, lineHeight, 1e-5f)
             << "Traditional mode Line " << i << " -> " << (i + 1) << " y gap != lineHeight";
@@ -555,7 +581,7 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_AllLinesYSpacing)
 }
 
 // ---------------------------------------------------------------------------
-// MetricsTest — Traditional mode: all eight lines start at leftMargin x
+// MetricsTest — Traditional mode: all nine lines start at leftMargin x
 // ---------------------------------------------------------------------------
 
 TEST(MetricsTest, HUDTessellation_TraditionalMode_AllLinesXPositions)
@@ -568,21 +594,23 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_AllLinesXPositions)
     metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, nullptr);
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 17u * 6u;                             // 102
-    constexpr size_t line2Start = (17u + 28u) * 6u;                    // 270
-    constexpr size_t line3Start = (17u + 28u + 27u) * 6u;              // 432
-    constexpr size_t line4Start = (17u + 28u + 27u + 27u) * 6u;        // 594
-    constexpr size_t line5Start = (17u + 28u + 27u + 27u + 21u) * 6u;  // 720
-    constexpr size_t line6Start = (17u + 28u + 27u + 27u + 21u + 13u) * 6u; // 798
-    constexpr size_t line7Start = (17u + 28u + 27u + 27u + 21u + 13u + 15u) * 6u; // 888
+    constexpr size_t line1Start = 17u * 6u;                                         // 102
+    constexpr size_t line2Start = (17u + 28u) * 6u;                                // 270
+    constexpr size_t line3Start = (17u + 28u + 25u) * 6u;                          // 420
+    constexpr size_t line4Start = (17u + 28u + 25u + 27u) * 6u;                    // 582
+    constexpr size_t line5Start = (17u + 28u + 25u + 27u + 20u) * 6u;              // 702
+    constexpr size_t line6Start = (17u + 28u + 25u + 27u + 20u + 21u) * 6u;        // 828
+    constexpr size_t line7Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u) * 6u;  // 954
+    constexpr size_t line8Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u) * 6u; // 1032
+    constexpr size_t line9Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u) * 6u; // 1122
 
-    ASSERT_GE(verts.size(), line7Start + 6u)
-        << "tessellateHUD (Traditional) produced too few vertices to check all eight lines";
+    ASSERT_GE(verts.size(), line9Start + 6u)
+        << "tessellateHUD (Traditional) produced too few vertices to check all ten lines";
 
     constexpr float leftMargin = 8.0f;
 
-    const size_t lineStarts[8] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start };
-    for (int i = 0; i < 8; ++i) {
+    const size_t lineStarts[10] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start, line8Start, line9Start };
+    for (int i = 0; i < 10; ++i) {
         EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
             << "Traditional mode Line " << i << " TL x != " << leftMargin;
     }
@@ -604,19 +632,20 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_WithInputModeStr_AllLinesXPosi
     metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, inputStr);
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 17u * 6u;                             // 102
-    constexpr size_t line2Start = (17u + 28u) * 6u;                    // 270
-    constexpr size_t line3Start = (17u + 28u + 27u) * 6u;              // 432
-    constexpr size_t line4Start = (17u + 28u + 27u + 27u) * 6u;        // 594
-    constexpr size_t line5Start = (17u + 28u + 27u + 27u + 21u) * 6u;  // 720
+    constexpr size_t line1Start = 17u * 6u;                                        // 102
+    constexpr size_t line2Start = (17u + 28u) * 6u;                               // 270
+    constexpr size_t line3Start = (17u + 28u + 25u) * 6u;                         // 420
+    constexpr size_t line4Start = (17u + 28u + 25u + 27u) * 6u;                   // 582
+    constexpr size_t line5Start = (17u + 28u + 25u + 27u + 20u) * 6u;             // 702
+    constexpr size_t line6Start = (17u + 28u + 25u + 27u + 20u + 21u) * 6u;       // 828
 
-    ASSERT_GE(verts.size(), line5Start + 6u)
+    ASSERT_GE(verts.size(), line6Start + 6u)
         << "tessellateHUD (Traditional+inputModeStr) produced too few vertices to check all lines";
 
     constexpr float leftMargin = 8.0f;
 
-    const size_t lineStarts[6] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start };
-    for (int i = 0; i < 6; ++i) {
+    const size_t lineStarts[7] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start };
+    for (int i = 0; i < 7; ++i) {
         EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
             << "Traditional mode Line " << i << " TL x != " << leftMargin;
     }
@@ -638,26 +667,27 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_WithInputModeStr_AllLinesYSpac
     metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, inputStr);
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 17u * 6u;                             // 102
-    constexpr size_t line2Start = (17u + 28u) * 6u;                    // 270
-    constexpr size_t line3Start = (17u + 28u + 27u) * 6u;              // 432
-    constexpr size_t line4Start = (17u + 28u + 27u + 27u) * 6u;        // 594
-    constexpr size_t line5Start = (17u + 28u + 27u + 27u + 21u) * 6u;  // 720
+    constexpr size_t line1Start = 17u * 6u;                                        // 102
+    constexpr size_t line2Start = (17u + 28u) * 6u;                               // 270
+    constexpr size_t line3Start = (17u + 28u + 27u) * 6u;                         // 432
+    constexpr size_t line4Start = (17u + 28u + 25u + 27u) * 6u;                   // 594
+    constexpr size_t line5Start = (17u + 28u + 25u + 27u + 20u) * 6u;             // 714
+    constexpr size_t line6Start = (17u + 28u + 27u + 27u + 20u + 21u) * 6u;       // 840
 
-    ASSERT_GE(verts.size(), line5Start + 6u)
+    ASSERT_GE(verts.size(), line6Start + 6u)
         << "tessellateHUD (Traditional+inputModeStr) produced too few vertices to check all lines";
 
     constexpr float leftMargin = 8.0f;
     constexpr float lineHeight = 40.0f;
 
-    const size_t lineStarts[6] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start };
-    for (int i = 0; i < 6; ++i) {
+    const size_t lineStarts[7] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start };
+    for (int i = 0; i < 7; ++i) {
         const float expectedY = leftMargin + static_cast<float>(i) * lineHeight;
         EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
             << "Traditional mode Line " << i << " TL y != " << expectedY;
     }
 
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         const float diff = verts[lineStarts[i + 1]].pos.y - verts[lineStarts[i]].pos.y;
         EXPECT_NEAR(diff, lineHeight, 1e-5f)
             << "Traditional mode Line " << i << " -> " << (i + 1) << " y gap != lineHeight";
@@ -679,21 +709,23 @@ TEST(MetricsTest, HUDTessellation_EmptyInputModeStr_LinesXPositions)
     metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, "");
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 12u * 6u;                        // 72
-    constexpr size_t line2Start = (12u + 28u) * 6u;               // 240
-    constexpr size_t line3Start = (12u + 28u + 27u) * 6u;         // 402
-    constexpr size_t line4Start = (12u + 28u + 27u + 27u) * 6u;   // 564
-    constexpr size_t line5Start = (12u + 28u + 27u + 27u + 21u) * 6u; // 702
-    constexpr size_t line6Start = (12u + 28u + 27u + 27u + 21u + 13u) * 6u; // 768
-    constexpr size_t line7Start = (12u + 28u + 27u + 27u + 21u + 13u + 15u) * 6u; // 858
+    constexpr size_t line1Start = 12u * 6u;                                        // 72
+    constexpr size_t line2Start = (12u + 28u) * 6u;                               // 240
+    constexpr size_t line3Start = (12u + 28u + 25u) * 6u;                         // 390
+    constexpr size_t line4Start = (12u + 28u + 25u + 27u) * 6u;                   // 552
+    constexpr size_t line5Start = (12u + 28u + 25u + 27u + 20u) * 6u;             // 672
+    constexpr size_t line6Start = (12u + 28u + 25u + 27u + 20u + 21u) * 6u;       // 798
+    constexpr size_t line7Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u) * 6u; // 924
+    constexpr size_t line8Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u) * 6u; // 1002
+    constexpr size_t line9Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u) * 6u; // 1092
 
-    ASSERT_GE(verts.size(), line7Start + 6u)
-        << "tessellateHUD (empty inputModeStr) produced too few vertices to check all eight base lines";
+    ASSERT_GE(verts.size(), line9Start + 6u)
+        << "tessellateHUD (empty inputModeStr) produced too few vertices to check all ten base lines";
 
     constexpr float leftMargin = 8.0f;
 
-    const size_t lineStarts[8] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start };
-    for (int i = 0; i < 8; ++i) {
+    const size_t lineStarts[10] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start, line8Start, line9Start };
+    for (int i = 0; i < 10; ++i) {
         EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
             << "Line " << i << " TL x != " << leftMargin;
     }
@@ -713,8 +745,8 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_EmptyInputModeStr_FiveLinesYSp
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, "");
 
-    // The 5th line contributes 0 vertices; total must match the 8-line Traditional base.
-    constexpr uint32_t expectedVerts = (17u + 28u + 27u + 27u + 21u + 13u + 15u + 8u) * 6u;  // 936
+    // The inputModeStr contributes 0 vertices; total must match the 10-line Traditional base.
+    constexpr uint32_t expectedVerts = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 8u) * 6u;  // 1170
     EXPECT_EQ(count, expectedVerts)
         << "tessellateHUD (Traditional, empty inputModeStr) returned " << count
         << " vertices; expected " << expectedVerts;
@@ -722,22 +754,24 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_EmptyInputModeStr_FiveLinesYSp
         << "outVerts.size() does not match the returned count";
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 17u * 6u;                             // 102
-    constexpr size_t line2Start = (17u + 28u) * 6u;                    // 270
-    constexpr size_t line3Start = (17u + 28u + 27u) * 6u;              // 432
-    constexpr size_t line4Start = (17u + 28u + 27u + 27u) * 6u;        // 594
-    constexpr size_t line5Start = (17u + 28u + 27u + 27u + 21u) * 6u;  // 720
-    constexpr size_t line6Start = (17u + 28u + 27u + 27u + 21u + 13u) * 6u; // 798
-    constexpr size_t line7Start = (17u + 28u + 27u + 27u + 21u + 13u + 15u) * 6u; // 888
+    constexpr size_t line1Start = 17u * 6u;                                         // 102
+    constexpr size_t line2Start = (17u + 28u) * 6u;                                // 270
+    constexpr size_t line3Start = (17u + 28u + 25u) * 6u;                          // 420
+    constexpr size_t line4Start = (17u + 28u + 25u + 27u) * 6u;                    // 582
+    constexpr size_t line5Start = (17u + 28u + 25u + 27u + 20u) * 6u;              // 702
+    constexpr size_t line6Start = (17u + 28u + 25u + 27u + 20u + 21u) * 6u;        // 828
+    constexpr size_t line7Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u) * 6u;  // 954
+    constexpr size_t line8Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u) * 6u; // 1032
+    constexpr size_t line9Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u) * 6u; // 1122
 
-    ASSERT_GE(verts.size(), line7Start + 6u)
+    ASSERT_GE(verts.size(), line9Start + 6u)
         << "tessellateHUD (Traditional, empty inputModeStr) produced too few vertices";
 
     constexpr float leftMargin = 8.0f;
     constexpr float lineHeight = 40.0f;
 
-    const size_t lineStarts[8] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start };
-    for (int i = 0; i < 8; ++i) {
+    const size_t lineStarts[10] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start, line8Start, line9Start };
+    for (int i = 0; i < 10; ++i) {
         const float expectedY = leftMargin + static_cast<float>(i) * lineHeight;
         EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
             << "Traditional mode Line " << i << " TL y != " << expectedY;
@@ -759,21 +793,23 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_EmptyInputModeStr_LinesXPositi
     metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, "");
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 17u * 6u;                             // 102
-    constexpr size_t line2Start = (17u + 28u) * 6u;                    // 270
-    constexpr size_t line3Start = (17u + 28u + 27u) * 6u;              // 432
-    constexpr size_t line4Start = (17u + 28u + 27u + 27u) * 6u;        // 594
-    constexpr size_t line5Start = (17u + 28u + 27u + 27u + 21u) * 6u;  // 720
-    constexpr size_t line6Start = (17u + 28u + 27u + 27u + 21u + 13u) * 6u; // 798
-    constexpr size_t line7Start = (17u + 28u + 27u + 27u + 21u + 13u + 15u) * 6u; // 888
+    constexpr size_t line1Start = 17u * 6u;                                         // 102
+    constexpr size_t line2Start = (17u + 28u) * 6u;                                // 270
+    constexpr size_t line3Start = (17u + 28u + 25u) * 6u;                          // 420
+    constexpr size_t line4Start = (17u + 28u + 25u + 27u) * 6u;                    // 582
+    constexpr size_t line5Start = (17u + 28u + 25u + 27u + 20u) * 6u;              // 702
+    constexpr size_t line6Start = (17u + 28u + 25u + 27u + 20u + 21u) * 6u;        // 828
+    constexpr size_t line7Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u) * 6u;  // 954
+    constexpr size_t line8Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u) * 6u; // 1032
+    constexpr size_t line9Start = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u) * 6u; // 1122
 
-    ASSERT_GE(verts.size(), line7Start + 6u)
+    ASSERT_GE(verts.size(), line9Start + 6u)
         << "tessellateHUD (Traditional, empty inputModeStr) produced too few vertices";
 
     constexpr float leftMargin = 8.0f;
 
-    const size_t lineStarts[8] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start };
-    for (int i = 0; i < 8; ++i) {
+    const size_t lineStarts[10] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start, line8Start, line9Start };
+    for (int i = 0; i < 10; ++i) {
         EXPECT_NEAR(verts[lineStarts[i]].pos.x, leftMargin, 1e-5f)
             << "Traditional mode Line " << i << " TL x != " << leftMargin;
     }
@@ -844,7 +880,7 @@ TEST(MetricsTest, HUDTessellation_LargeMSAASampleCount_NoBufferOverflow)
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 999u, verts);
 
-    constexpr uint32_t expectedVerts = (12u + 28u + 27u + 27u + 21u + 13u + 15u + 10u) * 6u;  // 918
+    constexpr uint32_t expectedVerts = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 10u) * 6u;  // 1164
 
     ASSERT_GT(count, 0u)
         << "tessellateHUD returned 0 for msaaSamples=999";
@@ -868,8 +904,8 @@ TEST(MetricsTest, HUDTessellation_EmptyInputModeStr_FiveLinesYSpacing)
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, "");
 
-    // The 5th line contributes 0 vertices; total must match the 8-line Direct base.
-    constexpr uint32_t expectedVerts = (12u + 28u + 27u + 27u + 21u + 13u + 15u + 8u) * 6u;  // 906
+    // The inputModeStr contributes 0 vertices; total must match the 10-line Direct base.
+    constexpr uint32_t expectedVerts = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 8u) * 6u;  // 1140
     EXPECT_EQ(count, expectedVerts)
         << "tessellateHUD (Direct, empty inputModeStr) returned " << count
         << " vertices; expected " << expectedVerts;
@@ -877,22 +913,24 @@ TEST(MetricsTest, HUDTessellation_EmptyInputModeStr_FiveLinesYSpacing)
         << "outVerts.size() does not match the returned count";
 
     constexpr size_t line0Start = 0u;
-    constexpr size_t line1Start = 12u * 6u;                        // 72
-    constexpr size_t line2Start = (12u + 28u) * 6u;               // 240
-    constexpr size_t line3Start = (12u + 28u + 27u) * 6u;         // 402
-    constexpr size_t line4Start = (12u + 28u + 27u + 27u) * 6u;   // 564
-    constexpr size_t line5Start = (12u + 28u + 27u + 27u + 21u) * 6u; // 702
-    constexpr size_t line6Start = (12u + 28u + 27u + 27u + 21u + 13u) * 6u; // 768
-    constexpr size_t line7Start = (12u + 28u + 27u + 27u + 21u + 13u + 15u) * 6u; // 858
+    constexpr size_t line1Start = 12u * 6u;                                        // 72
+    constexpr size_t line2Start = (12u + 28u) * 6u;                               // 240
+    constexpr size_t line3Start = (12u + 28u + 25u) * 6u;                         // 390
+    constexpr size_t line4Start = (12u + 28u + 25u + 27u) * 6u;                   // 552
+    constexpr size_t line5Start = (12u + 28u + 25u + 27u + 20u) * 6u;             // 672
+    constexpr size_t line6Start = (12u + 28u + 25u + 27u + 20u + 21u) * 6u;       // 798
+    constexpr size_t line7Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u) * 6u; // 924
+    constexpr size_t line8Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u) * 6u; // 1002
+    constexpr size_t line9Start = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u) * 6u; // 1092
 
-    ASSERT_GE(verts.size(), line7Start + 6u)
+    ASSERT_GE(verts.size(), line9Start + 6u)
         << "tessellateHUD (Direct, empty inputModeStr) produced too few vertices";
 
     constexpr float leftMargin = 8.0f;
     constexpr float lineHeight = 40.0f;
 
-    const size_t lineStarts[8] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start };
-    for (int i = 0; i < 8; ++i) {
+    const size_t lineStarts[10] = { line0Start, line1Start, line2Start, line3Start, line4Start, line5Start, line6Start, line7Start, line8Start, line9Start };
+    for (int i = 0; i < 10; ++i) {
         const float expectedY = leftMargin + static_cast<float>(i) * lineHeight;
         EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
             << "Direct mode Line " << i << " TL y != " << expectedY;
