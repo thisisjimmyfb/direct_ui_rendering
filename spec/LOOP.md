@@ -3,8 +3,12 @@ Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md)
 Find the most important task from the following list and work on it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress or summary in this file.
 
 ## Pending Tasks
-- Add test: `tessellateHUD` with `inputModeStr=""` (empty string, not nullptr) — verify vertex count equals the no-inputModeStr baseline, confirming the `inputModeStr[0] != '\0'` guard correctly skips the extra line for an empty-but-non-null pointer.
 - Add test: `Scene::worldCorners` with `scaleW=0.0f` — document and validate the behavior (NaN or crash) when edge vectors are exactly zero-length, establishing a baseline before any guard is added. Guards against regressions if a clamp is later introduced.
+- Add test: `tessellateHUD` with a non-zero frame time — call `beginFrame`/`endFrame` a few times before tessellating and verify the frame time line displays a non-zero value (guards against regressions where the frame timer is always zero).
+- Add test: `UISystem::tessellateString` with a very long string (1000+ characters) — verify no integer overflow in the returned `uint32_t` vertex count and that `outVerts.size()` equals the returned count.
+- Add test: `computeClipPlanes` with collinear corners (P_00, P_10, P_01 on the same line) — the cross product is zero so the surface normal is undefined; document whether the function produces NaN, zero, or well-defined clip planes as a regression baseline.
+- Add test: `computeM_us` with zero canvas dimension (W_ui=0) — the matrix entry 1/W_ui becomes infinity; document the behavior as a baseline before any guard is added.
+- Add test: `Scene::animationMatrix` with negative t — periodic backward animation; verify the matrix is finite and the rotation matches `glm::rotate(…, angle)` where `angle = glm::radians(15.0f) * sin(negative_t * 0.25f)`.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section

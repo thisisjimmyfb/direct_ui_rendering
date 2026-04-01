@@ -816,6 +816,36 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_EmptyInputModeStr_LinesXPositi
 }
 
 // ---------------------------------------------------------------------------
+// MetricsTest — empty (non-null) inputModeStr matches the nullptr baseline
+// ---------------------------------------------------------------------------
+
+// The guard `inputModeStr && inputModeStr[0] != '\0'` must skip the extra line
+// when inputModeStr is a non-null pointer to an empty string.  Verify by
+// comparing the vertex count directly against the nullptr baseline call rather
+// than against a hardcoded constant, so the test is self-contained regardless
+// of the actual line content.
+TEST(MetricsTest, HUDTessellation_EmptyInputModeStr_MatchesNullptrBaseline)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+    std::vector<UIVertex> vertsNull, vertsEmpty;
+
+    uint32_t countNull  = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, vertsNull,  nullptr);
+    uint32_t countEmpty = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, vertsEmpty, "");
+
+    ASSERT_GT(countNull, 0u)
+        << "nullptr baseline produced 0 vertices — baseline call failed";
+    EXPECT_EQ(countEmpty, countNull)
+        << "inputModeStr=\"\" produced " << countEmpty
+        << " vertices but nullptr baseline produced " << countNull
+        << "; the inputModeStr[0] != '\\0' guard must skip the extra line for an empty string";
+    EXPECT_EQ(vertsEmpty.size(), vertsNull.size())
+        << "outVerts.size() mismatch between empty-string and nullptr calls";
+}
+
+// ---------------------------------------------------------------------------
 // MetricsTest — non-standard MSAA sample count produces a longer MSAA line
 // ---------------------------------------------------------------------------
 
