@@ -801,3 +801,75 @@ TEST_F(SceneAnimationTest, NormalWiggle_AtNegativePeak_RotationMatchesCombinedYA
         }
     }
 }
+
+TEST_F(SceneAnimationTest, NegativeT_MatrixIsFinite)
+{
+    // std::sin is defined for all real inputs, including negative values.
+    // This test documents that animationMatrix(t) produces a fully finite
+    // matrix for negative t — no NaN or Inf in any entry.  It establishes
+    // a regression baseline before any guard on t is introduced; if a future
+    // change accidentally introduces a branch that breaks for t < 0, this
+    // test will catch it.
+    for (float t : {-0.1f, -1.0f, -2.0f * std::acos(-1.0f), -100.0f}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        glm::mat4 M = scene.animationMatrix(t);
+        for (int col = 0; col < 4; ++col) {
+            for (int row = 0; row < 4; ++row) {
+                EXPECT_TRUE(std::isfinite(M[col][row]))
+                    << "M[" << col << "][" << row << "]=" << M[col][row]
+                    << " is not finite at t=" << t;
+            }
+        }
+    }
+}
+
+TEST_F(SceneAnimationTest, NegativeT_RotationMatchesFormula)
+{
+    // Periodic backward animation: for t = -2π,
+    //   angle      = 15° * sin(-2π * 0.25) = 15° * sin(-π/2) = -15°
+    //   normalAngle = 25° * sin(-2π * 0.5)  = 25° * sin(-π)  ≈  0°
+    // The rotation sub-matrix must equal R_Y(-15°) * R_Z(≈0°) = R_Y(-15°).
+    // This verifies that negative t reverses the rotation direction rather
+    // than wrapping, clamping, or producing undefined behaviour.
+    const float pi = std::acos(-1.0f);
+    const float t  = -2.0f * pi;   // chosen so angle = -15°, normalAngle ≈ 0
+
+    const float angle      = glm::radians(15.0f) * std::sin(t * 0.25f);
+    const float normalAngle = glm::radians(25.0f) * std::sin(t * 0.5f);
+
+    glm::mat4 M = scene.animationMatrix(t);
+
+    glm::mat4 refRot = glm::mat4(1.0f);
+    refRot = glm::rotate(refRot, angle,       glm::vec3(0.0f, 1.0f, 0.0f));
+    refRot = glm::rotate(refRot, normalAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+
+    for (int col = 0; col < 3; ++col) {
+        for (int row = 0; row < 3; ++row) {
+            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-5f)
+                << "rotation mismatch at col=" << col << " row=" << row
+                << " (t=" << t << ", angle=" << angle
+                << " rad, normalAngle=" << normalAngle << " rad)";
+        }
+    }
+}
+
+TEST_F(SceneAnimationTest, NegativeT_TranslationMatchesFormula)
+{
+    // At negative t the translation columns must satisfy the same formula as
+    // positive t: (1.2*sin(t*0.18), 1.5 + 0.35*sin(t*0.22), -2.5).
+    // sin is an odd function so the X and Y oscillations reverse sign for
+    // negative t — this test confirms the formula is applied uniformly and
+    // that no abs() or max(t,0) is silently clamping the input.
+    const float pi = std::acos(-1.0f);
+    for (float t : {-1.0f, -pi, -5.0f}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        glm::mat4 M = scene.animationMatrix(t);
+
+        float expectedX = 1.2f  * std::sin(t * 0.18f);
+        float expectedY = 1.5f  + 0.35f * std::sin(t * 0.22f);
+
+        EXPECT_NEAR(M[3][0], expectedX, 1e-5f) << "translation X mismatch at t=" << t;
+        EXPECT_NEAR(M[3][1], expectedY, 1e-5f) << "translation Y mismatch at t=" << t;
+        EXPECT_NEAR(M[3][2], -2.5f,     1e-5f) << "translation Z should be fixed at -2.5";
+    }
+}
