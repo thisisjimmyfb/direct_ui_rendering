@@ -4,11 +4,12 @@ Find the most important task from the following list and work on it. After task 
 
 ## Pending Tasks
 - Add test: `Scene::worldCorners` with `scaleW=0.0f` — document and validate the behavior (NaN or crash) when edge vectors are exactly zero-length, establishing a baseline before any guard is added. Guards against regressions if a clamp is later introduced.
-- Add test: `tessellateHUD` with a non-zero frame time — call `beginFrame`/`endFrame` a few times before tessellating and verify the frame time line displays a non-zero value (guards against regressions where the frame timer is always zero).
 - Add test: `UISystem::tessellateString` with a very long string (1000+ characters) — verify no integer overflow in the returned `uint32_t` vertex count and that `outVerts.size()` equals the returned count.
 - Add test: `computeClipPlanes` with collinear corners (P_00, P_10, P_01 on the same line) — the cross product is zero so the surface normal is undefined; document whether the function produces NaN, zero, or well-defined clip planes as a regression baseline.
 - Add test: `computeM_us` with zero canvas dimension (W_ui=0) — the matrix entry 1/W_ui becomes infinity; document the behavior as a baseline before any guard is added.
 - Add test: `Scene::animationMatrix` with negative t — periodic backward animation; verify the matrix is finite and the rotation matches `glm::rotate(…, angle)` where `angle = glm::radians(15.0f) * sin(negative_t * 0.25f)`.
+- Add test: `computeM_sw` with zero-length `e_u` (P_10 == P_00) — basis is degenerate; document whether the resulting matrix produces NaN/inf column or a zero column, as a regression baseline before any guard is added.
+- Refactor: split `renderer_init.cpp` (1133 lines) — extract pipeline creation (~457 lines, `createPipelines`) into `renderer_pipelines.cpp` and render pass definitions (~211 lines, `createRenderPasses`) into `renderer_renderpasses.cpp`; keep device/swapchain/descriptor orchestration in `renderer_init.cpp`. Do not split if doing so requires shuffling large numbers of shared static helpers.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section

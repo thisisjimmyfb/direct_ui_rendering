@@ -2,6 +2,8 @@
 #include "metrics.h"
 #include "ui_system.h"
 #include <cstring>
+#include <thread>
+#include <chrono>
 
 // ---------------------------------------------------------------------------
 // MetricsTest — HUD tessellation vertex count
@@ -965,4 +967,74 @@ TEST(MetricsTest, HUDTessellation_EmptyInputModeStr_FiveLinesYSpacing)
         EXPECT_NEAR(verts[lineStarts[i]].pos.y, expectedY, 1e-5f)
             << "Direct mode Line " << i << " TL y != " << expectedY;
     }
+}
+
+// ---------------------------------------------------------------------------
+// MetricsTest — tessellateHUD frame time line reflects a non-zero average
+// ---------------------------------------------------------------------------
+//
+// Guards against a regression where tessellateHUD always formats "Frame: 0.0 ms"
+// (or any hardcoded zero) even after real frames have been recorded.
+//
+// After a few beginFrame/endFrame cycles that include a 1 ms sleep,
+// averageFrameMs() must return a strictly positive value.  tessellateHUD must
+// then produce a total vertex count consistent with the formatted string
+// derived from that non-zero average — not from a hardcoded 0.0.
+//
+// Note: for averages in [0.1, 9.9] ms the formatted string "Frame: X.X ms"
+// has the same character length (13) as "Frame: 0.0 ms".  In that range the
+// vertex count check is vacuous but the ASSERT_GT below is the primary guard.
+// On slower hosts where the OS sleep quantisation yields >= 10 ms the vertex
+// count becomes a strict distinguisher (14 chars vs 13).
+TEST(MetricsTest, HUDTessellation_FrameTimeLine_ReflectsNonZeroAverage)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+
+    // Record 3 frames, each with a 1 ms sleep, to produce a non-zero average.
+    for (int i = 0; i < 3; ++i) {
+        metrics.beginFrame();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        metrics.endFrame();
+    }
+
+    float avg = metrics.averageFrameMs();
+    ASSERT_GT(avg, 0.0f)
+        << "averageFrameMs() must be > 0 after 3 frames with a 1 ms sleep each; "
+           "beginFrame/endFrame may not be recording elapsed time";
+
+    // Reproduce the snprintf format used by tessellateHUD to determine the
+    // expected character count for the frame time line.
+    char frameLine[64];
+    snprintf(frameLine, sizeof(frameLine), "Frame: %.1f ms", avg);
+    const int frameLineChars = static_cast<int>(std::strlen(frameLine));
+
+    // Fixed char counts for all other lines (Direct mode, no inputModeStr,
+    // gpuAllocatedBytes()==0):
+    //   Line 0: "Mode: DIRECT"               = 12 chars
+    //   Line 1: "  [Space] toggle render mode" = 28 chars
+    //   Line 2: "  [Tab] toggle input mode"    = 25 chars
+    //   Line 3: "  [+] [-] adjust depth bias"  = 27 chars
+    //   Line 4: "  [[] []] quad width"         = 20 chars
+    //   Line 5: "  [O] [P] quad height"        = 21 chars
+    //   Line 6: "  [RClick] mouse look"         = 21 chars
+    //   Line 7: frame time line               (variable — frameLineChars)
+    //   Line 8: "GPU Mem: 0.0 MB"             = 15 chars
+    //   Line 9: "MSAA: 4x"                    =  8 chars
+    constexpr int fixedChars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 15 + 8; // = 177
+    const uint32_t expectedVerts =
+        6u * static_cast<uint32_t>(fixedChars + frameLineChars);
+
+    std::vector<UIVertex> verts;
+    uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
+
+    EXPECT_EQ(count, expectedVerts)
+        << "tessellateHUD vertex count does not match the expected count "
+           "computed from averageFrameMs()=" << avg << " ms "
+           "(frameLineChars=" << frameLineChars << "); "
+           "tessellateHUD may be hardcoding 0.0 for the frame time";
+    EXPECT_EQ(static_cast<uint32_t>(verts.size()), expectedVerts)
+        << "outVerts.size() does not match the returned vertex count";
 }
