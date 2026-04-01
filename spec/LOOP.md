@@ -3,8 +3,6 @@ Read ['SPEC.md'](SPEC.md) and ['direct_ui_rendering.md'](direct_ui_rendering.md)
 Find the most important task from the following list and work on it. After task completion, execute all items in the ['Iterate Loop'](#Iterate-Loop) section, remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress or summary in this file.
 
 ## Pending Tasks
-- Make all toggle obvious on the overlay UI. Tell the user which key to press to toggle each mode.
-- Make the UI quad a shadow caster and cast shadows onto the walls in the room.
 
 ## Iterate Loop
 - run build/test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section
