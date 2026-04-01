@@ -284,7 +284,7 @@ bool UISystem::init(VmaAllocator allocator,
 
     // Tessellate "Hello World" and upload to device-local vertex buffer.
     std::vector<UIVertex> helloVerts;
-    tessellateString("Hello World", -7.0f, 0.0f, helloVerts);
+    tessellateString("Hello World", -7.0f, 0.0f, helloVerts); //intentionally print text off the UI area to demonstrate proper clip-plane
     m_helloVertCount = static_cast<uint32_t>(helloVerts.size());
 
     VkDeviceSize vtxSize = m_helloVertCount * sizeof(UIVertex);

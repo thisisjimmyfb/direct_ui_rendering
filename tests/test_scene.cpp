@@ -873,3 +873,147 @@ TEST_F(SceneAnimationTest, NegativeT_TranslationMatchesFormula)
         EXPECT_NEAR(M[3][2], -2.5f,     1e-5f) << "translation Z should be fixed at -2.5";
     }
 }
+
+// ---------------------------------------------------------------------------
+// WorldCornersDegenerate — degenerate scale parameters establish regression
+// baselines before any guard is added
+// ---------------------------------------------------------------------------
+
+class WorldCornersDegenerateTest : public ::testing::Test {
+protected:
+    Scene scene;
+
+    void SetUp() override {
+        scene.init();
+    }
+};
+
+TEST_F(WorldCornersDegenerateTest, ScaleWZero_EdgeVectorsCollapseToZeroX)
+{
+    // With scaleW=0.0f, the horizontal edge vectors (P_10 - P_00) and (P_11 - P_01)
+    // have zero X component. This documents the baseline behavior before any
+    // guard is added: the function produces well-defined (but degenerate) world
+    // corners with X=0 for all scaled local X coordinates.  The vertical edges
+    // remain non-zero since scaleH=1.0.
+    //
+    // This test guards against regressions if a clamp is later introduced:
+    // it establishes the expected NaN/crash/zero behavior that should be preserved.
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, 0.0f, 1.0f);
+
+    // All corners must be fully finite — no NaN or Inf should be produced.
+    // The animation matrix at t=0 is a pure translation, so the world corners
+    // should have X=0 (scaled from local X) and Y,Z matching the translation.
+    EXPECT_TRUE(std::isfinite(P00.x)) << "P_00.x is not finite with scaleW=0";
+    EXPECT_TRUE(std::isfinite(P10.x)) << "P_10.x is not finite with scaleW=0";
+    EXPECT_TRUE(std::isfinite(P01.x)) << "P_01.x is not finite with scaleW=0";
+    EXPECT_TRUE(std::isfinite(P11.x)) << "P_11.x is not finite with scaleW=0";
+
+    // At t=0, M_anim is translation by (0, 1.5, -2.5). Local corners have X in {-2, 2}.
+    // With scaleW=0, all scaled X values become 0, so all world X should be 0.
+    EXPECT_FLOAT_EQ(P00.x, 0.0f) << "P_00.x should be 0 when scaleW=0";
+    EXPECT_FLOAT_EQ(P10.x, 0.0f) << "P_10.x should be 0 when scaleW=0";
+    EXPECT_FLOAT_EQ(P01.x, 0.0f) << "P_01.x should be 0 when scaleW=0";
+    EXPECT_FLOAT_EQ(P11.x, 0.0f) << "P_11.x should be 0 when scaleW=0";
+
+    // Y and Z should match the translation offset at t=0.
+    // Local Y values are ±1, scaled by scaleH=1.0, so world Y = 1.5 + localY.
+    EXPECT_NEAR(P00.y, 2.5f, 1e-5f) << "P_00.y at scaleW=0, scaleH=1"; // -2 * 1 + 1.5 = 2.5
+    EXPECT_NEAR(P10.y, 2.5f, 1e-5f) << "P_10.y at scaleW=0, scaleH=1";
+    EXPECT_NEAR(P01.y, 0.5f, 1e-5f) << "P_01.y at scaleW=0, scaleH=1"; // 1 * 1 + 1.5 = 0.5
+    EXPECT_NEAR(P11.y, 0.5f, 1e-5f) << "P_11.y at scaleW=0, scaleH=1";
+
+    // Z is unaffected by scaling (only translation).
+    EXPECT_NEAR(P00.z, -2.5f, 1e-5f) << "P_00.z at scaleW=0, scaleH=1";
+    EXPECT_NEAR(P10.z, -2.5f, 1e-5f) << "P_10.z at scaleW=0, scaleH=1";
+    EXPECT_NEAR(P01.z, -2.5f, 1e-5f) << "P_01.z at scaleW=0, scaleH=1";
+    EXPECT_NEAR(P11.z, -2.5f, 1e-5f) << "P_11.z at scaleW=0, scaleH=1";
+}
+
+TEST_F(WorldCornersDegenerateTest, ScaleHZero_EdgeVectorsCollapseToZeroY)
+{
+    // With scaleH=0.0f, the vertical edge vectors (P_01 - P_00) and (P_11 - P_10)
+    // have zero Y component. This documents the baseline behavior: all world Y
+    // values collapse to the translation Y offset.
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, 1.0f, 0.0f);
+
+    // All corners must be fully finite.
+    EXPECT_TRUE(std::isfinite(P00.y)) << "P_00.y is not finite with scaleH=0";
+    EXPECT_TRUE(std::isfinite(P10.y)) << "P_10.y is not finite with scaleH=0";
+    EXPECT_TRUE(std::isfinite(P01.y)) << "P_01.y is not finite with scaleH=0";
+    EXPECT_TRUE(std::isfinite(P11.y)) << "P_11.y is not finite with scaleH=0";
+
+    // At t=0, translation Y is 1.5. With scaleH=0, local Y values (±1) scale to 0,
+    // so all world Y should equal the translation Y.
+    EXPECT_NEAR(P00.y, 1.5f, 1e-5f) << "P_00.y should be translation Y when scaleH=0";
+    EXPECT_NEAR(P10.y, 1.5f, 1e-5f) << "P_10.y should be translation Y when scaleH=0";
+    EXPECT_NEAR(P01.y, 1.5f, 1e-5f) << "P_01.y should be translation Y when scaleH=0";
+    EXPECT_NEAR(P11.y, 1.5f, 1e-5f) << "P_11.y should be translation Y when scaleH=0";
+
+    // X values should be unchanged (scaleW=1.0).
+    EXPECT_NEAR(P00.x, -2.0f, 1e-5f) << "P_00.x at scaleH=0";
+    EXPECT_NEAR(P10.x,  2.0f, 1e-5f) << "P_10.x at scaleH=0";
+    EXPECT_NEAR(P01.x, -2.0f, 1e-5f) << "P_01.x at scaleH=0";
+    EXPECT_NEAR(P11.x,  2.0f, 1e-5f) << "P_11.x at scaleH=0";
+}
+
+TEST_F(WorldCornersDegenerateTest, ScaleWZeroAndScaleHZero_AllCornersCollapseToCenter)
+{
+    // With both scaleW=0 and scaleH=0, all local coordinates (X and Y) scale to 0,
+    // so all four corners should collapse to the same world position: the world
+    // position of the local origin (center of the quad).
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, 0.0f, 0.0f);
+
+    // All corners must be fully finite.
+    EXPECT_TRUE(std::isfinite(P00.x) && std::isfinite(P00.y) && std::isfinite(P00.z))
+        << "P_00 not finite with both scales=0";
+    EXPECT_TRUE(std::isfinite(P10.x) && std::isfinite(P10.y) && std::isfinite(P10.z))
+        << "P_10 not finite with both scales=0";
+    EXPECT_TRUE(std::isfinite(P01.x) && std::isfinite(P01.y) && std::isfinite(P01.z))
+        << "P_01 not finite with both scales=0";
+    EXPECT_TRUE(std::isfinite(P11.x) && std::isfinite(P11.y) && std::isfinite(P11.z))
+        << "P_11 not finite with both scales=0";
+
+    // All corners should be at the world position of the local origin.
+    // At t=0, M_anim(0) translates by (0, 1.5, -2.5).
+    const float expectedX = 0.0f;
+    const float expectedY = 1.5f;
+    const float expectedZ = -2.5f;
+
+    EXPECT_NEAR(P00.x, expectedX, 1e-5f) << "P_00.x should equal center X";
+    EXPECT_NEAR(P00.y, expectedY, 1e-5f) << "P_00.y should equal center Y";
+    EXPECT_NEAR(P00.z, expectedZ, 1e-5f) << "P_00.z should equal center Z";
+
+    EXPECT_NEAR(P10.x, expectedX, 1e-5f) << "P_10.x should equal center X";
+    EXPECT_NEAR(P10.y, expectedY, 1e-5f) << "P_10.y should equal center Y";
+    EXPECT_NEAR(P10.z, expectedZ, 1e-5f) << "P_10.z should equal center Z";
+
+    EXPECT_NEAR(P01.x, expectedX, 1e-5f) << "P_01.x should equal center X";
+    EXPECT_NEAR(P01.y, expectedY, 1e-5f) << "P_01.y should equal center Y";
+    EXPECT_NEAR(P01.z, expectedZ, 1e-5f) << "P_01.z should equal center Z";
+
+    EXPECT_NEAR(P11.x, expectedX, 1e-5f) << "P_11.x should equal center X";
+    EXPECT_NEAR(P11.y, expectedY, 1e-5f) << "P_11.y should equal center Y";
+    EXPECT_NEAR(P11.z, expectedZ, 1e-5f) << "P_11.z should equal center Z";
+
+    // Verify all corners are identical (collapsed to a point).
+    EXPECT_FLOAT_EQ(P00.x, P10.x) << "P_00.x != P_10.x with both scales=0";
+    EXPECT_FLOAT_EQ(P00.y, P10.y) << "P_00.y != P_10.y with both scales=0";
+    EXPECT_FLOAT_EQ(P00.z, P10.z) << "P_00.z != P_10.z with both scales=0";
+}
+
+TEST_F(WorldCornersDegenerateTest, ScaleWZero_ParallelogramIdentityStillHolds)
+{
+    // Even with scaleW=0 (degenerate horizontal edge), the parallelogram identity
+    // P_11 = P_00 + (P_10 - P_00) + (P_01 - P_00) must still hold.  This documents
+    // the baseline behavior: the affine transform preserves the parallelogram
+    // structure even when one edge collapses.
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, 0.0f, 1.0f);
+
+    glm::vec3 expected = P00 + (P10 - P00) + (P01 - P00);
+    EXPECT_NEAR(glm::length(P11 - expected), 0.0f, 1e-5f)
+        << "parallelogram identity failed with scaleW=0, scaleH=1";
+}

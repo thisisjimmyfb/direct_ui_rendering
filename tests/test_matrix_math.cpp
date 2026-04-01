@@ -559,3 +559,188 @@ TEST(TransformMath, SurfaceTransforms_MTotalEqualsViewProjTimesMswTimesMus)
                 << col << "][" << row << "]";
 }
 
+// ---------------------------------------------------------------------------
+// M_us Degenerate — document baseline behavior for zero canvas dimensions
+// ---------------------------------------------------------------------------
+
+// Tests to establish regression baselines before any guard is added.
+// These document whether the functions produce NaN, Inf, or well-defined values
+// when given degenerate inputs (zero dimensions, zero-length edges, collinear corners).
+
+TEST(TransformMath, M_us_ZeroWidth_W_uiEqualsZero_InfInColumn0)
+{
+    // With W_ui = 0, the matrix entry 1/W_ui becomes infinity.
+    // This documents the baseline behavior before any guard is added.
+    glm::mat4 M = computeM_us(0.0f, 128.0f);
+
+    // 1/0.0f = +inf in IEEE 754
+    EXPECT_TRUE(std::isinf(M[0][0])) << "M[0][0] should be +inf when W_ui=0";
+
+    // H_ui is non-zero, so 1/H_ui is finite
+    EXPECT_TRUE(std::isfinite(M[1][1])) << "M[1][1] should be finite when H_ui=128";
+    EXPECT_NEAR(M[1][1], 1.0f / 128.0f, 1e-6f) << "M[1][1] should be 1/H_ui";
+
+    // Other columns unchanged
+    EXPECT_NEAR(M[2][2], 1.0f, 1e-6f) << "M[2][2] should be 1";
+    EXPECT_NEAR(M[3][3], 1.0f, 1e-6f) << "M[3][3] should be 1";
+}
+
+TEST(TransformMath, M_us_ZeroHeight_H_uiEqualsZero_InfInColumn1)
+{
+    // With H_ui = 0, the matrix entry 1/H_ui becomes infinity.
+    // This documents the baseline behavior before any guard is added.
+    glm::mat4 M = computeM_us(512.0f, 0.0f);
+
+    // W_ui is non-zero, so 1/W_ui is finite
+    EXPECT_TRUE(std::isfinite(M[0][0])) << "M[0][0] should be finite when W_ui=512";
+    EXPECT_NEAR(M[0][0], 1.0f / 512.0f, 1e-6f) << "M[0][0] should be 1/W_ui";
+
+    // 1/0.0f = +inf in IEEE 754
+    EXPECT_TRUE(std::isinf(M[1][1])) << "M[1][1] should be +inf when H_ui=0";
+
+    // Other columns unchanged
+    EXPECT_NEAR(M[2][2], 1.0f, 1e-6f) << "M[2][2] should be 1";
+    EXPECT_NEAR(M[3][3], 1.0f, 1e-6f) << "M[3][3] should be 1";
+}
+
+TEST(TransformMath, M_us_BothZero_BothDiagonalEntriesInf)
+{
+    // With W_ui = 0 and H_ui = 0, both 1/W_ui and 1/H_ui become infinity.
+    glm::mat4 M = computeM_us(0.0f, 0.0f);
+
+    EXPECT_TRUE(std::isinf(M[0][0])) << "M[0][0] should be +inf when W_ui=0";
+    EXPECT_TRUE(std::isinf(M[1][1])) << "M[1][1] should be +inf when H_ui=0";
+}
+
+// ---------------------------------------------------------------------------
+// M_sw Degenerate — document baseline behavior for zero-length edges
+// ---------------------------------------------------------------------------
+
+TEST(TransformMath, M_sw_ZeroEdgeU_P10EqualsP00_ZeroColumn0)
+{
+    // With P_10 == P_00, the horizontal edge e_u = P_10 - P_00 = (0, 0, 0).
+    // The first column of M_sw (which is e_u) becomes a zero column.
+    // The normal n = normalize(cross(e_u, e_v)) = normalize(0) = (0, 0, 0).
+    // glm::normalize(0) returns (0, 0, 0), so the normal column is also zero.
+    glm::vec3 P00{0.0f, 0.0f, 0.0f};
+    glm::vec3 P10{0.0f, 0.0f, 0.0f};  // Same as P_00
+    glm::vec3 P01{1.0f, 0.0f, 0.0f};
+
+    glm::mat4 M = computeM_sw(P00, P10, P01);
+
+    // e_u = (0, 0, 0) -> first column is zero
+    EXPECT_NEAR(M[0][0], 0.0f, 1e-6f) << "M col0.x = e_u.x";
+    EXPECT_NEAR(M[1][0], 0.0f, 1e-6f) << "M col0.y = e_u.y";
+    EXPECT_NEAR(M[2][0], 0.0f, 1e-6f) << "M col0.z = e_u.z";
+
+    // n = normalize(cross((0,0,0), (1,0,0))) = normalize((0,0,0)) = (0,0,0)
+    EXPECT_NEAR(M[0][2], 0.0f, 1e-6f) << "M col2.x = n.x";
+    EXPECT_NEAR(M[1][2], 0.0f, 1e-6f) << "M col2.y = n.y";
+    EXPECT_NEAR(M[2][2], 0.0f, 1e-6f) << "M col2.z = n.z";
+
+    // P_00 is the translation column
+    EXPECT_NEAR(M[0][3], 0.0f, 1e-6f) << "M col3.x = P_00.x";
+    EXPECT_NEAR(M[1][3], 0.0f, 1e-6f) << "M col3.y = P_00.y";
+    EXPECT_NEAR(M[2][3], 0.0f, 1e-6f) << "M col3.z = P_00.z";
+}
+
+TEST(TransformMath, M_sw_ZeroEdgeV_P01EqualsP00_ZeroColumn1)
+{
+    // With P_01 == P_00, the vertical edge e_v = P_01 - P_00 = (0, 0, 0).
+    // The second column of M_sw (which is e_v) becomes a zero column.
+    glm::vec3 P00{0.0f, 0.0f, 0.0f};
+    glm::vec3 P10{1.0f, 0.0f, 0.0f};
+    glm::vec3 P01{0.0f, 0.0f, 0.0f};  // Same as P_00
+
+    glm::mat4 M = computeM_sw(P00, P10, P01);
+
+    // e_v = (0, 0, 0) -> second column is zero
+    EXPECT_NEAR(M[0][1], 0.0f, 1e-6f) << "M col1.x = e_v.x";
+    EXPECT_NEAR(M[1][1], 0.0f, 1e-6f) << "M col1.y = e_v.y";
+    EXPECT_NEAR(M[2][1], 0.0f, 1e-6f) << "M col1.z = e_v.z";
+
+    // e_u = (1, 0, 0), n = normalize(cross((1,0,0), (0,0,0))) = normalize((0,0,0)) = (0,0,0)
+    EXPECT_NEAR(M[0][2], 0.0f, 1e-6f) << "M col2.x = n.x";
+    EXPECT_NEAR(M[1][2], 0.0f, 1e-6f) << "M col2.y = n.y";
+    EXPECT_NEAR(M[2][2], 0.0f, 1e-6f) << "M col2.z = n.z";
+}
+
+TEST(TransformMath, M_sw_BothEdgesZero_AllCornersSame_ZeroMatrixExceptTranslation)
+{
+    // With all corners at the same position, both e_u and e_v are zero.
+    // All columns except the translation column become zero.
+    glm::vec3 P00{1.0f, 2.0f, 3.0f};
+    glm::vec3 P10{1.0f, 2.0f, 3.0f};
+    glm::vec3 P01{1.0f, 2.0f, 3.0f};
+
+    glm::mat4 M = computeM_sw(P00, P10, P01);
+
+    // e_u = (0, 0, 0) -> first column is zero
+    EXPECT_NEAR(M[0][0], 0.0f, 1e-6f) << "M col0.x";
+    EXPECT_NEAR(M[1][0], 0.0f, 1e-6f) << "M col0.y";
+    EXPECT_NEAR(M[2][0], 0.0f, 1e-6f) << "M col0.z";
+
+    // e_v = (0, 0, 0) -> second column is zero
+    EXPECT_NEAR(M[0][1], 0.0f, 1e-6f) << "M col1.x";
+    EXPECT_NEAR(M[1][1], 0.0f, 1e-6f) << "M col1.y";
+    EXPECT_NEAR(M[2][1], 0.0f, 1e-6f) << "M col1.z";
+
+    // n = normalize(cross((0,0,0), (0,0,0))) = (0, 0, 0) -> third column is zero
+    EXPECT_NEAR(M[0][2], 0.0f, 1e-6f) << "M col2.x";
+    EXPECT_NEAR(M[1][2], 0.0f, 1e-6f) << "M col2.y";
+    EXPECT_NEAR(M[2][2], 0.0f, 1e-6f) << "M col2.z";
+
+    // Translation column is P_00
+    EXPECT_NEAR(M[0][3], 1.0f, 1e-6f) << "M col3.x = P_00.x";
+    EXPECT_NEAR(M[1][3], 2.0f, 1e-6f) << "M col3.y = P_00.y";
+    EXPECT_NEAR(M[2][3], 3.0f, 1e-6f) << "M col3.z = P_00.z";
+}
+
+// ---------------------------------------------------------------------------
+// ClipPlanes Degenerate — document baseline behavior for collinear corners
+// ---------------------------------------------------------------------------
+
+TEST(TransformMath, ClipPlanes_CollinearCorners_ZeroNormal)
+{
+    // When P_00, P_10, and P_01 are collinear, the cross product e_u × e_v = 0,
+    // so the surface normal is undefined (zero vector).
+    // glm::normalize(0) returns (0, 0, 0).
+    glm::vec3 P00{0.0f, 0.0f, 0.0f};
+    glm::vec3 P10{1.0f, 0.0f, 0.0f};   // Along X axis
+    glm::vec3 P01{2.0f, 0.0f, 0.0f};   // Also along X axis (collinear)
+
+    auto planes = computeClipPlanes(P00, P10, P01);
+
+    // e_u = (1, 0, 0), e_v = (2, 0, 0)
+    // cross(e_u, e_v) = (0, 0, 0), so n = (0, 0, 0)
+    // All edge normals become (0, 0, 0) since they're derived from n
+    for (int i = 0; i < 4; ++i) {
+        SCOPED_TRACE("plane " + std::to_string(i));
+        EXPECT_EQ(planes[i].x, 0.0f) << "plane " << i << ".x";
+        EXPECT_EQ(planes[i].y, 0.0f) << "plane " << i << ".y";
+        EXPECT_EQ(planes[i].z, 0.0f) << "plane " << i << ".z";
+    }
+
+    // All plane constants are also zero since dot((0,0,0), point) = 0
+    for (int i = 0; i < 4; ++i) {
+        EXPECT_EQ(planes[i].w, 0.0f) << "plane " << i << ".w";
+    }
+}
+
+TEST(TransformMath, ClipPlanes_NonCollinear_ValidNormals)
+{
+    // Verify that non-collinear corners produce valid non-zero normals.
+    glm::vec3 P00{0.0f, 0.0f, 0.0f};
+    glm::vec3 P10{1.0f, 0.0f, 0.0f};   // Along X axis
+    glm::vec3 P01{0.0f, 1.0f, 0.0f};   // Along Y axis (orthogonal, not collinear)
+
+    auto planes = computeClipPlanes(P00, P10, P01);
+
+    // e_u = (1, 0, 0), e_v = (0, 1, 0)
+    // cross(e_u, e_v) = (0, 0, 1), so n = (0, 0, 1)
+    EXPECT_NEAR(planes[0].z, 1.0f, 1e-6f) << "left plane normal z";
+    EXPECT_NEAR(planes[1].z, -1.0f, 1e-6f) << "right plane normal z";
+    EXPECT_NEAR(planes[2].z, 1.0f, 1e-6f) << "top plane normal z";
+    EXPECT_NEAR(planes[3].z, -1.0f, 1e-6f) << "bottom plane normal z";
+}
+

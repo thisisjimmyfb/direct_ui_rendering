@@ -539,6 +539,87 @@ TEST_F(TessellateStringTest, AllNonPrintableRun_CursorAdvancesEvenly)
 }
 
 // ---------------------------------------------------------------------------
+// TessellateStringDegenerate — overflow and boundary tests for tessellateString
+// ---------------------------------------------------------------------------
+
+class TessellateStringDegenerateTest : public ::testing::Test {
+protected:
+    UISystem sys;
+
+    void SetUp() override {
+        sys.buildGlyphTable();
+    }
+};
+
+TEST_F(TessellateStringDegenerateTest, LongString1000Chars_NoOverflow)
+{
+    // Tessellate a very long string (1000 characters) to verify:
+    // 1. No integer overflow in the returned uint32_t vertex count
+    // 2. outVerts.size() equals the returned count
+    // 3. Position cursor advances correctly for all characters
+    //
+    // With 1000 chars × 6 vertices each = 6000 vertices, we're well within
+    // uint32_t range but large enough to catch overflow bugs if the count
+    // variable wraps around.
+    const int numChars = 1000;
+    std::string text(numChars, 'X');
+    std::vector<UIVertex> verts;
+    // Pre-reserve to avoid reallocations
+    verts.reserve(numChars * 6);
+
+    uint32_t count = sys.tessellateString(text, 0.0f, 0.0f, verts);
+
+    // Vertex count must match expected: 6 vertices per character
+    const uint32_t expectedCount = static_cast<uint32_t>(numChars * 6);
+    EXPECT_EQ(count, expectedCount) << "vertex count mismatch";
+    EXPECT_EQ(verts.size(), static_cast<size_t>(expectedCount))
+        << "vector size must match returned count";
+
+    // Spot-check: first character at x=0, last character at x=(n-1)*cell
+    const float cellF = static_cast<float>(GLYPH_CELL);
+    const float lastCharX = (numChars - 1) * cellF;
+
+    // First quad (vertices 0-5): x in [0, 32]
+    EXPECT_NEAR(verts[0].pos.x, 0.0f, 1e-5f) << "first char TL x";
+    EXPECT_NEAR(verts[1].pos.x, cellF, 1e-5f) << "first char TR x";
+
+    // Last quad (vertices 5994-5999): x in [lastCharX, lastCharX+cellF]
+    const size_t lastBase = static_cast<size_t>(numChars - 1) * 6;
+    EXPECT_NEAR(verts[lastBase + 0].pos.x, lastCharX, 1e-5f)
+        << "last char TL x";
+    EXPECT_NEAR(verts[lastBase + 1].pos.x, lastCharX + cellF, 1e-5f)
+        << "last char TR x";
+}
+
+TEST_F(TessellateStringDegenerateTest, LongString5000Chars_VerifyNoWraparound)
+{
+    // Test with 5000 characters (30000 vertices) to further stress-test
+    // for potential overflow or wraparound issues. This is well within
+    // uint32_t range but large enough that any overflow would be obvious.
+    const int numChars = 5000;
+    std::string text(numChars, 'Y');
+    std::vector<UIVertex> verts;
+    verts.reserve(numChars * 6);
+
+    uint32_t count = sys.tessellateString(text, 0.0f, 0.0f, verts);
+
+    const uint32_t expectedCount = static_cast<uint32_t>(numChars * 6);
+    EXPECT_EQ(count, expectedCount) << "vertex count mismatch for 5000 chars";
+    EXPECT_EQ(verts.size(), static_cast<size_t>(expectedCount))
+        << "vector size must match returned count";
+
+    // Verify cursor position for a middle character (char 2500)
+    const float cellF = static_cast<float>(GLYPH_CELL);
+    const float midCharX = 2500.0f * cellF;
+
+    const size_t midBase = 2500 * 6;
+    EXPECT_NEAR(verts[midBase + 0].pos.x, midCharX, 1e-5f)
+        << "char 2500 TL x";
+    EXPECT_NEAR(verts[midBase + 1].pos.x, midCharX + cellF, 1e-5f)
+        << "char 2500 TR x";
+}
+
+// ---------------------------------------------------------------------------
 // UISurface — local corner positions define a 4m×2m quad centered at origin
 // ---------------------------------------------------------------------------
 
