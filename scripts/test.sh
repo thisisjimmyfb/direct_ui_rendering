@@ -2,6 +2,6 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="$ROOT/build-$OSTYPE"
+BUILD_DIR="$ROOT/build"
 
 ctest --test-dir "$BUILD_DIR" --output-on-failure "$@"
