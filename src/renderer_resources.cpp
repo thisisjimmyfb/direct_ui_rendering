@@ -27,7 +27,12 @@ void Renderer::cleanup()
 
     // Uniform buffers
     if (m_sceneUBOBuf)   { vmaDestroyBuffer(m_allocator, m_sceneUBOBuf,   m_sceneUBOAlloc);   m_sceneUBOBuf   = VK_NULL_HANDLE; }
-    if (m_surfaceUBOBuf) { vmaDestroyBuffer(m_allocator, m_surfaceUBOBuf, m_surfaceUBOAlloc); m_surfaceUBOBuf = VK_NULL_HANDLE; }
+    for (int i = 0; i < 6; ++i) {
+        if (m_surfaceUBOBufs[i]) {
+            vmaDestroyBuffer(m_allocator, m_surfaceUBOBufs[i], m_surfaceUBOAllocs[i]);
+            m_surfaceUBOBufs[i] = VK_NULL_HANDLE;
+        }
+    }
 
     // Descriptor pool (frees all sets implicitly)
     if (m_descPool)    { vkDestroyDescriptorPool(m_device, m_descPool,   nullptr); m_descPool   = VK_NULL_HANDLE; }
@@ -116,11 +121,22 @@ void Renderer::updateSceneUBO(const SceneUBO& data)
 
 void Renderer::updateSurfaceUBO(const SurfaceUBO& data)
 {
-    if (!m_surfaceUBOAlloc) return;
+    if (!m_surfaceUBOAllocs[0]) return;
     void* mapped{nullptr};
-    vmaMapMemory(m_allocator, m_surfaceUBOAlloc, &mapped);
+    vmaMapMemory(m_allocator, m_surfaceUBOAllocs[0], &mapped);
     memcpy(mapped, &data, sizeof(data));
-    vmaUnmapMemory(m_allocator, m_surfaceUBOAlloc);
+    vmaUnmapMemory(m_allocator, m_surfaceUBOAllocs[0]);
+}
+
+void Renderer::updateFaceSurfaceUBOs(const std::array<SurfaceUBO, 6>& data)
+{
+    for (int i = 0; i < 6; ++i) {
+        if (!m_surfaceUBOAllocs[i]) continue;
+        void* mapped{nullptr};
+        vmaMapMemory(m_allocator, m_surfaceUBOAllocs[i], &mapped);
+        memcpy(mapped, &data[i], sizeof(SurfaceUBO));
+        vmaUnmapMemory(m_allocator, m_surfaceUBOAllocs[i]);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -153,14 +169,16 @@ bool Renderer::createUniformBuffers()
         return vmaCreateBuffer(m_allocator, &bci, &aci, &buf, &alloc, nullptr) == VK_SUCCESS;
     };
 
-    if (!createHostBuffer(sizeof(SceneUBO),   m_sceneUBOBuf,   m_sceneUBOAlloc))   return false;
-    if (!createHostBuffer(sizeof(SurfaceUBO), m_surfaceUBOBuf, m_surfaceUBOAlloc)) return false;
+    if (!createHostBuffer(sizeof(SceneUBO), m_sceneUBOBuf, m_sceneUBOAlloc)) return false;
+    for (int i = 0; i < 6; ++i) {
+        if (!createHostBuffer(sizeof(SurfaceUBO), m_surfaceUBOBufs[i], m_surfaceUBOAllocs[i]))
+            return false;
+    }
 
     // Bind the UBO buffers into their descriptor sets immediately.
-    VkDescriptorBufferInfo sceneInfo{m_sceneUBOBuf,   0, sizeof(SceneUBO)};
-    VkDescriptorBufferInfo surfaceInfo{m_surfaceUBOBuf, 0, sizeof(SurfaceUBO)};
+    VkDescriptorBufferInfo sceneInfo{m_sceneUBOBuf, 0, sizeof(SceneUBO)};
 
-    VkWriteDescriptorSet writes[2]{};
+    VkWriteDescriptorSet writes[7]{};
     writes[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writes[0].dstSet          = m_set0;
     writes[0].dstBinding      = 0;
@@ -168,14 +186,18 @@ bool Renderer::createUniformBuffers()
     writes[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[0].pBufferInfo     = &sceneInfo;
 
-    writes[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[1].dstSet          = m_set1;
-    writes[1].dstBinding      = 0;
-    writes[1].descriptorCount = 1;
-    writes[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writes[1].pBufferInfo     = &surfaceInfo;
+    VkDescriptorBufferInfo surfaceInfos[6]{};
+    for (int i = 0; i < 6; ++i) {
+        surfaceInfos[i] = {m_surfaceUBOBufs[i], 0, sizeof(SurfaceUBO)};
+        writes[1 + i].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1 + i].dstSet          = m_sets1[i];
+        writes[1 + i].dstBinding      = 0;
+        writes[1 + i].descriptorCount = 1;
+        writes[1 + i].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[1 + i].pBufferInfo     = &surfaceInfos[i];
+    }
 
-    vkUpdateDescriptorSets(m_device, 2, writes, 0, nullptr);
+    vkUpdateDescriptorSets(m_device, 7, writes, 0, nullptr);
     return true;
 }
 
@@ -408,7 +430,7 @@ bool Renderer::createSurfaceQuadBuffer()
     // Composite quad (QuadVertex layout: pos vec3 + uv vec2)
     {
         VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-        bci.size        = sizeof(QuadVertex) * 6;
+        bci.size        = sizeof(QuadVertex) * 36;
         bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -614,6 +636,31 @@ void Renderer::updateSurfaceQuad(const glm::vec3& P00, const glm::vec3& P10,
         {P11, {1.0f, 1.0f}},
         {P01, {0.0f, 1.0f}},
     };
+
+    void* mapped = nullptr;
+    vmaMapMemory(m_allocator, m_surfaceQuadAlloc, &mapped);
+    memcpy(mapped, verts, sizeof(verts));
+    vmaUnmapMemory(m_allocator, m_surfaceQuadAlloc);
+}
+
+void Renderer::updateCubeSurface(const std::array<std::array<glm::vec3, 4>, 6>& faceCorners)
+{
+    if (!m_surfaceQuadBuf) return;
+
+    // 6 faces, 2 triangles each (6 vertices per face), 1 faceIndex per vertex
+    // Each face's corners: P_00(0,0), P_10(1,0), P_11(1,1), P_01(0,1)
+    // Triangles: (0,1,2) and (0,2,3) for CCW winding
+    QuadVertex verts[36];
+    for (int face = 0; face < 6; ++face) {
+        const auto& f = faceCorners[face];
+        int base = face * 6;
+        verts[base + 0] = {f[0], {0.0f, 0.0f}, face};  // P_00
+        verts[base + 1] = {f[1], {1.0f, 0.0f}, face};  // P_10
+        verts[base + 2] = {f[3], {1.0f, 1.0f}, face};  // P_11
+        verts[base + 3] = {f[0], {0.0f, 0.0f}, face};  // P_00
+        verts[base + 4] = {f[3], {1.0f, 1.0f}, face};  // P_11
+        verts[base + 5] = {f[2], {0.0f, 1.0f}, face};  // P_01
+    }
 
     void* mapped = nullptr;
     vmaMapMemory(m_allocator, m_surfaceQuadAlloc, &mapped);

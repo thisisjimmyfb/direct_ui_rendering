@@ -629,19 +629,21 @@ TEST(TransformMath, M_sw_ZeroEdgeU_P10EqualsP00_ZeroColumn0)
     glm::mat4 M = computeM_sw(P00, P10, P01);
 
     // e_u = (0, 0, 0) -> first column is zero
+    // GLM uses M[col][row] access pattern, so column 0 elements are M[0][0], M[0][1], M[0][2]
     EXPECT_NEAR(M[0][0], 0.0f, 1e-6f) << "M col0.x = e_u.x";
-    EXPECT_NEAR(M[1][0], 0.0f, 1e-6f) << "M col0.y = e_u.y";
-    EXPECT_NEAR(M[2][0], 0.0f, 1e-6f) << "M col0.z = e_u.z";
+    EXPECT_NEAR(M[0][1], 0.0f, 1e-6f) << "M col0.y = e_u.y";
+    EXPECT_NEAR(M[0][2], 0.0f, 1e-6f) << "M col0.z = e_u.z";
 
     // n = normalize(cross((0,0,0), (1,0,0))) = normalize((0,0,0)) = (0,0,0)
-    EXPECT_NEAR(M[0][2], 0.0f, 1e-6f) << "M col2.x = n.x";
-    EXPECT_NEAR(M[1][2], 0.0f, 1e-6f) << "M col2.y = n.y";
+    // Column 2 elements are M[2][0], M[2][1], M[2][2]
+    EXPECT_NEAR(M[2][0], 0.0f, 1e-6f) << "M col2.x = n.x";
+    EXPECT_NEAR(M[2][1], 0.0f, 1e-6f) << "M col2.y = n.y";
     EXPECT_NEAR(M[2][2], 0.0f, 1e-6f) << "M col2.z = n.z";
 
-    // P_00 is the translation column
-    EXPECT_NEAR(M[0][3], 0.0f, 1e-6f) << "M col3.x = P_00.x";
-    EXPECT_NEAR(M[1][3], 0.0f, 1e-6f) << "M col3.y = P_00.y";
-    EXPECT_NEAR(M[2][3], 0.0f, 1e-6f) << "M col3.z = P_00.z";
+    // P_00 is the translation column (column 3)
+    EXPECT_NEAR(M[3][0], 0.0f, 1e-6f) << "M col3.x = P_00.x";
+    EXPECT_NEAR(M[3][1], 0.0f, 1e-6f) << "M col3.y = P_00.y";
+    EXPECT_NEAR(M[3][2], 0.0f, 1e-6f) << "M col3.z = P_00.z";
 }
 
 TEST(TransformMath, M_sw_ZeroEdgeV_P01EqualsP00_ZeroColumn1)
@@ -676,24 +678,25 @@ TEST(TransformMath, M_sw_BothEdgesZero_AllCornersSame_ZeroMatrixExceptTranslatio
     glm::mat4 M = computeM_sw(P00, P10, P01);
 
     // e_u = (0, 0, 0) -> first column is zero
+    // GLM uses M[col][row] access pattern
     EXPECT_NEAR(M[0][0], 0.0f, 1e-6f) << "M col0.x";
-    EXPECT_NEAR(M[1][0], 0.0f, 1e-6f) << "M col0.y";
-    EXPECT_NEAR(M[2][0], 0.0f, 1e-6f) << "M col0.z";
+    EXPECT_NEAR(M[0][1], 0.0f, 1e-6f) << "M col0.y";
+    EXPECT_NEAR(M[0][2], 0.0f, 1e-6f) << "M col0.z";
 
     // e_v = (0, 0, 0) -> second column is zero
-    EXPECT_NEAR(M[0][1], 0.0f, 1e-6f) << "M col1.x";
+    EXPECT_NEAR(M[1][0], 0.0f, 1e-6f) << "M col1.x";
     EXPECT_NEAR(M[1][1], 0.0f, 1e-6f) << "M col1.y";
-    EXPECT_NEAR(M[2][1], 0.0f, 1e-6f) << "M col1.z";
+    EXPECT_NEAR(M[1][2], 0.0f, 1e-6f) << "M col1.z";
 
     // n = normalize(cross((0,0,0), (0,0,0))) = (0, 0, 0) -> third column is zero
-    EXPECT_NEAR(M[0][2], 0.0f, 1e-6f) << "M col2.x";
-    EXPECT_NEAR(M[1][2], 0.0f, 1e-6f) << "M col2.y";
+    EXPECT_NEAR(M[2][0], 0.0f, 1e-6f) << "M col2.x";
+    EXPECT_NEAR(M[2][1], 0.0f, 1e-6f) << "M col2.y";
     EXPECT_NEAR(M[2][2], 0.0f, 1e-6f) << "M col2.z";
 
     // Translation column is P_00
-    EXPECT_NEAR(M[0][3], 1.0f, 1e-6f) << "M col3.x = P_00.x";
-    EXPECT_NEAR(M[1][3], 2.0f, 1e-6f) << "M col3.y = P_00.y";
-    EXPECT_NEAR(M[2][3], 3.0f, 1e-6f) << "M col3.z = P_00.z";
+    EXPECT_NEAR(M[3][0], 1.0f, 1e-6f) << "M col3.x = P_00.x";
+    EXPECT_NEAR(M[3][1], 2.0f, 1e-6f) << "M col3.y = P_00.y";
+    EXPECT_NEAR(M[3][2], 3.0f, 1e-6f) << "M col3.z = P_00.z";
 }
 
 // ---------------------------------------------------------------------------
@@ -738,9 +741,14 @@ TEST(TransformMath, ClipPlanes_NonCollinear_ValidNormals)
 
     // e_u = (1, 0, 0), e_v = (0, 1, 0)
     // cross(e_u, e_v) = (0, 0, 1), so n = (0, 0, 1)
-    EXPECT_NEAR(planes[0].z, 1.0f, 1e-6f) << "left plane normal z";
-    EXPECT_NEAR(planes[1].z, -1.0f, 1e-6f) << "right plane normal z";
-    EXPECT_NEAR(planes[2].z, 1.0f, 1e-6f) << "top plane normal z";
-    EXPECT_NEAR(planes[3].z, -1.0f, 1e-6f) << "bottom plane normal z";
+    // n_left = cross(e_v, n) = cross((0,1,0), (0,0,1)) = (1,0,0)
+    // n_right = -n_left = (-1,0,0)
+    // n_top = cross(n, e_u) = cross((0,0,1), (1,0,0)) = (0,1,0)
+    // n_bottom = -n_top = (0,-1,0)
+    // GLM uses M[col][row] access pattern
+    EXPECT_NEAR(planes[0].x, 1.0f, 1e-6f) << "left plane normal x";
+    EXPECT_NEAR(planes[1].x, -1.0f, 1e-6f) << "right plane normal x";
+    EXPECT_NEAR(planes[2].y, 1.0f, 1e-6f) << "top plane normal y";
+    EXPECT_NEAR(planes[3].y, -1.0f, 1e-6f) << "bottom plane normal y";
 }
 

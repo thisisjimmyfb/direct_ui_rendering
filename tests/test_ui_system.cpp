@@ -625,25 +625,28 @@ TEST_F(TessellateStringDegenerateTest, LongString5000Chars_VerifyNoWraparound)
 
 TEST(UISurfaceTest, LocalCorners_CorrectDimensions)
 {
-    // The default UISurface must define a 4 m wide × 2 m tall quad centered
-    // at the origin in the XY plane.  Accidental edits to these constants
+    // The default UISurface must define a cube with faces that are 4 m wide × 2 m tall
+    // centered at the origin. Accidental edits to these constants
     // silently scale or shift the surface in world space, corrupting M_sw and
     // all clip planes derived from it.
     UISurface surf;
 
-    EXPECT_NEAR(surf.P_00_local.x, -2.0f, 1e-6f) << "P_00 x";
-    EXPECT_NEAR(surf.P_00_local.y,  1.0f, 1e-6f) << "P_00 y";
-    EXPECT_NEAR(surf.P_00_local.z,  0.0f, 1e-6f) << "P_00 z";
+    // Test the +Z face (front face) which is analogous to the original quad
+    const auto& face = surf.faces[UISurface::FRONT_FACE_INDEX];
 
-    EXPECT_NEAR(surf.P_10_local.x,  2.0f, 1e-6f) << "P_10 x";
-    EXPECT_NEAR(surf.P_10_local.y,  1.0f, 1e-6f) << "P_10 y";
-    EXPECT_NEAR(surf.P_10_local.z,  0.0f, 1e-6f) << "P_10 z";
+    EXPECT_NEAR(face.P_00_local.x, -2.0f, 1e-6f) << "P_00 x";
+    EXPECT_NEAR(face.P_00_local.y,  1.0f, 1e-6f) << "P_00 y";
+    EXPECT_NEAR(face.P_00_local.z,  2.0f, 1e-6f) << "P_00 z (front face at +Z)";
 
-    EXPECT_NEAR(surf.P_01_local.x, -2.0f, 1e-6f) << "P_01 x";
-    EXPECT_NEAR(surf.P_01_local.y, -1.0f, 1e-6f) << "P_01 y";
-    EXPECT_NEAR(surf.P_01_local.z,  0.0f, 1e-6f) << "P_01 z";
+    EXPECT_NEAR(face.P_10_local.x,  2.0f, 1e-6f) << "P_10 x";
+    EXPECT_NEAR(face.P_10_local.y,  1.0f, 1e-6f) << "P_10 y";
+    EXPECT_NEAR(face.P_10_local.z,  2.0f, 1e-6f) << "P_10 z (front face at +Z)";
 
-    EXPECT_NEAR(surf.P_11_local.x,  2.0f, 1e-6f) << "P_11 x";
-    EXPECT_NEAR(surf.P_11_local.y, -1.0f, 1e-6f) << "P_11 y";
-    EXPECT_NEAR(surf.P_11_local.z,  0.0f, 1e-6f) << "P_11 z";
+    EXPECT_NEAR(face.P_01_local.x, -2.0f, 1e-6f) << "P_01 x";
+    EXPECT_NEAR(face.P_01_local.y, -1.0f, 1e-6f) << "P_01 y";
+    EXPECT_NEAR(face.P_01_local.z,  2.0f, 1e-6f) << "P_01 z (front face at +Z)";
+
+    EXPECT_NEAR(face.P_11_local.x,  2.0f, 1e-6f) << "P_11 x";
+    EXPECT_NEAR(face.P_11_local.y, -1.0f, 1e-6f) << "P_11 y";
+    EXPECT_NEAR(face.P_11_local.z,  2.0f, 1e-6f) << "P_11 z (front face at +Z)";
 }

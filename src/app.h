@@ -52,8 +52,8 @@ private:
     RenderMode m_mode{RenderMode::Direct};
     bool       m_pendingModeToggle{false};
     float      m_depthBias{Renderer::DEPTH_BIAS_DEFAULT};
-    float      m_quadW{1.0f};   // horizontal scale of the UI surface quad
-    float      m_quadH{1.0f};   // vertical scale of the UI surface quad
+    float      m_quadW{0.5f};   // horizontal scale of the UI surface quad
+    float      m_quadH{0.5f};   // vertical scale of the UI surface quad
     float      m_time{0.0f};
 
     // Camera state
@@ -76,6 +76,9 @@ private:
     VkBuffer        m_hudVtxBuf{VK_NULL_HANDLE};
     VmaAllocation   m_hudVtxAlloc{VK_NULL_HANDLE};
     std::vector<UIVertex> m_hudVerts;
+
+    // Cube corners for per-frame update
+    std::array<std::array<glm::vec3, 4>, 6> m_cubeCorners{};
 
     static constexpr uint32_t WINDOW_WIDTH  = 1920;
     static constexpr uint32_t WINDOW_HEIGHT = 1080;

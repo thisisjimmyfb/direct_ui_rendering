@@ -125,31 +125,34 @@ void Renderer::recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool direct
     }
 
     if (directMode) {
-        // Direct mode: draw opaque teal quad first, then UI geometry on top.
+        // Direct mode: draw teal cube first, then UI geometry on top for each face.
         if (m_pipeSurface != VK_NULL_HANDLE && m_surfaceQuadBuf != VK_NULL_HANDLE) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeSurface);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
                                     0, 1, &m_set0, 0, nullptr);
             VkDeviceSize offset = 0;
             vkCmdBindVertexBuffers(cmd, 0, 1, &m_surfaceQuadBuf, &offset);
-            vkCmdDraw(cmd, 6, 1, 0, 0);
+            // Draw cube (6 faces x 2 triangles x 3 vertices = 36 vertices)
+            vkCmdDraw(cmd, 36, 1, 0, 0);
         }
-        // UI geometry rendered directly into world space using M_total (clip-space offset).
+        // UI geometry rendered directly into world space — one draw per face with per-face M_total.
         if (m_pipeUIDirect != VK_NULL_HANDLE && uiVtxCount > 0 && uiVtxBuf != VK_NULL_HANDLE) {
             vkCmdPushConstants(cmd, m_pipelineLayout,
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                64, sizeof(float), &sdfThreshold);
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeUIDirect);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
-                                    1, 1, &m_set1, 0, nullptr);
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
                                     2, 1, &m_set2, 0, nullptr);
             VkDeviceSize offset = 0;
             vkCmdBindVertexBuffers(cmd, 0, 1, &uiVtxBuf, &offset);
-            vkCmdDraw(cmd, uiVtxCount, 1, 0, 0);
+            for (int face = 0; face < 6; ++face) {
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+                                        1, 1, &m_sets1[face], 0, nullptr);
+                vkCmdDraw(cmd, uiVtxCount, 1, 0, 0);
+            }
         }
     } else {
-        // Traditional mode: composite the offscreen UI RT onto the teal surface quad.
+        // Traditional mode: composite the offscreen UI RT onto the teal cube.
         if (m_pipeComposite != VK_NULL_HANDLE && m_surfaceQuadBuf != VK_NULL_HANDLE) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeComposite);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
@@ -158,7 +161,8 @@ void Renderer::recordMainPass(VkCommandBuffer cmd, RenderTarget& rt, bool direct
                                     2, 1, &m_set2, 0, nullptr);
             VkDeviceSize offset = 0;
             vkCmdBindVertexBuffers(cmd, 0, 1, &m_surfaceQuadBuf, &offset);
-            vkCmdDraw(cmd, 6, 1, 0, 0);
+            // Draw cube (6 faces x 2 triangles x 3 vertices = 36 vertices)
+            vkCmdDraw(cmd, 36, 1, 0, 0);
         }
     }
 

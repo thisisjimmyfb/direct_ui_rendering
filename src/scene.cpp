@@ -99,10 +99,40 @@ void Scene::worldCorners(float t,
     auto applyScale = [scaleW, scaleH](const glm::vec3& p) {
         return glm::vec3(p.x * scaleW, p.y * scaleH, p.z);
     };
-    P_00 = glm::vec3(M * glm::vec4(applyScale(m_uiSurface.P_00_local), 1.0f));
-    P_10 = glm::vec3(M * glm::vec4(applyScale(m_uiSurface.P_10_local), 1.0f));
-    P_01 = glm::vec3(M * glm::vec4(applyScale(m_uiSurface.P_01_local), 1.0f));
-    P_11 = glm::vec3(M * glm::vec4(applyScale(m_uiSurface.P_11_local), 1.0f));
+    // For backward compatibility, use the +Z face corners as the "quad"
+    const auto& face = m_uiSurface.faces[UISurface::FRONT_FACE_INDEX];  // +Z face (front)
+    P_00 = glm::vec3(M * glm::vec4(applyScale(face.P_00_local), 1.0f));
+    P_10 = glm::vec3(M * glm::vec4(applyScale(face.P_10_local), 1.0f));
+    P_01 = glm::vec3(M * glm::vec4(applyScale(face.P_01_local), 1.0f));
+    P_11 = glm::vec3(M * glm::vec4(applyScale(face.P_11_local), 1.0f));
+}
+
+void Scene::worldCubeCorners(float t, std::array<std::array<glm::vec3, 4>, 6>& outCorners,
+                             float scaleW, float scaleH) const
+{
+    glm::mat4 M = animationMatrix(t);
+    auto applyScale = [scaleW, scaleH](const glm::vec3& p) {
+        return glm::vec3(p.x * scaleW, p.y * scaleH, p.z);
+    };
+    for (int face = 0; face < 6; ++face) {
+        const auto& f = m_uiSurface.faces[face];
+        outCorners[face][0] = glm::vec3(M * glm::vec4(applyScale(f.P_00_local), 1.0f)); // P_00
+        outCorners[face][1] = glm::vec3(M * glm::vec4(applyScale(f.P_10_local), 1.0f)); // P_10
+        outCorners[face][2] = glm::vec3(M * glm::vec4(applyScale(f.P_01_local), 1.0f)); // P_01
+        outCorners[face][3] = glm::vec3(M * glm::vec4(applyScale(f.P_11_local), 1.0f)); // P_11
+    }
+}
+
+glm::vec3 Scene::faceCorner(int faceIndex, int cornerIndex) const
+{
+    const auto& f = m_uiSurface.faces[faceIndex];
+    switch (cornerIndex) {
+        case 0: return f.P_00_local;
+        case 1: return f.P_10_local;
+        case 2: return f.P_01_local;
+        case 3: return f.P_11_local;
+        default: return glm::vec3(0.0f);
+    }
 }
 
 // ---------------------------------------------------------------------------

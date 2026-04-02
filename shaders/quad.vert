@@ -16,6 +16,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
 
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec2 inUV;
+layout(location = 2) in int inFaceIndex;
 layout(location = 0) out vec2 outUV;
 layout(location = 1) out vec4 outShadowCoord;
 
@@ -32,4 +33,5 @@ void main() {
     gl_Position    = proj * view * worldPos4;
     outUV          = inUV;
     outShadowCoord = biasMat * lightViewProj * worldPos4;
+    // inFaceIndex is consumed but not used for the teal cube surface
 }

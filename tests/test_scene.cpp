@@ -243,10 +243,12 @@ TEST_F(WorldCornersTest, CornersMatchAnimationMatrixAtT0)
     glm::mat4 M = scene.animationMatrix(0.0f);
 
     const auto& surf = scene.uiSurface();
-    glm::vec3 expected00 = glm::vec3(M * glm::vec4(surf.P_00_local, 1.0f));
-    glm::vec3 expected10 = glm::vec3(M * glm::vec4(surf.P_10_local, 1.0f));
-    glm::vec3 expected01 = glm::vec3(M * glm::vec4(surf.P_01_local, 1.0f));
-    glm::vec3 expected11 = glm::vec3(M * glm::vec4(surf.P_11_local, 1.0f));
+    // Use the +Z face (front face) which is what worldCorners() uses
+    const auto& face = surf.frontFace();
+    glm::vec3 expected00 = glm::vec3(M * glm::vec4(face.P_00_local, 1.0f));
+    glm::vec3 expected10 = glm::vec3(M * glm::vec4(face.P_10_local, 1.0f));
+    glm::vec3 expected01 = glm::vec3(M * glm::vec4(face.P_01_local, 1.0f));
+    glm::vec3 expected11 = glm::vec3(M * glm::vec4(face.P_11_local, 1.0f));
 
     glm::vec3 P00, P10, P01, P11;
     scene.worldCorners(0.0f, P00, P10, P01, P11);
@@ -297,23 +299,41 @@ TEST_F(WorldCornersTest, Scale1_MatchesDefaultUnscaled)
 TEST_F(WorldCornersTest, Scale2_CornersAreDoubledRelativeToCenter)
 {
     // At t=0 the animation matrix is a pure translation T.
-    // The local center is at the origin, so scaled corners satisfy:
-    //   P_xx_world(scaleW=2,scaleH=2) = T * (2 * P_xx_local)
-    //   = T_translation + 2 * R * P_xx_local  (R=I at t=0)
-    // Equivalently: P_scaled - center_world = 2 * (P_unscaled - center_world)
-    // where center_world is the world position of the local origin.
+    // The local center of the +Z face is at (0, 0, 2) (the face is at Z=2).
+    // Scaled corners satisfy: P_xx_world(scale) = M * (scaled_local_xx)
+    // Equivalently: (P_scaled - center_world) = 2 * (P_unscaled - center_world)
+    // where center_world is the world position of the local center (0, 0, 2).
     glm::mat4 M = scene.animationMatrix(0.0f);
-    glm::vec3 center_world = glm::vec3(M * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    glm::vec3 center_world = glm::vec3(M * glm::vec4(0.0f, 0.0f, 2.0f, 1.0f));
 
     glm::vec3 P00_1, P10_1, P01_1, P11_1;
     glm::vec3 P00_2, P10_2, P01_2, P11_2;
     scene.worldCorners(0.0f, P00_1, P10_1, P01_1, P11_1, 1.0f, 1.0f);
     scene.worldCorners(0.0f, P00_2, P10_2, P01_2, P11_2, 2.0f, 2.0f);
 
-    EXPECT_NEAR(glm::length((P00_2 - center_world) - 2.0f * (P00_1 - center_world)), 0.0f, 1e-4f) << "P_00 scale=2 mismatch";
-    EXPECT_NEAR(glm::length((P10_2 - center_world) - 2.0f * (P10_1 - center_world)), 0.0f, 1e-4f) << "P_10 scale=2 mismatch";
-    EXPECT_NEAR(glm::length((P01_2 - center_world) - 2.0f * (P01_1 - center_world)), 0.0f, 1e-4f) << "P_01 scale=2 mismatch";
-    EXPECT_NEAR(glm::length((P11_2 - center_world) - 2.0f * (P11_1 - center_world)), 0.0f, 1e-4f) << "P_11 scale=2 mismatch";
+    // X and Y scale by 2 relative to the center, Z stays the same.
+    // Verify that (P_scaled - center_world) = 2 * (P_unscaled - center_world) for X and Y.
+    glm::vec3 diff00 = (P00_2 - center_world) - 2.0f * (P00_1 - center_world);
+    glm::vec3 diff10 = (P10_2 - center_world) - 2.0f * (P10_1 - center_world);
+    glm::vec3 diff01 = (P01_2 - center_world) - 2.0f * (P01_1 - center_world);
+    glm::vec3 diff11 = (P11_2 - center_world) - 2.0f * (P11_1 - center_world);
+
+    // Only check X and Y components; Z should be 0 for both (no Z scaling).
+    EXPECT_NEAR(diff00.x, 0.0f, 1e-4f) << "P_00 X scale=2 mismatch";
+    EXPECT_NEAR(diff00.y, 0.0f, 1e-4f) << "P_00 Y scale=2 mismatch";
+    EXPECT_NEAR(diff00.z, 0.0f, 1e-4f) << "P_00 Z scale=2 mismatch";
+
+    EXPECT_NEAR(diff10.x, 0.0f, 1e-4f) << "P_10 X scale=2 mismatch";
+    EXPECT_NEAR(diff10.y, 0.0f, 1e-4f) << "P_10 Y scale=2 mismatch";
+    EXPECT_NEAR(diff10.z, 0.0f, 1e-4f) << "P_10 Z scale=2 mismatch";
+
+    EXPECT_NEAR(diff01.x, 0.0f, 1e-4f) << "P_01 X scale=2 mismatch";
+    EXPECT_NEAR(diff01.y, 0.0f, 1e-4f) << "P_01 Y scale=2 mismatch";
+    EXPECT_NEAR(diff01.z, 0.0f, 1e-4f) << "P_01 Z scale=2 mismatch";
+
+    EXPECT_NEAR(diff11.x, 0.0f, 1e-4f) << "P_11 X scale=2 mismatch";
+    EXPECT_NEAR(diff11.y, 0.0f, 1e-4f) << "P_11 Y scale=2 mismatch";
+    EXPECT_NEAR(diff11.z, 0.0f, 1e-4f) << "P_11 Z scale=2 mismatch";
 }
 
 TEST_F(WorldCornersTest, ScaleHalf_EdgeLengthIsHalved)
@@ -402,11 +422,11 @@ TEST_F(WorldCornersTest, NonUniformScale_PreservesParallelogramIdentity)
 TEST_F(WorldCornersTest, NonUniformScale_CenterStaysFixed)
 {
     // The center of the quad ((P_00 + P_11) / 2) must equal the world position
-    // of the local origin under any scaleW/scaleH combination, because the local
-    // corners are symmetric around the origin.  This confirms that non-uniform
+    // of the local center (0, 0, 2) under any scaleW/scaleH combination, because the local
+    // corners are symmetric around (0, 0, 2).  This confirms that non-uniform
     // scaling does not shift the quad's anchor point.
     glm::mat4 M = scene.animationMatrix(0.0f);
-    glm::vec3 center_world = glm::vec3(M * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    glm::vec3 center_world = glm::vec3(M * glm::vec4(0.0f, 0.0f, 2.0f, 1.0f));
 
     struct Case { float w, h; };
     for (auto [sw, sh] : std::initializer_list<Case>{{2.0f, 0.5f}, {0.5f, 2.0f}, {3.0f, 1.0f}}) {
@@ -918,16 +938,17 @@ TEST_F(WorldCornersDegenerateTest, ScaleWZero_EdgeVectorsCollapseToZeroX)
 
     // Y and Z should match the translation offset at t=0.
     // Local Y values are ±1, scaled by scaleH=1.0, so world Y = 1.5 + localY.
+    // Local Z is 2.0 (front face at +Z), so world Z = -2.5 + 2.0 = -0.5.
     EXPECT_NEAR(P00.y, 2.5f, 1e-5f) << "P_00.y at scaleW=0, scaleH=1"; // -2 * 1 + 1.5 = 2.5
     EXPECT_NEAR(P10.y, 2.5f, 1e-5f) << "P_10.y at scaleW=0, scaleH=1";
     EXPECT_NEAR(P01.y, 0.5f, 1e-5f) << "P_01.y at scaleW=0, scaleH=1"; // 1 * 1 + 1.5 = 0.5
     EXPECT_NEAR(P11.y, 0.5f, 1e-5f) << "P_11.y at scaleW=0, scaleH=1";
 
-    // Z is unaffected by scaling (only translation).
-    EXPECT_NEAR(P00.z, -2.5f, 1e-5f) << "P_00.z at scaleW=0, scaleH=1";
-    EXPECT_NEAR(P10.z, -2.5f, 1e-5f) << "P_10.z at scaleW=0, scaleH=1";
-    EXPECT_NEAR(P01.z, -2.5f, 1e-5f) << "P_01.z at scaleW=0, scaleH=1";
-    EXPECT_NEAR(P11.z, -2.5f, 1e-5f) << "P_11.z at scaleW=0, scaleH=1";
+    // Z is translation + local Z (2.0 for front face).
+    EXPECT_NEAR(P00.z, -0.5f, 1e-5f) << "P_00.z at scaleW=0, scaleH=1";
+    EXPECT_NEAR(P10.z, -0.5f, 1e-5f) << "P_10.z at scaleW=0, scaleH=1";
+    EXPECT_NEAR(P01.z, -0.5f, 1e-5f) << "P_01.z at scaleW=0, scaleH=1";
+    EXPECT_NEAR(P11.z, -0.5f, 1e-5f) << "P_11.z at scaleW=0, scaleH=1";
 }
 
 TEST_F(WorldCornersDegenerateTest, ScaleHZero_EdgeVectorsCollapseToZeroY)
@@ -962,7 +983,7 @@ TEST_F(WorldCornersDegenerateTest, ScaleWZeroAndScaleHZero_AllCornersCollapseToC
 {
     // With both scaleW=0 and scaleH=0, all local coordinates (X and Y) scale to 0,
     // so all four corners should collapse to the same world position: the world
-    // position of the local origin (center of the quad).
+    // position of the local center (0, 0, 2) for the +Z face.
     glm::vec3 P00, P10, P01, P11;
     scene.worldCorners(0.0f, P00, P10, P01, P11, 0.0f, 0.0f);
 
@@ -976,11 +997,11 @@ TEST_F(WorldCornersDegenerateTest, ScaleWZeroAndScaleHZero_AllCornersCollapseToC
     EXPECT_TRUE(std::isfinite(P11.x) && std::isfinite(P11.y) && std::isfinite(P11.z))
         << "P_11 not finite with both scales=0";
 
-    // All corners should be at the world position of the local origin.
-    // At t=0, M_anim(0) translates by (0, 1.5, -2.5).
+    // All corners should be at the world position of the local center (0, 0, 2).
+    // At t=0, M_anim(0) translates by (0, 1.5, -2.5), so world center = (0, 1.5, -0.5).
     const float expectedX = 0.0f;
     const float expectedY = 1.5f;
-    const float expectedZ = -2.5f;
+    const float expectedZ = -0.5f;  // -2.5 + 2.0 (local Z)
 
     EXPECT_NEAR(P00.x, expectedX, 1e-5f) << "P_00.x should equal center X";
     EXPECT_NEAR(P00.y, expectedY, 1e-5f) << "P_00.y should equal center Y";

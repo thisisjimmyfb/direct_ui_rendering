@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <string>
 #include <vector>
+#include <array>
 #include <cstdint>
 
 // ---------------------------------------------------------------------------
@@ -28,10 +29,11 @@ struct SurfaceUBO {
     float     _pad[3];
 };
 
-// Vertex layout for the composite surface quad (world-space pos + UV).
+// Vertex layout for the composite surface quad (world-space pos + UV + face index).
 struct QuadVertex {
     glm::vec3 pos;
     glm::vec2 uv;
+    int       faceIndex;  // Cube face index (0-5) for quad geometry
 };
 
 // ---------------------------------------------------------------------------
@@ -85,6 +87,7 @@ public:
     // UBO updates (call once per frame before recording)
     void updateSceneUBO(const SceneUBO& data);
     void updateSurfaceUBO(const SurfaceUBO& data);
+    void updateFaceSurfaceUBOs(const std::array<SurfaceUBO, 6>& data);
 
     // Command buffer recording — call in order each frame
     void recordShadowPass(VkCommandBuffer cmd);
@@ -111,6 +114,8 @@ public:
     // Update the surface quad vertex buffer each frame (for composite/traditional mode).
     void updateSurfaceQuad(const glm::vec3& P00, const glm::vec3& P10,
                            const glm::vec3& P01, const glm::vec3& P11);
+    // Update the cube surface vertex buffer each frame (6 faces, 2 triangles each).
+    void updateCubeSurface(const std::array<std::array<glm::vec3, 4>, 6>& faceCorners);
     // Update the shadow-pass quad vertex buffer each frame (room Vertex layout).
     void updateUIShadowQuad(const glm::vec3& P00, const glm::vec3& P10,
                             const glm::vec3& P01, const glm::vec3& P11);
@@ -213,14 +218,14 @@ private:
     // Descriptor pool / sets
     VkDescriptorPool m_descPool{VK_NULL_HANDLE};
     VkDescriptorSet  m_set0{VK_NULL_HANDLE};
-    VkDescriptorSet  m_set1{VK_NULL_HANDLE};
+    std::array<VkDescriptorSet, 6> m_sets1{};
     VkDescriptorSet  m_set2{VK_NULL_HANDLE};
 
     // Uniform buffers
     VkBuffer      m_sceneUBOBuf{VK_NULL_HANDLE};
     VmaAllocation m_sceneUBOAlloc{VK_NULL_HANDLE};
-    VkBuffer      m_surfaceUBOBuf{VK_NULL_HANDLE};
-    VmaAllocation m_surfaceUBOAlloc{VK_NULL_HANDLE};
+    std::array<VkBuffer, 6>      m_surfaceUBOBufs{};
+    std::array<VmaAllocation, 6> m_surfaceUBOAllocs{};
 
     // Shadow map resources
     VkImage       m_shadowImage{VK_NULL_HANDLE};

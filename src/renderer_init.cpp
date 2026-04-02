@@ -774,7 +774,7 @@ bool Renderer::createPipelines()
         VkPipelineRasterizationStateCreateInfo raster{
             VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
         raster.polygonMode             = VK_POLYGON_MODE_FILL;
-        raster.cullMode                = VK_CULL_MODE_FRONT_BIT;  // front-face culling for shadow maps
+        raster.cullMode                = VK_CULL_MODE_NONE;  // no culling for shadow pass
         raster.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         raster.lineWidth               = 1.0f;
         raster.depthBiasEnable         = VK_TRUE;
@@ -1097,16 +1097,16 @@ bool Renderer::createPipelines()
 
 bool Renderer::createDescriptorPool()
 {
-    // 2 UBOs: SceneUBO (set 0, binding 0) + SurfaceUBO (set 1, binding 0)
+    // 7 UBOs: SceneUBO (set 0) + 6x SurfaceUBO (one per cube face, set 1)
     // 3 combined image samplers: shadow map + atlas + offscreen RT
     VkDescriptorPoolSize poolSizes[2]{};
     poolSizes[0].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = 2;
+    poolSizes[0].descriptorCount = 7;
     poolSizes[1].type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = 3;
 
     VkDescriptorPoolCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    ci.maxSets       = 3;
+    ci.maxSets       = 8;  // set0 + 6*set1 + set2
     ci.poolSizeCount = 2;
     ci.pPoolSizes    = poolSizes;
 
@@ -1115,19 +1115,25 @@ bool Renderer::createDescriptorPool()
 
 bool Renderer::allocateDescriptorSets()
 {
-    VkDescriptorSetLayout layouts[3] = {m_setLayout0, m_setLayout1, m_setLayout2};
-    VkDescriptorSet       sets[3]    = {};
+    // Allocate set0 and set2 together with the first set1
+    VkDescriptorSetLayout layouts8[8] = {
+        m_setLayout0,
+        m_setLayout1, m_setLayout1, m_setLayout1,
+        m_setLayout1, m_setLayout1, m_setLayout1,
+        m_setLayout2
+    };
+    VkDescriptorSet sets8[8] = {};
 
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorPool     = m_descPool;
-    ai.descriptorSetCount = 3;
-    ai.pSetLayouts        = layouts;
+    ai.descriptorSetCount = 8;
+    ai.pSetLayouts        = layouts8;
 
-    if (vkAllocateDescriptorSets(m_device, &ai, sets) != VK_SUCCESS)
+    if (vkAllocateDescriptorSets(m_device, &ai, sets8) != VK_SUCCESS)
         return false;
 
-    m_set0 = sets[0];
-    m_set1 = sets[1];
-    m_set2 = sets[2];
+    m_set0 = sets8[0];
+    for (int i = 0; i < 6; ++i) m_sets1[i] = sets8[1 + i];
+    m_set2 = sets8[7];
     return true;
 }

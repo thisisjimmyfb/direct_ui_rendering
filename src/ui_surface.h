@@ -16,6 +16,8 @@ glm::mat4 computeM_us(float W_ui, float H_ui);
 
 // Compute M_sw: affine matrix mapping normalized surface space to world space.
 // P_00 = top-left, P_10 = top-right, P_01 = bottom-left corner in world space.
+// Degenerate case: if edge vectors are zero, returns zero columns for those edges
+// and zero normal column (no NaN values).
 glm::mat4 computeM_sw(glm::vec3 P_00, glm::vec3 P_10, glm::vec3 P_01);
 
 // Compute all surface transforms in one call given surface corners, canvas dimensions,
@@ -27,4 +29,10 @@ SurfaceTransforms computeSurfaceTransforms(glm::vec3 P_00, glm::vec3 P_10, glm::
 // Compute four inward-facing world-space clip planes from the surface edges.
 // Plane equation: dot(plane.xyz, worldPos) + plane.w >= 0 means inside.
 // Order: left, right, top, bottom.
+// Degenerate case: if all corners are the same, returns planes with zero normals.
 std::array<glm::vec4, 4> computeClipPlanes(glm::vec3 P_00, glm::vec3 P_10, glm::vec3 P_01);
+
+// Compute transforms for a specific cube face given its four corners.
+// P_11 is not used in the matrix computation; only P_00, P_10, P_01 define the affine frame.
+SurfaceTransforms computeFaceTransforms(glm::vec3 P_00, glm::vec3 P_10, glm::vec3 P_01, glm::vec3 P_11,
+                                        float W_ui, float H_ui, const glm::mat4& viewProj);

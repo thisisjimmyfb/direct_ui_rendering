@@ -1,5 +1,6 @@
 #include "app.h"
 #include "vk_utils.h"
+#include "scene.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <vk_mem_alloc.h>
@@ -200,10 +201,6 @@ void App::drawFrame()
         if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) m_camPos += camRight * camSpeed;
     }
 
-    // Compute world-space surface corners for this frame.
-    glm::vec3 P_00, P_10, P_01, P_11;
-    m_scene.worldCorners(m_time, P_00, P_10, P_01, P_11, m_quadW, m_quadH);
-
     // Camera look-at from current position and orientation
     glm::mat4 view = glm::lookAt(m_camPos, m_camPos + camFront, glm::vec3(0, 1, 0));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f),
@@ -224,28 +221,35 @@ void App::drawFrame()
     sceneUBO.ambientColor = glm::vec4(m_scene.light().ambient, 1.0f);
     m_renderer.updateSceneUBO(sceneUBO);
 
-    // SurfaceUBO — always computed, only consumed by direct mode shaders
+    // Update cube surface for both direct and traditional modes.
+    m_scene.worldCubeCorners(m_time, m_cubeCorners, m_quadW, m_quadH);
+    m_renderer.updateCubeSurface(m_cubeCorners);
+
+    // Per-face SurfaceUBOs — compute M_total and clip planes for each cube face.
     // Scale the canvas dimensions by the quad scale factors so that fonts stay
-    // the same physical world-space size when the quad is resized.  A wider quad
-    // (m_quadW > 1) has longer edge vectors, so dividing by a proportionally
-    // larger W_ui keeps the glyph-size-per-unit-world-space constant.  Content
-    // that extends beyond the scaled quad boundary is clipped by the clip planes.
-    auto transforms = computeSurfaceTransforms(P_00, P_10, P_01,
-                                               W_UI * m_quadW, H_UI * m_quadH,
-                                               proj * view);
-    auto clipPlanes  = computeClipPlanes(P_00, P_10, P_01);
-
-    SurfaceUBO surfaceUBO{};
-    surfaceUBO.totalMatrix = transforms.M_total;
-    surfaceUBO.worldMatrix = transforms.M_world;
-    for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
-    surfaceUBO.depthBias   = m_depthBias;
-    m_renderer.updateSurfaceUBO(surfaceUBO);
-
-    // Update animated surface quad for traditional (composite) mode.
-    m_renderer.updateSurfaceQuad(P_00, P_10, P_01, P_11);
-    // Update shadow-pass quad so the UI surface casts a shadow onto room geometry.
-    m_renderer.updateUIShadowQuad(P_00, P_10, P_01, P_11);
+    // the same physical world-space size when the quad is resized.
+    {
+        std::array<SurfaceUBO, 6> faceUBOs{};
+        for (int fi = 0; fi < 6; ++fi) {
+            const auto& fc = m_cubeCorners[fi];
+            auto t = computeSurfaceTransforms(fc[0], fc[1], fc[2],
+                                              W_UI * m_quadW, H_UI * m_quadH,
+                                              proj * view);
+            auto cp = computeClipPlanes(fc[0], fc[1], fc[2]);
+            faceUBOs[fi].totalMatrix = t.M_total;
+            faceUBOs[fi].worldMatrix = t.M_world;
+            for (int k = 0; k < 4; ++k) faceUBOs[fi].clipPlanes[k] = cp[k];
+            faceUBOs[fi].depthBias   = m_depthBias;
+        }
+        m_renderer.updateFaceSurfaceUBOs(faceUBOs);
+    }
+    // Update shadow-pass quad for each face of the cube so the UI surface casts a shadow.
+    for (int i = 0; i < 6; ++i) {
+        // Use first face's corners for shadow casting (all faces share same world transform)
+        m_renderer.updateUIShadowQuad(
+            m_cubeCorners[i][0], m_cubeCorners[i][1],
+            m_cubeCorners[i][2], m_cubeCorners[i][3]);
+    }
 
     // Tessellate HUD and upload to GPU buffer.
     m_hudVerts.clear();

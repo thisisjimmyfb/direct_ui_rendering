@@ -34,11 +34,11 @@ direct_ui_rendering/
 │   ├── renderer_init.cpp             # Device, instance, swapchain, pipelines, render pass setup (1133 lines)
 │   ├── renderer_recording.cpp        # Per-frame command buffer recording and draw calls
 │   ├── renderer_resources.cpp        # Buffer/image allocation, descriptor set updates, VMA wrappers
-│   ├── scene.h                       # Scene class: room geometry, light, animation matrix
+│   ├── scene.h                       # Scene class: room geometry, light, animation matrix, UISurface (6 faces)
 │   ├── scene.cpp                     # Scene implementation
 │   ├── ui_system.h                   # UISystem class: atlas, glyph quads, vertex buffer, SDF constants
 │   ├── ui_system.cpp                 # stb_truetype SDF atlas generation or PNG fallback
-│   ├── ui_surface.h                  # UI surface transforms: computeSurfaceTransforms(), computeClipPlanes()
+│   ├── ui_surface.h                  # UI surface transforms: computeSurfaceTransforms(), computeClipPlanes(), computeFaceTransforms()
 │   ├── ui_surface.cpp                # UI surface transform calculations
 │   └── vk_utils.h                    # Thin Vulkan helpers: image barriers, buffer upload utilities
 ├── shaders/
@@ -63,7 +63,7 @@ direct_ui_rendering/
 │   ├── test_metrics.cpp              # tests_unit: frame timing ring buffer and GPU memory tracking
 │   ├── test_perf.cpp                 # tests_render: performance regression tests
 │   ├── test_scale_render.cpp         # tests_render: non-uniform scale clip plane tracking and font-size invariance
-│   ├── test_scene.cpp                # tests_unit: SceneInit, WorldCorners, SceneAnimation, LightFrustum
+│   ├── test_scene.cpp                # tests_unit: SceneInit, WorldCorners, SceneAnimation, LightFrustum, UISurface (6 faces)
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI quad shadow casting
 │   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
