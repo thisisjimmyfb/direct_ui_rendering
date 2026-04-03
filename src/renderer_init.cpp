@@ -404,13 +404,20 @@ bool Renderer::createDescriptorSetLayouts()
             return false;
     }
 
-    // Pipeline layout: set0 + set1 + set2 (UI atlas)
+    // Pipeline layout: set0 + set1 + set2 (UI atlas) + push constants
     {
         VkDescriptorSetLayout layouts[] = { m_setLayout0, m_setLayout1, m_setLayout2 };
+        // Push constant: orthoMatrix (mat4 = 64 bytes) + sdfThreshold (float) + padding (12 bytes) = 80 bytes
+        VkPushConstantRange pcRange{};
+        pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        pcRange.offset     = 0;
+        pcRange.size       = 80;  // 64 (mat4) + 16 (float + pad)
+
         VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
         ci.setLayoutCount       = 3;
         ci.pSetLayouts          = layouts;
-        // No push constants needed.
+        ci.pushConstantRangeCount = 1;
+        ci.pPushConstantRanges    = &pcRange;
 
         if (vkCreatePipelineLayout(m_device, &ci, nullptr, &m_pipelineLayout) != VK_SUCCESS)
             return false;

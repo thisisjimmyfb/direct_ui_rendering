@@ -21,7 +21,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOOP="$ROOT/spec/LOOP.md"
 AUTO=false
 SKIP_PERMISSIONS=true
-MODEL=""
+MODEL="claude-haiku-4-5"
 OFFLINE_LLM_URL="http://localhost:8088"
 
 # Peak hours: 5am-11am and 1pm-7pm (13:00-19:00) — double token pricing
@@ -179,7 +179,7 @@ while true; do
     iter_end=$(date +%s)
     iter_duration=$((iter_end - iter_start))
     echo ""
-    echo "└─ iteration $iteration complete ($(printf '%ds' "$iter_duration")) ─────────────────────────────────────"
+    echo "└─ iteration $iteration complete ($(printf '%02d:%02d:%02d' $((iter_duration / 3600)) $(((iter_duration % 3600) / 60)) $((iter_duration % 60)))) ─────────────────────────────────────"
     echo ""
 
     if [[ -z "$(git status --porcelain)" ]]; then
