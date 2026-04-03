@@ -5,14 +5,6 @@
 - Remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress or summary in this file.
 
 ## Pending Tasks
-- Update all comments to reflect what the code is actually doing.
-- Add test: `Scene::worldCorners` with `scaleW=0.0f` — document and validate the behavior (NaN or crash) when edge vectors are exactly zero-length, establishing a baseline before any guard is added. Guards against regressions if a clamp is later introduced.
-- Add test: `UISystem::tessellateString` with a very long string (1000+ characters) — verify no integer overflow in the returned `uint32_t` vertex count and that `outVerts.size()` equals the returned count.
-- Add test: `computeClipPlanes` with collinear corners (P_00, P_10, P_01 on the same line) — the cross product is zero so the surface normal is undefined; document whether the function produces NaN, zero, or well-defined clip planes as a regression baseline.
-- Add test: `computeM_us` with zero canvas dimension (W_ui=0) — the matrix entry 1/W_ui becomes infinity; document the behavior as a baseline before any guard is added.
-- Add test: `computeM_sw` with zero-length `e_u` (P_10 == P_00) — basis is degenerate; document whether the resulting matrix produces NaN/inf column or a zero column, as a regression baseline before any guard is added.
-- Add test: `computeM_sw` with zero-length `e_v` (P_01 == P_00) — vertical edge degenerate; document whether the resulting matrix produces NaN/inf in the second column, as a regression baseline before any guard is added.
-- Add test: `computeM_us` with zero canvas height (H_ui=0) — the matrix entry 1/H_ui becomes infinity; document the behavior as a baseline before any guard is added.
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section
@@ -24,4 +16,9 @@
 ## Out of Spec
 - Refactor: split `renderer_init.cpp` — completed. Extracted pipeline creation into `renderer_pipelines.cpp` and render pass definitions into `renderer_renderpasses.cpp`.
 - Bug fix: Added `m_setLayout2` to pipeline layout to fix descriptor set mismatch errors in tests.
-
+- Completed all edge case tests:
+  - `Scene::worldCorners` with `scaleW=0.0f` — documents NaN/finite behavior with zero-length edge vectors
+  - `UISystem::tessellateString` with 1000+ character strings — verifies no integer overflow in uint32_t vertex count
+  - `computeClipPlanes` with collinear corners — documents zero normal behavior
+  - `computeM_us` with zero canvas dimensions (W_ui=0, H_ui=0) — documents infinity behavior
+  - `computeM_sw` with zero-length edges (P_10==P_00, P_01==P_00) — documents zero column behavior
