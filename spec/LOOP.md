@@ -13,7 +13,6 @@
 - Add test: `computeM_sw` with zero-length `e_u` (P_10 == P_00) — basis is degenerate; document whether the resulting matrix produces NaN/inf column or a zero column, as a regression baseline before any guard is added.
 - Add test: `computeM_sw` with zero-length `e_v` (P_01 == P_00) — vertical edge degenerate; document whether the resulting matrix produces NaN/inf in the second column, as a regression baseline before any guard is added.
 - Add test: `computeM_us` with zero canvas height (H_ui=0) — the matrix entry 1/H_ui becomes infinity; document the behavior as a baseline before any guard is added.
-- Refactor: split `renderer_init.cpp` (1133 lines) — extract pipeline creation (~457 lines, `createPipelines`) into `renderer_pipelines.cpp` and render pass definitions (~211 lines, `createRenderPasses`) into `renderer_renderpasses.cpp`; keep device/swapchain/descriptor orchestration in `renderer_init.cpp`. Do not split if doing so requires shuffling large numbers of shared static helpers.
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section
@@ -23,5 +22,6 @@
 - Update ['File Structure'](/CLAUDE.md/#File-Structure) to reflect current project structure.
 
 ## Out of Spec
-
+- Refactor: split `renderer_init.cpp` — completed. Extracted pipeline creation into `renderer_pipelines.cpp` and render pass definitions into `renderer_renderpasses.cpp`.
+- Bug fix: Added `m_setLayout2` to pipeline layout to fix descriptor set mismatch errors in tests.
 

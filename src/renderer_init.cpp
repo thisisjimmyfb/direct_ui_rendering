@@ -404,11 +404,11 @@ bool Renderer::createDescriptorSetLayouts()
             return false;
     }
 
-    // Pipeline layout: set0 + set1 (set2 is bound per-draw for UI/atlas)
+    // Pipeline layout: set0 + set1 + set2 (UI atlas)
     {
-        VkDescriptorSetLayout layouts[] = { m_setLayout0, m_setLayout1 };
+        VkDescriptorSetLayout layouts[] = { m_setLayout0, m_setLayout1, m_setLayout2 };
         VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-        ci.setLayoutCount       = 2;
+        ci.setLayoutCount       = 3;
         ci.pSetLayouts          = layouts;
         // No push constants needed.
 

@@ -30,8 +30,10 @@ direct_ui_rendering/
 │   ├── metrics.h                     # Metrics tracking: frame timer, VMA stats, HUD rendering
 │   ├── metrics.cpp                   # Metrics implementation
 │   ├── renderer.h                    # Renderer class declaration: Vulkan device, pipelines, render passes
-│   ├── renderer.cpp                  # Thin coordinator: includes the three renderer modules
-│   ├── renderer_init.cpp             # Device, instance, swapchain, pipelines, render pass setup (1133 lines)
+│   ├── renderer.cpp                  # Thin coordinator: includes the four renderer modules
+│   ├── renderer_init.cpp             # Device, instance, swapchain, render pass setup (469 lines)
+│   ├── renderer_pipelines.cpp        # Pipeline creation: createPipelines() (~470 lines)
+│   ├── renderer_renderpasses.cpp     # Render pass definitions: createRenderPasses() (~200 lines)
 │   ├── renderer_recording.cpp        # Per-frame command buffer recording and draw calls
 │   ├── renderer_resources.cpp        # Buffer/image allocation, descriptor set updates, VMA wrappers
 │   ├── scene.h                       # Scene class: room geometry, light, animation matrix, UISurface (6 faces)
