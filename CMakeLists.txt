@@ -133,6 +133,8 @@ set(LIB_SOURCES
     src/app.cpp
     src/renderer.cpp
     src/renderer_init.cpp
+    src/renderer_pipelines.cpp
+    src/renderer_renderpasses.cpp
     src/renderer_recording.cpp
     src/renderer_resources.cpp
     src/scene.cpp

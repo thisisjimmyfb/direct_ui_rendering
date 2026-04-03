@@ -17,7 +17,8 @@
 set -euo pipefail
 
 # ── defaults ──────────────────────────────────────────────────────────────────
-LOOP="../spec/LOOP.md"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LOOP="$ROOT/spec/LOOP.md"
 AUTO=false
 SKIP_PERMISSIONS=true
 MODEL=""
