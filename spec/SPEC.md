@@ -13,7 +13,6 @@
 9. [MSAA](#9-msaa)
 10. [Testing](#10-testing)
 11. [Build and Dependencies](#11-build-and-dependencies)
-12. [File Structure](#12-file-structure)
 
 ---
 
@@ -104,7 +103,7 @@ The offscreen RT is not allocated when the app starts in direct mode; if the use
 
 ## 4. Transform Mathematics
 
-The full mathematical derivation — coordinate space definitions, matrix constructions for `M_us`, `M_sw`, `M_wc`, clip plane derivation, and depth bias — is specified in [`direct_ui_rendering.md`](direct_ui_rendering.md). This section records only the implementation contracts that the CPU code and shaders must satisfy.
+The full mathematical derivation — coordinate space definitions, matrix constructions for `M_us`, `M_sw`, `M_wc`, clip plane derivation, and depth bias — is specified in [`direct_ui_rendering.md`](/spec/direct_ui_rendering.md). This section records only the implementation contracts that the CPU code and shaders must satisfy.
 
 ### 4.1 CPU Responsibilities (per frame)
 
