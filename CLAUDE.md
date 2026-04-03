@@ -10,7 +10,7 @@ direct_ui_rendering/
 │       └── cmake-multi-platform.yml  # CI: build + test on Ubuntu and Windows
 ├── assets/
 │   └── atlas.png                     # Bitmap glyph atlas (fallback when no system font)
-├── build/
+├── scripts/
 │   ├── build.sh                      # Build the project (cmake + ninja/msbuild)
 │   ├── commit.sh                     # Stage and commit changes with a generated message
 │   ├── ralph.sh                      # Automated iterate-loop runner (Ralph agent)

@@ -159,6 +159,7 @@ echo ""
 while true; do
     iteration=$((iteration + 1))
 
+    iter_start=$(date +%s)
     echo "┌─ iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S') ──────────────────────────────"
     echo ""
 
@@ -174,8 +175,10 @@ while true; do
         run_local_llm
     fi
 
+    iter_end=$(date +%s)
+    iter_duration=$((iter_end - iter_start))
     echo ""
-    echo "└─ iteration $iteration complete ────────────────────────────────────────────"
+    echo "└─ iteration $iteration complete ($(printf '%ds' "$iter_duration")) ─────────────────────────────────────"
     echo ""
 
     if [[ -z "$(git status --porcelain)" ]]; then
