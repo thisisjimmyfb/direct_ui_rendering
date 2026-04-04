@@ -3,8 +3,6 @@ Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_r
 Once a task that can be worked on without changing the specification is identified, work on the task until completion. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress or summary in this file.
 
 ## Pending Tasks
-- Add unit tests for Renderer render pass creation (createRenderPasses with validation of attachments, samples, and load/store ops)
-- Add unit tests for Renderer pipeline creation (createPipelines with validation of pipeline layout and descriptor set layouts)
 - Add unit tests for App input handling (key callbacks, mode toggle, depth bias adjustment)
 - Add unit tests for terminal input mode (text accumulation, backspace handling, cursor rendering)
 

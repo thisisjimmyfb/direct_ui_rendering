@@ -123,6 +123,26 @@ public:
 
     bool isHeadless() const { return m_headless; }
 
+    // Test accessors for render passes and pipelines
+    VkRenderPass getShadowPass()    const { return m_shadowPass; }
+    VkRenderPass getUIRTPass()      const { return m_uiRTPass; }
+    VkRenderPass getMainPass()      const { return m_mainPass; }
+    VkRenderPass getMetricsPass()   const { return m_metricsPass; }
+
+    VkPipeline getShadowPipeline()  const { return m_pipeShadow; }
+    VkPipeline getRoomPipeline()    const { return m_pipeRoom; }
+    VkPipeline getUIDirectPipeline() const { return m_pipeUIDirect; }
+    VkPipeline getUIRTPipeline()    const { return m_pipeUIRT; }
+    VkPipeline getCompositePipeline() const { return m_pipeComposite; }
+    VkPipeline getSurfacePipeline() const { return m_pipeSurface; }
+    VkPipeline getMetricsPipeline() const { return m_pipeMetrics; }
+
+    VkPipelineLayout getPipelineLayout() const { return m_pipelineLayout; }
+
+    VkDescriptorSetLayout getSetLayout0() const { return m_setLayout0; }
+    VkDescriptorSetLayout getSetLayout1() const { return m_setLayout1; }
+    VkDescriptorSetLayout getSetLayout2() const { return m_setLayout2; }
+
     // Canvas / rendering constants
     static constexpr uint32_t W_UI             = 512;
     static constexpr uint32_t H_UI             = 128;

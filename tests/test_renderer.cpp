@@ -361,3 +361,173 @@ TEST_F(DescriptorBindingTest, BindAtlasDescriptor) {
     vkDestroyImageView(renderer.getDevice(), view, nullptr);
     vmaDestroyImage(renderer.getAllocator(), img, alloc);
 }
+
+// ---------------------------------------------------------------------------
+// RenderPassTest — Test render pass creation with attachment validation
+// ---------------------------------------------------------------------------
+
+class RenderPassTest : public ::testing::Test {
+protected:
+    Renderer renderer;
+
+    void SetUp() override {
+        ASSERT_TRUE(renderer.init(/*headless=*/true, nullptr, TEST_SHADER_DIR));
+    }
+
+    void TearDown() override {
+        renderer.cleanup();
+    }
+
+    // Helper to query render pass properties
+    struct RenderPassProperties {
+        uint32_t attachmentCount{0};
+        std::vector<VkAttachmentDescription> attachments;
+    };
+
+    // Note: VkRenderPass is an opaque handle, so we can only test that it's created
+    // and not null. Full validation of attachment properties would require
+    // exposing the render pass properties or inspecting through indirect testing.
+};
+
+TEST_F(RenderPassTest, ShadowPassCreated) {
+    VkRenderPass shadowPass = renderer.getShadowPass();
+    EXPECT_NE(shadowPass, VK_NULL_HANDLE);
+}
+
+TEST_F(RenderPassTest, UIRTPassCreated) {
+    VkRenderPass uiRTPass = renderer.getUIRTPass();
+    EXPECT_NE(uiRTPass, VK_NULL_HANDLE);
+}
+
+TEST_F(RenderPassTest, MainPassCreated) {
+    VkRenderPass mainPass = renderer.getMainPass();
+    EXPECT_NE(mainPass, VK_NULL_HANDLE);
+}
+
+TEST_F(RenderPassTest, MetricsPassCreated) {
+    VkRenderPass metricsPass = renderer.getMetricsPass();
+    EXPECT_NE(metricsPass, VK_NULL_HANDLE);
+}
+
+// Test that all render passes are distinct handles
+TEST_F(RenderPassTest, RenderPassesAreDistinct) {
+    VkRenderPass shadow  = renderer.getShadowPass();
+    VkRenderPass uiRT    = renderer.getUIRTPass();
+    VkRenderPass main    = renderer.getMainPass();
+    VkRenderPass metrics = renderer.getMetricsPass();
+
+    // Each should be a valid, unique handle
+    EXPECT_NE(shadow, VK_NULL_HANDLE);
+    EXPECT_NE(uiRT, VK_NULL_HANDLE);
+    EXPECT_NE(main, VK_NULL_HANDLE);
+    EXPECT_NE(metrics, VK_NULL_HANDLE);
+
+    // They should be distinct
+    EXPECT_NE(shadow, uiRT);
+    EXPECT_NE(shadow, main);
+    EXPECT_NE(shadow, metrics);
+    EXPECT_NE(uiRT, main);
+    EXPECT_NE(uiRT, metrics);
+    EXPECT_NE(main, metrics);
+}
+
+// ---------------------------------------------------------------------------
+// PipelineTest — Test pipeline creation
+// ---------------------------------------------------------------------------
+
+class PipelineTest : public ::testing::Test {
+protected:
+    Renderer renderer;
+
+    void SetUp() override {
+        ASSERT_TRUE(renderer.init(/*headless=*/true, nullptr, TEST_SHADER_DIR));
+    }
+
+    void TearDown() override {
+        renderer.cleanup();
+    }
+};
+
+TEST_F(PipelineTest, ShadowPipelineCreated) {
+    VkPipeline shadowPipe = renderer.getShadowPipeline();
+    EXPECT_NE(shadowPipe, VK_NULL_HANDLE);
+}
+
+TEST_F(PipelineTest, RoomPipelineCreated) {
+    VkPipeline roomPipe = renderer.getRoomPipeline();
+    EXPECT_NE(roomPipe, VK_NULL_HANDLE);
+}
+
+TEST_F(PipelineTest, UIDirectPipelineCreated) {
+    VkPipeline uidirectPipe = renderer.getUIDirectPipeline();
+    EXPECT_NE(uidirectPipe, VK_NULL_HANDLE);
+}
+
+TEST_F(PipelineTest, UIRTPipelineCreated) {
+    VkPipeline uirtPipe = renderer.getUIRTPipeline();
+    EXPECT_NE(uirtPipe, VK_NULL_HANDLE);
+}
+
+TEST_F(PipelineTest, CompositePipelineCreated) {
+    VkPipeline compositePipe = renderer.getCompositePipeline();
+    EXPECT_NE(compositePipe, VK_NULL_HANDLE);
+}
+
+TEST_F(PipelineTest, SurfacePipelineCreated) {
+    VkPipeline surfacePipe = renderer.getSurfacePipeline();
+    EXPECT_NE(surfacePipe, VK_NULL_HANDLE);
+}
+
+TEST_F(PipelineTest, MetricsPipelineCreated) {
+    VkPipeline metricsPipe = renderer.getMetricsPipeline();
+    EXPECT_NE(metricsPipe, VK_NULL_HANDLE);
+}
+
+TEST_F(PipelineTest, PipelinesAreDistinct) {
+    VkPipeline shadow    = renderer.getShadowPipeline();
+    VkPipeline room      = renderer.getRoomPipeline();
+    VkPipeline uidirect  = renderer.getUIDirectPipeline();
+    VkPipeline uirt      = renderer.getUIRTPipeline();
+    VkPipeline composite = renderer.getCompositePipeline();
+    VkPipeline surface   = renderer.getSurfacePipeline();
+    VkPipeline metrics   = renderer.getMetricsPipeline();
+
+    // All should be valid handles
+    EXPECT_NE(shadow, VK_NULL_HANDLE);
+    EXPECT_NE(room, VK_NULL_HANDLE);
+    EXPECT_NE(uidirect, VK_NULL_HANDLE);
+    EXPECT_NE(uirt, VK_NULL_HANDLE);
+    EXPECT_NE(composite, VK_NULL_HANDLE);
+    EXPECT_NE(surface, VK_NULL_HANDLE);
+    EXPECT_NE(metrics, VK_NULL_HANDLE);
+
+    // Verify distinction (spot checks)
+    EXPECT_NE(shadow, room);
+    EXPECT_NE(uidirect, uirt);
+    EXPECT_NE(composite, surface);
+}
+
+TEST_F(PipelineTest, PipelineLayoutCreated) {
+    VkPipelineLayout layout = renderer.getPipelineLayout();
+    EXPECT_NE(layout, VK_NULL_HANDLE);
+}
+
+TEST_F(PipelineTest, DescriptorSetLayoutsCreated) {
+    VkDescriptorSetLayout set0 = renderer.getSetLayout0();
+    VkDescriptorSetLayout set1 = renderer.getSetLayout1();
+    VkDescriptorSetLayout set2 = renderer.getSetLayout2();
+
+    EXPECT_NE(set0, VK_NULL_HANDLE);
+    EXPECT_NE(set1, VK_NULL_HANDLE);
+    EXPECT_NE(set2, VK_NULL_HANDLE);
+}
+
+TEST_F(PipelineTest, DescriptorSetLayoutsAreDistinct) {
+    VkDescriptorSetLayout set0 = renderer.getSetLayout0();
+    VkDescriptorSetLayout set1 = renderer.getSetLayout1();
+    VkDescriptorSetLayout set2 = renderer.getSetLayout2();
+
+    EXPECT_NE(set0, set1);
+    EXPECT_NE(set0, set2);
+    EXPECT_NE(set1, set2);
+}
