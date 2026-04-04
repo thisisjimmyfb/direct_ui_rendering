@@ -76,19 +76,13 @@ void main() {
         // Pre-multiplied alpha assumed in atlas (bitmap mode)
     }
 
-    // Apply animated color gradient based on time phase
-    // Create a rainbow hue that cycles through colors
-    float hue = mod(uiColorPhase * 0.3, 1.0);  // Cycle through hues with 3.33s period
-    vec3 rainbowColor = hsvToRgb(hue, 0.8, 1.0);  // High saturation and value for vibrant colors
-
     // Apply same lighting model as surface.frag: ambient + spotlight with shadow.
     // This ensures UI text is readable even in shadow areas (ambient contribution)
     // and receives full lighting where illuminated by the spotlight.
     float shadow = sampleShadowPCF(inShadowCoord);
     vec3 lit = clamp(ambientColor.rgb + shadow * lightColor.rgb * lightIntensity, 0.0, 1.0);
 
-    // Blend the rainbow color with the lighting
-    vec3 coloredText = rainbowColor * lit;
-    outColor = vec4(coloredText, texColor.a);
+    // Output text with pre-multiplied blending: RGB channels modulated by lighting, alpha preserved
+    outColor = vec4(texColor.rgb * lit, texColor.a);
 #endif
 }

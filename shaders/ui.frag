@@ -47,20 +47,10 @@ void main() {
         float dist = texture(uiAtlas, inTexCoord).r;
         float spread = 0.07;
         float alpha = smoothstep(sdfThreshold - spread, sdfThreshold + spread, dist);
-
-        // Apply animated color gradient based on time phase
-        float hue = mod(uiColorPhase * 0.3, 1.0);  // Cycle through hues with 3.33s period
-        vec3 rainbowColor = hsvToRgb(hue, 0.8, 1.0);  // High saturation and value for vibrant colors
-        outColor = vec4(rainbowColor * alpha, alpha);  // pre-multiplied color text
+        outColor = vec4(alpha, alpha, alpha, alpha);  // pre-multiplied white text
     } else {
         vec4 texColor = texture(uiAtlas, inTexCoord);
-
-        // Apply animated color gradient based on time phase
-        float hue = mod(uiColorPhase * 0.3, 1.0);  // Cycle through hues with 3.33s period
-        vec3 rainbowColor = hsvToRgb(hue, 0.8, 1.0);  // High saturation and value for vibrant colors
-
-        // Blend the rainbow color with the sampled texture
-        outColor = vec4(rainbowColor * texColor.rgb, texColor.a);
+        outColor = vec4(texColor.rgb * texColor.a, texColor.a);  // pre-multiplied bitmap text
     }
 #endif
 }

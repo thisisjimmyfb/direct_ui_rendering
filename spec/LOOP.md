@@ -4,6 +4,7 @@ Once a task that can be worked on without changing the specification is identifi
 
 ## Pending Tasks
 
+- Implement UI color animation: integrate HSV-to-RGB color cycling into shader output with test updates
 - Improve demo visuals: Add UI interaction feedback (e.g., color change on text input when terminal input active)
 - Improve demo visuals: Add moving shadow effects or dynamic lighting variations
 - Implement UI text color variants for visual variety in demo scene
