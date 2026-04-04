@@ -442,10 +442,10 @@ bool Renderer::createSurfaceQuadBuffer()
             return false;
     }
 
-    // Shadow quad (room Vertex layout: pos vec3 + normal vec3 + uv vec2)
+    // Shadow cube (room Vertex layout: pos vec3 + normal vec3 + uv vec2) — 36 vertices for 6 faces
     {
         VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-        bci.size        = sizeof(Vertex) * 6;
+        bci.size        = sizeof(Vertex) * 36;  // 6 faces × 6 vertices = 36
         bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -669,28 +669,34 @@ void Renderer::updateCubeSurface(const std::array<std::array<glm::vec3, 4>, 6>& 
 }
 
 // ---------------------------------------------------------------------------
-// updateUIShadowQuad — write 6 room-Vertex-layout verts for shadow casting
+// updateUIShadowCube — write 36 room-Vertex-layout verts for shadow casting (6 faces)
 // ---------------------------------------------------------------------------
 
-void Renderer::updateUIShadowQuad(const glm::vec3& P00, const glm::vec3& P10,
-                                   const glm::vec3& P01, const glm::vec3& P11)
+void Renderer::updateUIShadowCube(const std::array<std::array<glm::vec3, 4>, 6>& faceCorners)
 {
     if (!m_uiShadowVtxBuf) return;
 
-    // Compute surface normal from edge vectors.
-    glm::vec3 eu = P10 - P00;
-    glm::vec3 ev = P01 - P00;
-    glm::vec3 n  = glm::normalize(glm::cross(eu, ev));
+    // 6 faces, 2 triangles each (6 vertices per face)
+    // Each face's corners: P_00(0,0), P_10(1,0), P_11(1,1), P_01(0,1)
+    // Triangles: (0,1,2) and (0,2,3) for CCW winding
+    Vertex verts[36];
+    for (int face = 0; face < 6; ++face) {
+        const auto& f = faceCorners[face];
 
-    // Two CCW triangles matching the composite quad winding: (P00, P10, P11) and (P00, P11, P01)
-    Vertex verts[6] = {
-        {P00, n, {0.0f, 0.0f}},
-        {P10, n, {1.0f, 0.0f}},
-        {P11, n, {1.0f, 1.0f}},
-        {P00, n, {0.0f, 0.0f}},
-        {P11, n, {1.0f, 1.0f}},
-        {P01, n, {0.0f, 1.0f}},
-    };
+        // Compute surface normal from edge vectors.
+        glm::vec3 eu = f[1] - f[0];
+        glm::vec3 ev = f[2] - f[0];
+        glm::vec3 n  = glm::normalize(glm::cross(eu, ev));
+
+        int base = face * 6;
+        // Two CCW triangles: (P00, P10, P11) and (P00, P11, P01)
+        verts[base + 0] = {f[0], n, {0.0f, 0.0f}};  // P_00
+        verts[base + 1] = {f[1], n, {1.0f, 0.0f}};  // P_10
+        verts[base + 2] = {f[3], n, {1.0f, 1.0f}};  // P_11
+        verts[base + 3] = {f[0], n, {0.0f, 0.0f}};  // P_00
+        verts[base + 4] = {f[3], n, {1.0f, 1.0f}};  // P_11
+        verts[base + 5] = {f[2], n, {0.0f, 1.0f}};  // P_01
+    }
 
     void* mapped = nullptr;
     vmaMapMemory(m_allocator, m_uiShadowVtxAlloc, &mapped);

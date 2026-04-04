@@ -39,11 +39,11 @@ void Renderer::recordShadowPass(VkCommandBuffer cmd)
         vkCmdBindIndexBuffer(cmd, m_roomIdxBuf, 0, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexed(cmd, m_roomIdxCount, 1, 0, 0, 0);
 
-        // Draw the floating UI surface quad so it casts a shadow onto room geometry.
+        // Draw the floating UI surface cube so all faces cast shadows onto room geometry.
         if (m_uiShadowVtxBuf != VK_NULL_HANDLE) {
-            VkDeviceSize quadOffset = 0;
-            vkCmdBindVertexBuffers(cmd, 0, 1, &m_uiShadowVtxBuf, &quadOffset);
-            vkCmdDraw(cmd, 6, 1, 0, 0);
+            VkDeviceSize cubeOffset = 0;
+            vkCmdBindVertexBuffers(cmd, 0, 1, &m_uiShadowVtxBuf, &cubeOffset);
+            vkCmdDraw(cmd, 36, 1, 0, 0);  // 6 faces × 6 vertices = 36
         }
     }
 

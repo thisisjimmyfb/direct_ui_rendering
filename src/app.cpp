@@ -243,13 +243,8 @@ void App::drawFrame()
         }
         m_renderer.updateFaceSurfaceUBOs(faceUBOs);
     }
-    // Update shadow-pass quad for each face of the cube so the UI surface casts a shadow.
-    for (int i = 0; i < 6; ++i) {
-        // Use first face's corners for shadow casting (all faces share same world transform)
-        m_renderer.updateUIShadowQuad(
-            m_cubeCorners[i][0], m_cubeCorners[i][1],
-            m_cubeCorners[i][2], m_cubeCorners[i][3]);
-    }
+    // Update shadow-pass cube geometry so all faces cast shadows.
+    m_renderer.updateUIShadowCube(m_cubeCorners);
 
     // Tessellate HUD and upload to GPU buffer.
     m_hudVerts.clear();

@@ -146,12 +146,14 @@ TEST_F(ContainmentTest, PCFShadow_Symmetry_CenteredKernel)
     surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
     renderer.updateSurfaceUBO(surfaceUBO);
 
-    // Place the UI surface quad (at t=0) so it casts a shadow onto the back wall.
+    // Place the UI surface cube (at t=0) so it casts a shadow onto the back wall.
     // This exercises the shadow pass with a real occluder between the light and the wall.
     glm::vec3 P00, P10, P01, P11;
     scene.worldCorners(0.0f, P00, P10, P01, P11);
     renderer.updateSurfaceQuad(P00, P10, P01, P11);
-    renderer.updateUIShadowQuad(P00, P10, P01, P11);
+    std::array<std::array<glm::vec3, 4>, 6> cubeCorners;
+    scene.worldCubeCorners(0.0f, cubeCorners);
+    renderer.updateUIShadowCube(cubeCorners);
 
     auto pixels = renderAndReadback(/*directMode=*/true);
 
@@ -301,19 +303,25 @@ TEST_F(ContainmentTest, ShadowCasting_UIQuadDarkensBackWall)
         return count > 0 ? static_cast<float>(sum / count) : 0.0f;
     };
 
-    // Render WITHOUT shadow occluder: use zero-area degenerate quad.
+    // Render WITHOUT shadow occluder: use zero-area degenerate cube.
     setupSceneUBO();
     renderer.updateSurfaceQuad({0,0,0}, {0,0,0}, {0,0,0}, {0,0,0});
-    renderer.updateUIShadowQuad({0,0,0}, {0,0,0}, {0,0,0}, {0,0,0});
+    std::array<std::array<glm::vec3, 4>, 6> zeroCorners{};
+    for (auto& face : zeroCorners) {
+        face[0] = face[1] = face[2] = face[3] = glm::vec3(0,0,0);
+    }
+    renderer.updateUIShadowCube(zeroCorners);
     auto pixelsNoShadow = renderAndReadback(/*directMode=*/true);
     float lumNoShadow = centerLuminance(pixelsNoShadow);
 
-    // Render WITH shadow occluder: UI quad at t=0.
+    // Render WITH shadow occluder: UI cube at t=0.
     setupSceneUBO();
     glm::vec3 P00, P10, P01, P11;
     scene.worldCorners(0.0f, P00, P10, P01, P11);
     renderer.updateSurfaceQuad(P00, P10, P01, P11);
-    renderer.updateUIShadowQuad(P00, P10, P01, P11);
+    std::array<std::array<glm::vec3, 4>, 6> cubeCorners;
+    scene.worldCubeCorners(0.0f, cubeCorners);
+    renderer.updateUIShadowCube(cubeCorners);
     auto pixelsWithShadow = renderAndReadback(/*directMode=*/true);
     float lumWithShadow = centerLuminance(pixelsWithShadow);
 

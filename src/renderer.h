@@ -7,27 +7,7 @@
 #include <vector>
 #include <array>
 #include <cstdint>
-
-// ---------------------------------------------------------------------------
-// GPU-side uniform buffer structs (std140 layout)
-// ---------------------------------------------------------------------------
-struct SceneUBO {
-    glm::mat4 view;
-    glm::mat4 proj;
-    glm::mat4 lightViewProj;
-    glm::vec4 lightPos;      // xyz = spotlight world position
-    glm::vec4 lightDir;      // xyz = spotlight direction, w = cos(outerConeAngle)
-    glm::vec4 lightColor;    // rgb = color, w = cos(innerConeAngle)
-    glm::vec4 ambientColor;
-};
-
-struct SurfaceUBO {
-    glm::mat4 totalMatrix;   // M_wc * M_sw * M_us
-    glm::mat4 worldMatrix;   // M_sw * M_us (for clip distance computation)
-    glm::vec4 clipPlanes[4];
-    float     depthBias;
-    float     _pad[3];
-};
+#include "shader_uniforms.h"
 
 // Vertex layout for the composite surface quad (world-space pos + UV + face index).
 struct QuadVertex {
@@ -116,9 +96,8 @@ public:
                            const glm::vec3& P01, const glm::vec3& P11);
     // Update the cube surface vertex buffer each frame (6 faces, 2 triangles each).
     void updateCubeSurface(const std::array<std::array<glm::vec3, 4>, 6>& faceCorners);
-    // Update the shadow-pass quad vertex buffer each frame (room Vertex layout).
-    void updateUIShadowQuad(const glm::vec3& P00, const glm::vec3& P10,
-                            const glm::vec3& P01, const glm::vec3& P11);
+    // Update the shadow-pass cube vertex buffer each frame (6 faces for shadow casting).
+    void updateUIShadowCube(const std::array<std::array<glm::vec3, 4>, 6>& faceCorners);
     // Get the RenderTarget for the given swapchain image index.
     RenderTarget& getSwapchainRT(uint32_t imageIndex);
     // Semaphore that becomes signalled when the swapchain image is available.
