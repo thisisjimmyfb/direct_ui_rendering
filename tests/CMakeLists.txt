@@ -84,6 +84,7 @@ add_executable(tests_render
     test_shadow_render.cpp
     test_scale_render.cpp
     test_perf.cpp
+    test_renderer.cpp
 )
 
 add_dependencies(tests_render test_shaders)

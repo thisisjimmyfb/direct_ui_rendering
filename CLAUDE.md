@@ -65,6 +65,7 @@ direct_ui_rendering/
 │   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), FontSizeInvariance, Parallelogram
 │   ├── test_metrics.cpp              # tests_unit: frame timing ring buffer and GPU memory tracking
 │   ├── test_perf.cpp                 # tests_render: performance regression tests
+│   ├── test_renderer.cpp             # tests_render: Renderer initialization, headless RT, UBO updates, geometry updates, descriptor binding (16 tests)
 │   ├── test_scale_render.cpp         # tests_render: non-uniform scale clip plane tracking and font-size invariance (2 tests)
 │   ├── test_scene.cpp                # tests_unit: SceneInit, WorldCorners, WorldCubeCorners (7 tests), SceneAnimation, LightFrustum, UISurface (6 faces)
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
