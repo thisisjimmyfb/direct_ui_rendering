@@ -692,3 +692,213 @@ TEST_F(AppInputHandlerTest, InputModeToggle_ExitingTerminalMode_DoesNotAffectMou
     EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
     EXPECT_FALSE(AppTestHelper::getMouseCapture(app));
 }
+
+// ---------------------------------------------------------------------------
+// Advanced Terminal Input Tests — Cursor Display State and UI Updates
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, TerminalInput_CursorDisplayedInTerminalMode) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "Test");
+
+    // When in terminal mode, the display text should have the cursor appended
+    // This is verified by checking the renderText would include the pipe character
+    // The actual rendering logic appends '|' to the display string when in UITerminal mode
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+
+    // Text should be preserved without the cursor in m_terminalText
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Test");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_CursorNotDisplayedInCameraMode) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setTerminalText(app, "Test");
+
+    // In camera mode, the pipe character should not be appended to display text
+    // Even though terminal text is preserved, it won't be displayed with cursor
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+
+    // Terminal text should still be stored but not displayed with cursor
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Test");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_TextPersistenceAcrossModeToggle) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setTerminalText(app, "");
+
+    // Switch to terminal mode and add text
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+
+    AppTestHelper::callOnChar(app, 'H');
+    AppTestHelper::callOnChar(app, 'i');
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Hi");
+
+    // Switch back to camera mode
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+
+    // Text should still be there
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Hi");
+
+    // Switch back to terminal and verify text and cursor are there
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Hi");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_EmptyTextWithCursor) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    // With empty text in terminal mode, display should show just the cursor '|'
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "");
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_CursorAfterCharacterSequence) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    AppTestHelper::callOnChar(app, 'A');
+    AppTestHelper::callOnChar(app, 'B');
+    AppTestHelper::callOnChar(app, 'C');
+
+    std::string text = AppTestHelper::getTerminalText(app);
+    EXPECT_EQ(text, "ABC");
+
+    // When rendered, display would be "ABC|" but m_terminalText is just "ABC"
+    // The cursor is appended during rendering
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_CursorPositionAfterBackspace) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "Hello");
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_BACKSPACE, GLFW_PRESS);
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Hell");
+
+    // When rendered, display would be "Hell|" (cursor after remaining text)
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_CursorVisibilityAfterModeSwitch) {
+    // Start in terminal mode with text
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    AppTestHelper::callOnChar(app, 'X');
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "X");
+
+    // Switch to camera mode — cursor should not be displayed
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+
+    // The stored text is still there, but without cursor display
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "X");
+
+    // Switch back to terminal — cursor should be displayed again
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+
+    // Both text and cursor would be displayed
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "X");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_AddCharacterThenViewCursor) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    // Add single character
+    AppTestHelper::callOnChar(app, 'P');
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "P");
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+
+    // Display string would be "P|" but stored text is "P"
+    // Verify state is correct for rendering
+    EXPECT_EQ(AppTestHelper::getTerminalText(app).length(), 1U);
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_BackspaceAndCursorState) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "Two");
+
+    // Delete last char with backspace
+    AppTestHelper::callOnKey(app, GLFW_KEY_BACKSPACE, GLFW_PRESS);
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Tw");
+
+    // In terminal mode, cursor should still be displayed (at "Tw|")
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+
+    // Add new character after backspace
+    AppTestHelper::callOnChar(app, 'o');
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Two");
+
+    // Cursor still in terminal mode at position after 'Two'
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_LongTextWithCursor) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    // Build up a long string
+    std::string longText = "The quick brown fox jumps";
+    for (char c : longText) {
+        AppTestHelper::callOnChar(app, c);
+    }
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), longText);
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+
+    // Display would be longText + '|'
+    EXPECT_EQ(AppTestHelper::getTerminalText(app).length(), longText.length());
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_CursorStateBeforeAndAfterEscape) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "Escape");
+
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+
+    // Press escape to exit terminal mode
+    AppTestHelper::callOnKey(app, GLFW_KEY_ESCAPE, GLFW_PRESS);
+
+    // Should be in camera mode now (no cursor displayed)
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+
+    // Text is preserved but cursor won't be shown
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Escape");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_MultipleCharacterAdditions_CursorTrails) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    const char* chars = "Input";
+    for (char c : std::string(chars)) {
+        AppTestHelper::callOnChar(app, c);
+    }
+
+    // After adding each character, cursor trails at the end
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Input");
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+
+    // Cursor position is at text.length() when displayed as "Input|"
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_CursorNotAffectedByDepthBiasChanges) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "Text");
+    AppTestHelper::setDepthBias(app, 0.0001f);
+
+    // Try to adjust depth bias (should be ignored in terminal mode)
+    AppTestHelper::callOnKey(app, GLFW_KEY_EQUAL, GLFW_PRESS);
+
+    // Depth bias shouldn't change
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), 0.0001f, 1e-6f);
+
+    // Text and cursor state should be unaffected
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Text");
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+}

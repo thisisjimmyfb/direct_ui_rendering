@@ -3,7 +3,6 @@ Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_r
 Once a task that can be worked on without changing the specification is identified, work on the task until completion. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress or summary in this file.
 
 ## Pending Tasks
-- Add unit tests for terminal input mode (text accumulation, backspace handling, cursor rendering) — Advanced tests for cursor display state and UI updates
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section

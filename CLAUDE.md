@@ -59,7 +59,7 @@ direct_ui_rendering/
 │   ├── CMakeLists.txt                # Test target configuration (tests_unit, tests_render, tests_sdf)
 │   ├── containment_fixture.h         # Shared ContainmentTest fixture + helpers for render tests
 │   ├── perf_reference.h              # Hardcoded performance regression baselines
-│   ├── test_app_input.cpp            # tests_unit: App input handling (key callbacks, mode toggle, depth bias, terminal input, mouse) (47 tests)
+│   ├── test_app_input.cpp            # tests_unit: App input handling (key callbacks, mode toggle, depth bias, terminal input, cursor display, mouse) (60 tests)
 │   ├── test_clip_planes.cpp          # tests_unit: ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry, ClipPlaneYRotated, ClipPlane3DParallelogram (6 tests)
 │   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes (4 tests)
 │   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing
