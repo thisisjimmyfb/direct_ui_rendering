@@ -43,6 +43,7 @@ TEST_F(ContainmentTest, BackWall_NotSelfShadowed)
     sceneUBO.lightColor    = glm::vec4(scene.light().color,
                                        std::cos(scene.light().innerConeAngle));
     sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
+    sceneUBO.lightIntensity = 1.0f;  // Default intensity (no pulsing in tests)
     renderer.updateSceneUBO(sceneUBO);
 
     auto pixels = renderAndReadback(/*directMode=*/true);

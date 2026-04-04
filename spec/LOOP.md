@@ -4,12 +4,12 @@ Once a task that can be worked on without changing the specification is identifi
 
 ## Pending Tasks
 
+- Add test for lightIntensity time-based pulsing effect to validate animation over time
 - Improve demo visuals: Add color gradient or animated color changes to UI text
 - Improve demo visuals: Enhance room lighting and add more varied materials/colors to scene geometry
-- Improve demo visuals: Add animated texture effects (e.g., pulsing light intensity or moving shadows)
 - Improve demo visuals: Add UI interaction feedback (e.g., color change on text input when terminal input active)
+- Improve demo visuals: Add moving shadow effects or dynamic lighting variations
 - Implement UI text color variants for visual variety in demo scene
-- Add time-based lighting variations (pulsing spotlight intensity for dramatic effect)
 - Create wall texture variation or tiling patterns in room.frag for visual richness
 
 ## Iterate

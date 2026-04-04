@@ -8,6 +8,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
     vec4 lightDir;
     vec4 lightColor;
     vec4 ambientColor;
+    float lightIntensity;
 };
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
@@ -63,7 +64,7 @@ void main() {
     // This ensures UI text is readable even in shadow areas (ambient contribution)
     // and receives full lighting where illuminated by the spotlight.
     float shadow = sampleShadowPCF(inShadowCoord);
-    vec3 lit = clamp(ambientColor.rgb + shadow * lightColor.rgb, 0.0, 1.0);
+    vec3 lit = clamp(ambientColor.rgb + shadow * lightColor.rgb * lightIntensity, 0.0, 1.0);
     outColor = vec4(texColor.rgb * lit, texColor.a);
 #endif
 }

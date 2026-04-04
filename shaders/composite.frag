@@ -8,6 +8,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
     vec4 lightDir;
     vec4 lightColor;
     vec4 ambientColor;
+    float lightIntensity;
 };
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
@@ -42,7 +43,7 @@ void main() {
     outColor = uiColor;
 #else
     float shadow  = sampleShadowPCF(inShadowCoord);
-    vec3  lit     = clamp(ambientColor.rgb + shadow * lightColor.rgb, 0.0, 1.0);
+    vec3  lit     = clamp(ambientColor.rgb + shadow * lightColor.rgb * lightIntensity, 0.0, 1.0);
 
     // Teal base color; premul-alpha blend the UI texture on top.
     // uiColor.rgb is premultiplied, so: out = ui.rgb + teal * (1 - ui.a)

@@ -4,10 +4,11 @@ layout(set = 0, binding = 0) uniform SceneUBO {
     mat4 view;
     mat4 proj;
     mat4 lightViewProj;
-    vec4 lightPos;       // xyz = spotlight world position
-    vec4 lightDir;       // xyz = spotlight direction, w = cos(outerConeAngle)
-    vec4 lightColor;     // rgb = color, w = cos(innerConeAngle)
+    vec4 lightPos;         // xyz = spotlight world position
+    vec4 lightDir;         // xyz = spotlight direction, w = cos(outerConeAngle)
+    vec4 lightColor;       // rgb = color, w = cos(innerConeAngle)
     vec4 ambientColor;
+    float lightIntensity;  // time-based pulsing intensity multiplier
 };
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
@@ -53,7 +54,7 @@ void main() {
     float shadow = sampleShadowPCF(inShadowCoord, N, L);
 
     vec3 ambient = ambientColor.rgb;
-    vec3 diffuse = diff * shadow * spotFactor * lightColor.rgb;
+    vec3 diffuse = diff * shadow * spotFactor * lightColor.rgb * lightIntensity;
 
     // Determine surface color based on which wall/surface we're on
     vec3 surfaceColor = vec3(0.75);  // Default grey

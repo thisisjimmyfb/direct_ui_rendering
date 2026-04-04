@@ -219,6 +219,7 @@ void App::drawFrame()
     sceneUBO.lightColor   = glm::vec4(m_scene.light().color,
                                       std::cos(m_scene.light().innerConeAngle));
     sceneUBO.ambientColor = glm::vec4(m_scene.light().ambient, 1.0f);
+    sceneUBO.lightIntensity = 1.0f + 0.3f * std::sin(m_time * 2.0f);  // Pulsing intensity
     m_renderer.updateSceneUBO(sceneUBO);
 
     // Update cube surface for both direct and traditional modes.

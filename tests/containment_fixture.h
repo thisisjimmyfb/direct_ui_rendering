@@ -101,6 +101,7 @@ static SceneUBO makeSpotlightSceneUBO(const Scene& scene,
     ubo.lightColor    = glm::vec4(scene.light().color,
                                   std::cos(scene.light().innerConeAngle));
     ubo.ambientColor  = glm::vec4(scene.light().ambient, 1.0f);
+    ubo.lightIntensity = 1.0f;  // Default intensity (no pulsing in tests)
     return ubo;
 }
 
