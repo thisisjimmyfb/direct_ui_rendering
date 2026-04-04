@@ -4,7 +4,6 @@ Once a task that can be worked on without changing the specification is identifi
 
 ## Pending Tasks
 
-- Fix failing test: SDFOnEdgeTest.PreMultipliedAlpha_TraditionalMode_TealBleeds (pre-multiplied alpha blending issue in traditional mode)
 - Improve demo visuals: Add moving shadow effects or dynamic lighting variations
 - Implement UI text color variants for visual variety in demo scene
 - Create ripple or wave patterns on floors to enhance visual interest
@@ -24,6 +23,9 @@ Once a task that can be worked on without changing the specification is identifi
 - Implement spotlight glow visualization near light source
 - Add rotating/scrolling geometry patterns for visual dynamism
 - Test UI color animation system more thoroughly (expand test coverage to 20 tests)
+- Add animated spotlight position (move light in a circular arc for dramatic effect)
+- Add subtle camera position animation (oscillating viewpoint for parallax effect)
+- Implement time-based ambient color cycling to complement light intensity animation
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section

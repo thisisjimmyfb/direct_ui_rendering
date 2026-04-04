@@ -51,7 +51,7 @@ direct_ui_rendering/
 │   ├── room.frag                     # Blinn-Phong with specular highlights + PCF shadow fragment shader; per-wall coloring and material properties; Fresnel effect for grazing angles; subtle surface patterns
 │   ├── shadow.vert                   # Depth-only shadow pass vertex shader
 │   ├── surface.frag                  # Opaque teal quad fragment shader (direct mode base layer)
-│   ├── ui.frag                       # UI atlas sampling with SDF smoothstep; animated rainbow color gradient
+│   ├── ui.frag                       # UI atlas sampling with SDF smoothstep (white text) or bitmap with rainbow gradient
 │   ├── ui_direct.frag                # Direct-mode UI fragment: SDF smoothstep, lighting model (ambient + spotlight), PCF shadow, animated color gradient
 │   ├── ui_direct.vert                # Direct-mode UI vertex: M_total transform, clip distances, shadow coordinates
 │   └── ui_ortho.vert                 # Orthographic UI vertex shader (RT pass + metrics overlay)

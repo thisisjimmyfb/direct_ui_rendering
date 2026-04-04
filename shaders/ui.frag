@@ -55,7 +55,7 @@ void main() {
         float dist = texture(uiAtlas, inTexCoord).r;
         float spread = 0.07;
         float alpha = smoothstep(sdfThreshold - spread, sdfThreshold + spread, dist);
-        outColor = vec4(rainbowColor * alpha, alpha);  // pre-multiplied rainbow text
+        outColor = vec4(vec3(alpha), alpha);  // pre-multiplied white text
     } else {
         vec4 texColor = texture(uiAtlas, inTexCoord);
         outColor = vec4(texColor.rgb * rainbowColor * texColor.a, texColor.a);  // pre-multiplied bitmap text with rainbow color
