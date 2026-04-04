@@ -5,9 +5,9 @@ Once a task that can be worked on without changing the specification is identifi
 ## Pending Tasks
 
 - Improve demo visuals: Add color gradient or animated color changes to UI text
-- Improve demo visuals: Add floor grid pattern to make perspective and depth more apparent
 - Improve demo visuals: Enhance room lighting and add more varied materials/colors to scene geometry
-- Improve demo visuals: Create more engaging cube animation (spiral, figure-8, or oscillation with rotation)
+- Improve demo visuals: Add different wall colors (paint some walls with distinct colors)
+- Improve demo visuals: Add a colored spotlight beam or volumetric lighting effect
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section

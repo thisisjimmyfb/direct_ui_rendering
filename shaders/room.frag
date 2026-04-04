@@ -55,7 +55,21 @@ void main() {
     vec3 ambient = ambientColor.rgb;
     vec3 diffuse = diff * shadow * spotFactor * lightColor.rgb;
 
-    // Flat grey room surface
+    // Base grey room surface color
     vec3 surfaceColor = vec3(0.75);
+
+    // Floor grid pattern (Y ≈ 0, the floor level)
+    // Grid helps visualize depth and perspective in the scene
+    if (abs(inWorldPos.y) < 0.05) {  // Check if on floor
+        float gridSize = 0.5;  // Grid cell size in world units
+        vec2 gridCoord = floor(inWorldPos.xz / gridSize);
+        float gridPattern = mod(gridCoord.x + gridCoord.y, 2.0);
+
+        // Mix between two colors based on grid pattern
+        vec3 gridColor1 = vec3(0.75);  // Light grey
+        vec3 gridColor2 = vec3(0.65);  // Slightly darker grey
+        surfaceColor = mix(gridColor1, gridColor2, gridPattern);
+    }
+
     outColor = vec4((ambient + diffuse) * surfaceColor, 1.0);
 }

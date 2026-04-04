@@ -38,7 +38,7 @@ direct_ui_rendering/
 │   ├── renderer_recording.cpp        # Per-frame command buffer recording and draw calls (238 lines)
 │   ├── renderer_resources.cpp        # Buffer/image allocation, descriptor set updates, VMA wrappers (860 lines)
 │   ├── scene.h                       # Scene class: room geometry, light, animation matrix, UISurface (6 faces)
-│   ├── scene.cpp                     # Scene implementation (158 lines)
+│   ├── scene.cpp                     # Scene implementation with oscillating animation (163 lines)
 │   ├── ui_system.h                   # UISystem class: atlas, glyph quads, vertex buffer, SDF constants
 │   ├── ui_system.cpp                 # stb_truetype SDF atlas generation or PNG fallback (357 lines)
 │   ├── ui_surface.h                  # UI surface transforms: computeSurfaceTransforms(), computeClipPlanes(), computeFaceTransforms()

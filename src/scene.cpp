@@ -73,20 +73,25 @@ void Scene::init()
 
 glm::mat4 Scene::animationMatrix(float t) const
 {
-    // Slow oscillation with larger lateral translations so the quad
-    // visibly drifts across the far wall.
-    float angle   = glm::radians(15.0f) * std::sin(t * 0.25f);
-    float lateralX = 1.2f * std::sin(t * 0.18f);   // ±1.2 m side-to-side
-    float lateralY = 0.35f * std::sin(t * 0.22f);  // ±0.35 m up-down
-    // ±25° wiggle around the surface normal (local Z).  Demonstrates that clip
-    // planes derived per-frame from the world-space corners continue to track
-    // the surface correctly even as the quad rotates in place.
-    float normalAngle = glm::radians(25.0f) * std::sin(t * 0.5f);
+    // Lateral oscillation (left-right motion along X-axis)
+    float lateralX = 1.2f * std::sin(t * 0.18f);
+
+    // Vertical oscillation (up-down motion)
+    float lateralY = 1.5f + 0.35f * std::sin(t * 0.22f);
+
+    // Z position is fixed at back wall distance
+    float fixedZ = -2.5f;
+
+    // Rotation around Y axis (yaw)
+    float yaw = glm::radians(15.0f) * std::sin(t * 0.25f);
+
+    // Rotation around Z axis (normal wiggle / roll)
+    float roll = glm::radians(25.0f) * std::sin(t * 0.5f);
 
     glm::mat4 m = glm::mat4(1.0f);
-    m = glm::translate(m, glm::vec3(lateralX, 1.5f + lateralY, -2.5f));
-    m = glm::rotate(m, angle, glm::vec3(0, 1, 0));
-    m = glm::rotate(m, normalAngle, glm::vec3(0, 0, 1));
+    m = glm::translate(m, glm::vec3(lateralX, lateralY, fixedZ));
+    m = glm::rotate(m, yaw, glm::vec3(0, 1, 0));
+    m = glm::rotate(m, roll, glm::vec3(0, 0, 1));
     return m;
 }
 
