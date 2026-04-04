@@ -218,7 +218,16 @@ void App::drawFrame()
                                       std::cos(m_scene.light().outerConeAngle));
     sceneUBO.lightColor   = glm::vec4(m_scene.light().color,
                                       std::cos(m_scene.light().innerConeAngle));
-    sceneUBO.ambientColor = glm::vec4(m_scene.light().ambient, 1.0f);
+
+    // Animate ambient color subtly over time for atmospheric effect
+    glm::vec3 baseAmbient = m_scene.light().ambient;
+    float ambientPulse = 0.15f * std::sin(m_time * 0.7f);  // Slow pulse
+    float coolWarmShift = 0.1f * std::sin(m_time * 0.5f + 1.0f);  // Slow cool/warm shift
+    glm::vec3 animatedAmbient = baseAmbient + ambientPulse;
+    animatedAmbient.x += coolWarmShift * 0.5f;  // Add warmth (red)
+    animatedAmbient.z -= coolWarmShift * 0.3f;  // Reduce cool (blue)
+    sceneUBO.ambientColor = glm::vec4(glm::clamp(animatedAmbient, 0.0f, 1.0f), 1.0f);
+
     sceneUBO.lightIntensity = 1.0f + 0.3f * std::sin(m_time * 2.0f);  // Pulsing intensity
     m_renderer.updateSceneUBO(sceneUBO);
 

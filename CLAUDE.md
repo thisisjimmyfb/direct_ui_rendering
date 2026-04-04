@@ -48,7 +48,7 @@ direct_ui_rendering/
 │   ├── composite.frag                # Traditional mode: blend UI render target onto teal quad
 │   ├── quad.vert                     # Vertex shader for surface/composite quad geometry
 │   ├── room.vert                     # Blinn-Phong room geometry vertex shader
-│   ├── room.frag                     # Blinn-Phong with specular highlights + PCF shadow fragment shader; per-wall coloring and material properties; subtle surface patterns
+│   ├── room.frag                     # Blinn-Phong with specular highlights + PCF shadow fragment shader; per-wall coloring and material properties; Fresnel effect for grazing angles; subtle surface patterns
 │   ├── shadow.vert                   # Depth-only shadow pass vertex shader
 │   ├── surface.frag                  # Opaque teal quad fragment shader (direct mode base layer)
 │   ├── ui.frag                       # UI atlas sampling with SDF smoothstep
@@ -59,6 +59,7 @@ direct_ui_rendering/
 │   ├── CMakeLists.txt                # Test target configuration (tests_unit, tests_render, tests_sdf)
 │   ├── containment_fixture.h         # Shared ContainmentTest fixture + helpers for render tests
 │   ├── perf_reference.h              # Hardcoded performance regression baselines
+│   ├── test_ambient_animation.cpp    # tests_unit: AmbientColorAnimation time-based color animation validation (11 tests)
 │   ├── test_app_input.cpp            # tests_unit: App input handling (key callbacks, mode toggle, depth bias edge cases, terminal input, cursor display, mouse) (74 tests)
 │   ├── test_clip_planes.cpp          # tests_unit: ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry, ClipPlaneYRotated, ClipPlane3DParallelogram (6 tests)
 │   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes (4 tests)

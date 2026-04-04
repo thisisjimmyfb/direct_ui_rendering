@@ -8,12 +8,12 @@ Once a task that can be worked on without changing the specification is identifi
 - Improve demo visuals: Add UI interaction feedback (e.g., color change on text input when terminal input active)
 - Improve demo visuals: Add moving shadow effects or dynamic lighting variations
 - Implement UI text color variants for visual variety in demo scene
-- Add subtle ambient light color animation over time for atmospheric effect
 - Create ripple or wave patterns on floors to enhance visual interest
-- Implement Fresnel effect in room.frag for viewing-angle-dependent wall lighting
 - Add metallic or reflective surface material properties to showcase material variety
-- Enhance spotlight intensity variation with time-based pulsing animation
 - Add subtle bloom or glow effect around bright spotlight area
+- Animate UI surface cube rotation or oscillation more dynamically for visual interest
+- Add subtle parallax mapping or normal map effects to room walls
+- Implement dynamic shadow intensity variation for more dramatic lighting changes
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section

@@ -13,6 +13,7 @@ include(GoogleTest)
 #   test_hud.cpp          — MetricsTest HUDTessellation_* tests
 #   test_app_input.cpp    — AppInputHandler input handling, mode toggle, depth bias, terminal input
 #   test_light_intensity.cpp — LightIntensityPulsing time-based pulsing effect validation
+#   test_ambient_animation.cpp — AmbientColorAnimation time-based color animation validation
 # ---------------------------------------------------------------------------
 add_executable(tests_unit
     test_matrix_math.cpp
@@ -23,6 +24,7 @@ add_executable(tests_unit
     test_hud.cpp
     test_app_input.cpp
     test_light_intensity.cpp
+    test_ambient_animation.cpp
 )
 
 target_link_libraries(tests_unit PRIVATE

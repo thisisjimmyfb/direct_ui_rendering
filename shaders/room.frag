@@ -53,8 +53,16 @@ void main() {
     float diff   = max(dot(N, L), 0.0);
     float shadow = sampleShadowPCF(inShadowCoord, N, L);
 
+    // Fresnel effect: enhance brightness at grazing angles
+    vec3 V = normalize(-inWorldPos);  // View direction (approximate, camera at origin)
+    float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);  // Viewing-angle-dependent effect
+    float fresnelIntensity = 0.15 * fresnel;  // Subtle contribution
+
     vec3 ambient = ambientColor.rgb;
     vec3 diffuse = diff * shadow * spotFactor * lightColor.rgb * lightIntensity;
+
+    // Apply Fresnel to ambient for subtle glancing-angle brightening
+    vec3 fresnelAmbient = ambient * (1.0 + fresnelIntensity);
 
     // Determine surface color and material properties based on wall/surface
     vec3 surfaceColor = vec3(0.75);  // Default grey
@@ -150,10 +158,12 @@ void main() {
     }
 
     // Blinn-Phong specular highlights (subtle)
-    vec3 V = normalize(-inWorldPos);  // View direction (approximate, camera at origin)
     vec3 H = normalize(L + V);        // Half vector
     float spec = pow(max(dot(N, H), 0.0), shininess);
     vec3 specular = spec * shadow * spotFactor * specularColor * lightColor.rgb * lightIntensity * 0.15;  // Reduce intensity
 
-    outColor = vec4((ambient + diffuse) * surfaceColor + specular, 1.0);
+    // Add Fresnel rim lighting for enhanced silhouettes at grazing angles
+    vec3 fresnelRim = fresnelIntensity * spotFactor * lightColor.rgb * lightIntensity * 0.08;
+
+    outColor = vec4((fresnelAmbient + diffuse) * surfaceColor + specular + fresnelRim, 1.0);
 }
