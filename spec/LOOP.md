@@ -4,6 +4,17 @@ Once a task that can be worked on without changing the specification is identifi
 
 ## Pending Tasks
 
+- Test UI system terminal input mode edge cases (255 char limit validation, special character handling, rapid backspace sequences)
+- Add tests for animation matrix continuity across time intervals to catch potential discontinuities or interpolation issues
+- Test depth bias parameter sensitivity and edge cases (very small/very large values, negative values)
+- Add integration tests for mode toggle (Traditional ↔ Direct) to verify state consistency during transitions
+- Test metrics overlay frame timer ring buffer wraparound behavior and accuracy over extended runs
+- Add tests for non-uniform surface scaling edge cases (extreme aspect ratios like 10:1 or 1:10)
+- Improve demo visuals: Add color gradient or animated color changes to UI text
+- Improve demo visuals: Add floor grid pattern to make perspective and depth more apparent
+- Improve demo visuals: Enhance room lighting and add more varied materials/colors to scene geometry
+- Improve demo visuals: Create more engaging cube animation (spiral, figure-8, or oscillation with rotation)
+
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section
 - run build.sh and execute /build/Debug/direct_ui_rendering.exe with a 10 second timeout, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
