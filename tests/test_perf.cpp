@@ -223,6 +223,9 @@ TEST_F(PerfTest, DirectMode_FrameTime_WithinTolerance)
     if (perf_ref::FRAME_TIME_DIRECT_MS == 0.0f) {
         GTEST_SKIP() << "perf_reference.h not yet filled in";
     }
+    if (std::getenv("CI")) {
+        GTEST_SKIP() << "Skipped on CI: no real GPU available (software renderer skews timing)";
+    }
 
     for (int i = 0; i < PERF_FRAME_COUNT; ++i) {
         metrics.beginFrame();
@@ -241,6 +244,9 @@ TEST_F(PerfTest, TraditionalMode_FrameTime_WithinTolerance)
 {
     if (perf_ref::FRAME_TIME_TRADITIONAL_MS == 0.0f) {
         GTEST_SKIP() << "perf_reference.h not yet filled in";
+    }
+    if (std::getenv("CI")) {
+        GTEST_SKIP() << "Skipped on CI: no real GPU available (software renderer skews timing)";
     }
 
     for (int i = 0; i < PERF_FRAME_COUNT; ++i) {
