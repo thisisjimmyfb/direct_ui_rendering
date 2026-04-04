@@ -77,5 +77,6 @@ direct_ui_rendering/
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI cube shadow casting (3 tests)
 │   ├── test_spotlight_cone.cpp       # tests_render: spotlight cone angle attenuation (5 tests)
 │   ├── test_wall_colors.cpp          # tests_render: wall color validation in both rendering modes (2 tests)
-│   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
+│   ├── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
+│   └── test_ui_color_animation.cpp   # tests_unit: HSVToRGB conversion and UI color phase animation (20 tests)
 ```

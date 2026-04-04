@@ -42,15 +42,19 @@ void main() {
 #ifdef UI_TEST_COLOR
     outColor = vec4(1.0, 0.0, 1.0, 1.0);  // Solid magenta for render tests
 #else
+    // Calculate rainbow hue from animation phase (4-second cycle)
+    float hue = fract(uiColorPhase / 4.0);
+    vec3 rainbowColor = hsvToRgb(hue, 1.0, 1.0);
+
     if (sdfThreshold > 0.0) {
         // SDF mode: atlas is R8_UNORM, R channel is the signed distance field.
         float dist = texture(uiAtlas, inTexCoord).r;
         float spread = 0.07;
         float alpha = smoothstep(sdfThreshold - spread, sdfThreshold + spread, dist);
-        outColor = vec4(alpha, alpha, alpha, alpha);  // pre-multiplied white text
+        outColor = vec4(rainbowColor * alpha, alpha);  // pre-multiplied rainbow text
     } else {
         vec4 texColor = texture(uiAtlas, inTexCoord);
-        outColor = vec4(texColor.rgb * texColor.a, texColor.a);  // pre-multiplied bitmap text
+        outColor = vec4(texColor.rgb * rainbowColor * texColor.a, texColor.a);  // pre-multiplied bitmap text with rainbow color
     }
 #endif
 }

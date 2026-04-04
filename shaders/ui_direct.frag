@@ -63,6 +63,10 @@ void main() {
 #ifdef UI_TEST_COLOR
     outColor = vec4(1.0, 0.0, 1.0, 1.0);  // Solid magenta for render tests
 #else
+    // Calculate rainbow hue from animation phase (4-second cycle)
+    float hue = fract(uiColorPhase / 4.0);
+    vec3 rainbowColor = hsvToRgb(hue, 1.0, 1.0);
+
     // Sample UI atlas
     vec4 texColor;
     if (sdfThreshold > 0.0) {
@@ -82,7 +86,7 @@ void main() {
     float shadow = sampleShadowPCF(inShadowCoord);
     vec3 lit = clamp(ambientColor.rgb + shadow * lightColor.rgb * lightIntensity, 0.0, 1.0);
 
-    // Output text with pre-multiplied blending: RGB channels modulated by lighting, alpha preserved
-    outColor = vec4(texColor.rgb * lit, texColor.a);
+    // Output text with pre-multiplied blending: RGB channels modulated by rainbow color and lighting, alpha preserved
+    outColor = vec4(texColor.rgb * rainbowColor * lit, texColor.a);
 #endif
 }

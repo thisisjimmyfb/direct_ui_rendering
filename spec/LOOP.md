@@ -4,7 +4,6 @@ Once a task that can be worked on without changing the specification is identifi
 
 ## Pending Tasks
 
-- Implement UI color animation: integrate HSV-to-RGB color cycling into shader output with test updates
 - Improve demo visuals: Add UI interaction feedback (e.g., color change on text input when terminal input active)
 - Improve demo visuals: Add moving shadow effects or dynamic lighting variations
 - Implement UI text color variants for visual variety in demo scene
@@ -15,6 +14,9 @@ Once a task that can be worked on without changing the specification is identifi
 - Add subtle parallax mapping or normal map effects to room walls
 - Implement dynamic shadow intensity variation for more dramatic lighting changes
 - Add test coverage for UI color animation (HSV-to-RGB conversion and phase animation)
+- Add subtle spotlight flicker or intensity variation to create more dynamic lighting
+- Implement UV-based texture animation on walls (scrolling patterns)
+- Add depth variance or roughness variation to materials (normal map simulation)
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section
