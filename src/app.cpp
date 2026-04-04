@@ -229,6 +229,7 @@ void App::drawFrame()
     sceneUBO.ambientColor = glm::vec4(glm::clamp(animatedAmbient, 0.0f, 1.0f), 1.0f);
 
     sceneUBO.lightIntensity = 1.0f + 0.3f * std::sin(m_time * 2.0f);  // Pulsing intensity
+    sceneUBO.uiColorPhase = m_time;  // Time-based color animation for UI text
     m_renderer.updateSceneUBO(sceneUBO);
 
     // Update cube surface for both direct and traditional modes.

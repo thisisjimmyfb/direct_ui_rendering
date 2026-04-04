@@ -166,7 +166,7 @@ while true; do
 
     # Always try Claude first
 	set +e
-	output=$(cat "$LOOP" | CLAUDE_CODE_DISABLE_1M_CONTEXT=1 claude "${CLAUDE_FLAGS[@]}")
+	output=$(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}")
     exit_code=$?
 	set -e
 	

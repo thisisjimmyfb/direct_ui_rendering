@@ -9,6 +9,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
     vec4 lightColor;
     vec4 ambientColor;
     float lightIntensity;
+    float uiColorPhase;
 };
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
@@ -26,6 +27,21 @@ layout(location = 1) in vec4 inShadowCoord;
 layout(location = 2) in vec3 inWorldPos;
 
 layout(location = 0) out vec4 outColor;
+
+// Convert HSV to RGB for rainbow gradient effect
+vec3 hsvToRgb(float h, float s, float v) {
+    float c = v * s;
+    float x = c * (1.0 - abs(mod(h * 6.0, 2.0) - 1.0));
+    float m = v - c;
+    vec3 rgb;
+    if (h < 1.0/6.0) rgb = vec3(c, x, 0.0);
+    else if (h < 2.0/6.0) rgb = vec3(x, c, 0.0);
+    else if (h < 3.0/6.0) rgb = vec3(0.0, c, x);
+    else if (h < 4.0/6.0) rgb = vec3(0.0, x, c);
+    else if (h < 5.0/6.0) rgb = vec3(x, 0.0, c);
+    else rgb = vec3(c, 0.0, x);
+    return rgb + m;
+}
 
 // 2x2 PCF with fixed depth bias for degenerate UI mesh.
 // Matches surface.frag PCF kernel for consistent shadow quality.
@@ -60,11 +76,19 @@ void main() {
         // Pre-multiplied alpha assumed in atlas (bitmap mode)
     }
 
+    // Apply animated color gradient based on time phase
+    // Create a rainbow hue that cycles through colors
+    float hue = mod(uiColorPhase * 0.3, 1.0);  // Cycle through hues with 3.33s period
+    vec3 rainbowColor = hsvToRgb(hue, 0.8, 1.0);  // High saturation and value for vibrant colors
+
     // Apply same lighting model as surface.frag: ambient + spotlight with shadow.
     // This ensures UI text is readable even in shadow areas (ambient contribution)
     // and receives full lighting where illuminated by the spotlight.
     float shadow = sampleShadowPCF(inShadowCoord);
     vec3 lit = clamp(ambientColor.rgb + shadow * lightColor.rgb * lightIntensity, 0.0, 1.0);
-    outColor = vec4(texColor.rgb * lit, texColor.a);
+
+    // Blend the rainbow color with the lighting
+    vec3 coloredText = rainbowColor * lit;
+    outColor = vec4(coloredText, texColor.a);
 #endif
 }

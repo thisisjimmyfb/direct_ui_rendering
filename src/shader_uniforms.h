@@ -15,7 +15,8 @@ struct SceneUBO {
     glm::vec4 lightColor;      // rgb = color, w = cos(innerConeAngle)
     glm::vec4 ambientColor;
     float     lightIntensity;  // time-based pulsing intensity multiplier
-    float     _pad[3];         // padding for alignment
+    float     uiColorPhase;    // time-based color animation phase for UI text
+    float     _pad[2];         // padding for alignment
 };
 
 struct SurfaceUBO {
