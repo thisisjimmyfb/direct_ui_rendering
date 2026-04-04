@@ -6,21 +6,12 @@ Once a task that can be worked on without changing the specification is identifi
 
 - Improve demo visuals: Add moving shadow effects or dynamic lighting variations
 - Implement UI text color variants for visual variety in demo scene
-- Create ripple or wave patterns on floors to enhance visual interest
-- Add metallic or reflective surface material properties to showcase material variety
-- Add subtle bloom or glow effect around bright spotlight area
-- Animate UI surface cube rotation or oscillation more dynamically for visual interest
-- Add subtle parallax mapping or normal map effects to room walls
 - Implement dynamic shadow intensity variation for more dramatic lighting changes
 - Add subtle spotlight flicker or intensity variation to create more dynamic lighting
-- Implement UV-based texture animation on walls (scrolling patterns)
-- Add depth variance or roughness variation to materials (normal map simulation)
 - Add dynamic spotlight color cycling or warm/cool variation for atmospheric effect
 - Add ambient color variation visualization (currently animating but subtle)
 - Add time-based material shininess variation for more dynamic lighting
-- Create animated wave patterns on floor geometry for visual interest
 - Implement spotlight glow visualization near light source
-- Add rotating/scrolling geometry patterns for visual dynamism
 - Add animated spotlight position (move light in a circular arc for dramatic effect)
 - Add subtle camera position animation (oscillating viewpoint for parallax effect)
 - Implement time-based ambient color cycling to complement light intensity animation
@@ -34,3 +25,12 @@ Once a task that can be worked on without changing the specification is identifi
 - Update ['File Structure'](/CLAUDE.md/#File-Structure) to reflect current project structure.
 
 ## Out of Spec
+
+- Add metallic or reflective surface material properties to showcase material variety
+- Add subtle bloom or glow effect around bright spotlight area
+- Create ripple or wave patterns on floors to enhance visual interest
+- Add subtle parallax mapping or normal map effects to room walls
+- Implement UV-based texture animation on walls (scrolling patterns)
+- Add depth variance or roughness variation to materials (normal map simulation)
+- Create animated wave patterns on floor geometry for visual interest
+- Add rotating/scrolling geometry patterns for visual dynamism

@@ -73,25 +73,31 @@ void Scene::init()
 
 glm::mat4 Scene::animationMatrix(float t) const
 {
-    // Lateral oscillation (left-right motion along X-axis)
-    float lateralX = 1.2f * std::sin(t * 0.18f);
+    // Enhanced dynamic animation with multiple oscillation frequencies
 
-    // Vertical oscillation (up-down motion)
-    float lateralY = 1.5f + 0.35f * std::sin(t * 0.22f);
+    // Lateral oscillation (left-right motion along X-axis with varied frequency)
+    float lateralX = 1.2f * std::sin(t * 0.18f) + 0.4f * std::sin(t * 0.31f);
 
-    // Z position is fixed at back wall distance
-    float fixedZ = -2.5f;
+    // Vertical oscillation (up-down motion with varied frequency)
+    float lateralY = 1.5f + 0.35f * std::sin(t * 0.22f) + 0.3f * std::cos(t * 0.37f);
 
-    // Rotation around Y axis (yaw)
-    float yaw = glm::radians(15.0f) * std::sin(t * 0.25f);
+    // Z position varies slightly for depth variation
+    float lateralZ = -2.5f + 0.3f * std::sin(t * 0.15f);
 
-    // Rotation around Z axis (normal wiggle / roll)
-    float roll = glm::radians(25.0f) * std::sin(t * 0.5f);
+    // Rotation around Y axis (yaw) - more pronounced
+    float yaw = glm::radians(25.0f) * std::sin(t * 0.25f);
+
+    // Rotation around Z axis (roll) - more pronounced
+    float roll = glm::radians(35.0f) * std::sin(t * 0.5f);
+
+    // Rotation around X axis (pitch) - new dynamic element
+    float pitch = glm::radians(18.0f) * std::sin(t * 0.19f);
 
     glm::mat4 m = glm::mat4(1.0f);
-    m = glm::translate(m, glm::vec3(lateralX, lateralY, fixedZ));
+    m = glm::translate(m, glm::vec3(lateralX, lateralY, lateralZ));
     m = glm::rotate(m, yaw, glm::vec3(0, 1, 0));
     m = glm::rotate(m, roll, glm::vec3(0, 0, 1));
+    m = glm::rotate(m, pitch, glm::vec3(1, 0, 0));
     return m;
 }
 
