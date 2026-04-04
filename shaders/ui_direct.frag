@@ -10,6 +10,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
     vec4 ambientColor;
     float lightIntensity;
     float uiColorPhase;
+    float isTerminalMode;
 };
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
@@ -65,7 +66,10 @@ void main() {
 #else
     // Calculate rainbow hue from animation phase (4-second cycle)
     float hue = fract(uiColorPhase / 4.0);
-    vec3 rainbowColor = hsvToRgb(hue, 1.0, 1.0);
+    // Increase saturation and value when in terminal mode for visual feedback
+    float saturation = mix(1.0, 1.2, isTerminalMode);
+    float value = mix(1.0, 1.3, isTerminalMode);
+    vec3 rainbowColor = hsvToRgb(hue, saturation, value);
 
     // Sample UI atlas
     vec4 texColor;

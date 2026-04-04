@@ -230,6 +230,7 @@ void App::drawFrame()
 
     sceneUBO.lightIntensity = 1.0f + 0.3f * std::sin(m_time * 2.0f);  // Pulsing intensity
     sceneUBO.uiColorPhase = m_time;  // Time-based color animation for UI text
+    sceneUBO.isTerminalMode = (m_inputMode == InputMode::UITerminal) ? 1.0f : 0.0f;
     m_renderer.updateSceneUBO(sceneUBO);
 
     // Update cube surface for both direct and traditional modes.

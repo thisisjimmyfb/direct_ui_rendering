@@ -1057,6 +1057,9 @@ static SceneUBO makeAmbientOnlyUBO(const Scene& scene,
     ubo.lightColor    = glm::vec4(0.0f, 0.0f, 0.0f,
                                   std::cos(scene.light().innerConeAngle)); // no directional component
     ubo.ambientColor  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); // full ambient → lit=(1,1,1)
+    ubo.lightIntensity = 1.0f;
+    ubo.uiColorPhase = 0.0f;
+    ubo.isTerminalMode = 0.0f;
     return ubo;
 }
 

@@ -16,7 +16,8 @@ struct SceneUBO {
     glm::vec4 ambientColor;
     float     lightIntensity;  // time-based pulsing intensity multiplier
     float     uiColorPhase;    // time-based color animation phase for UI text
-    float     _pad[2];         // padding for alignment
+    float     isTerminalMode;  // 1.0 if in terminal input mode, 0.0 otherwise
+    float     _pad[1];         // padding for alignment
 };
 
 struct SurfaceUBO {

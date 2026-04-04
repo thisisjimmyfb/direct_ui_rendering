@@ -4,7 +4,7 @@ Once a task that can be worked on without changing the specification is identifi
 
 ## Pending Tasks
 
-- Improve demo visuals: Add UI interaction feedback (e.g., color change on text input when terminal input active)
+- Fix failing test: SDFOnEdgeTest.PreMultipliedAlpha_TraditionalMode_TealBleeds (pre-multiplied alpha blending issue in traditional mode)
 - Improve demo visuals: Add moving shadow effects or dynamic lighting variations
 - Implement UI text color variants for visual variety in demo scene
 - Create ripple or wave patterns on floors to enhance visual interest
@@ -13,10 +13,17 @@ Once a task that can be worked on without changing the specification is identifi
 - Animate UI surface cube rotation or oscillation more dynamically for visual interest
 - Add subtle parallax mapping or normal map effects to room walls
 - Implement dynamic shadow intensity variation for more dramatic lighting changes
-- Add test coverage for UI color animation (HSV-to-RGB conversion and phase animation)
+- Add test coverage for UI color animation - expand from 15 tests to full coverage (HSV-to-RGB conversion and phase animation)
 - Add subtle spotlight flicker or intensity variation to create more dynamic lighting
 - Implement UV-based texture animation on walls (scrolling patterns)
 - Add depth variance or roughness variation to materials (normal map simulation)
+- Add dynamic spotlight color cycling or warm/cool variation for atmospheric effect
+- Add ambient color variation visualization (currently animating but subtle)
+- Add time-based material shininess variation for more dynamic lighting
+- Create animated wave patterns on floor geometry for visual interest
+- Implement spotlight glow visualization near light source
+- Add rotating/scrolling geometry patterns for visual dynamism
+- Test UI color animation system more thoroughly (expand test coverage to 20 tests)
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section
