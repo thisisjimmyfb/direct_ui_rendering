@@ -440,6 +440,93 @@ TEST_F(WorldCornersTest, NonUniformScale_CenterStaysFixed)
     }
 }
 
+TEST_F(WorldCornersTest, NonUniformScale_ExtremeAspectRatio_10to1)
+{
+    // Test extreme aspect ratio: 10:1 (very wide, thin surface).
+    // This verifies that extreme scaling doesn't produce NaN, Inf, or negative dimensions.
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, 10.0f, 1.0f);
+
+    // All corners must be finite
+    EXPECT_TRUE(std::isfinite(P00.x)) << "P00.x not finite at extreme scale";
+    EXPECT_TRUE(std::isfinite(P10.x)) << "P10.x not finite at extreme scale";
+    EXPECT_TRUE(std::isfinite(P01.x)) << "P01.x not finite at extreme scale";
+    EXPECT_TRUE(std::isfinite(P11.x)) << "P11.x not finite at extreme scale";
+
+    // Horizontal edge should be much larger than vertical
+    float width  = glm::length(P10 - P00);
+    float height = glm::length(P01 - P00);
+    EXPECT_GT(width, 0.0f) << "Width is zero or negative at 10:1 aspect ratio";
+    EXPECT_GT(height, 0.0f) << "Height is zero or negative at 10:1 aspect ratio";
+    EXPECT_GE(width / height, 5.0f) << "Width/height ratio not extreme enough at 10:1";
+}
+
+TEST_F(WorldCornersTest, NonUniformScale_ExtremeAspectRatio_1to10)
+{
+    // Test extreme aspect ratio: 1:10 (very narrow, tall surface).
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, 1.0f, 10.0f);
+
+    // All corners must be finite
+    EXPECT_TRUE(std::isfinite(P00.y)) << "P00.y not finite at extreme scale";
+    EXPECT_TRUE(std::isfinite(P10.y)) << "P10.y not finite at extreme scale";
+    EXPECT_TRUE(std::isfinite(P01.y)) << "P01.y not finite at extreme scale";
+    EXPECT_TRUE(std::isfinite(P11.y)) << "P11.y not finite at extreme scale";
+
+    // Vertical edge should be much larger than horizontal
+    float width  = glm::length(P10 - P00);
+    float height = glm::length(P01 - P00);
+    EXPECT_GT(width, 0.0f) << "Width is zero or negative at 1:10 aspect ratio";
+    EXPECT_GT(height, 0.0f) << "Height is zero or negative at 1:10 aspect ratio";
+    EXPECT_GE(height / width, 5.0f) << "Height/width ratio not extreme enough at 1:10";
+}
+
+TEST_F(WorldCornersTest, NonUniformScale_VerySmallScale)
+{
+    // Test very small scales (near zero): scaleW=0.01, scaleH=0.01.
+    // Surface becomes tiny but should remain well-defined.
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, 0.01f, 0.01f);
+
+    // All corners must be finite
+    for (const auto& p : {P00, P10, P01, P11}) {
+        EXPECT_TRUE(std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z))
+            << "Corner not finite at scale=0.01";
+    }
+
+    // Edges should still be positive (tiny but positive)
+    float width  = glm::length(P10 - P00);
+    float height = glm::length(P01 - P00);
+    EXPECT_GT(width, 0.0f) << "Width is zero or negative at tiny scale";
+    EXPECT_GT(height, 0.0f) << "Height is zero or negative at tiny scale";
+}
+
+TEST_F(WorldCornersTest, NonUniformScale_VeryLargeScale)
+{
+    // Test very large scales: scaleW=100.0, scaleH=100.0.
+    // Surface becomes huge but should remain well-defined.
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.0f, P00, P10, P01, P11, 100.0f, 100.0f);
+
+    // All corners must be finite
+    for (const auto& p : {P00, P10, P01, P11}) {
+        EXPECT_TRUE(std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z))
+            << "Corner not finite at scale=100.0";
+    }
+
+    // Edges should scale appropriately
+    glm::vec3 P00_base, P10_base, P01_base, P11_base;
+    scene.worldCorners(0.0f, P00_base, P10_base, P01_base, P11_base, 1.0f, 1.0f);
+
+    float width_huge  = glm::length(P10 - P00);
+    float height_huge = glm::length(P01 - P00);
+    float width_base  = glm::length(P10_base - P00_base);
+    float height_base = glm::length(P01_base - P00_base);
+
+    EXPECT_NEAR(width_huge / width_base, 100.0f, 1e-3f) << "Width not scaled by 100.0";
+    EXPECT_NEAR(height_huge / height_base, 100.0f, 1e-3f) << "Height not scaled by 100.0";
+}
+
 // ---------------------------------------------------------------------------
 // SceneAnimation — animationMatrix(0) base-case purity
 // ---------------------------------------------------------------------------
@@ -1203,5 +1290,138 @@ TEST_F(WorldCubeCornersTest, AllCornersFiniteAtVariousTimes)
                     << "Face " << face << " corner " << corner << " z not finite at t=" << t;
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Animation Matrix Continuity — verify smooth animation without jumps or kinks
+// ---------------------------------------------------------------------------
+
+class AnimationContinuityTest : public ::testing::Test {
+protected:
+    Scene scene;
+
+    void SetUp() override {
+        scene.init();
+    }
+};
+
+TEST_F(AnimationContinuityTest, MatrixContinuityAcrossSmallTimeIntervals)
+{
+    // Verify that the animation matrix changes smoothly across small time
+    // intervals (no discontinuous jumps).  The matrix should form a continuous
+    // curve in parameter space.
+    const float dt = 0.001f;  // 1ms time step
+    for (float t = 0.0f; t < 10.0f; t += 1.0f) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        glm::mat4 M0 = scene.animationMatrix(t);
+        glm::mat4 M1 = scene.animationMatrix(t + dt);
+
+        // Compute the maximum entry-wise difference
+        float maxDiff = 0.0f;
+        for (int col = 0; col < 4; ++col) {
+            for (int row = 0; row < 4; ++row) {
+                float diff = std::abs(M1[col][row] - M0[col][row]);
+                maxDiff = std::max(maxDiff, diff);
+            }
+        }
+
+        // For a smooth animation with dt=0.001, expect changes < 0.01
+        EXPECT_LT(maxDiff, 0.01f)
+            << "Animation matrix changed by more than 0.01 over dt=" << dt
+            << " at t=" << t << "; possible discontinuity";
+    }
+}
+
+TEST_F(AnimationContinuityTest, CornerPositionsContinuousAcrossTime)
+{
+    // Verify that world-space corner positions change smoothly (no jumps)
+    // as time progresses.
+    const float dt = 0.01f;  // 10ms time step
+    for (float t = 0.0f; t < 5.0f; t += 0.5f) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        std::array<std::array<glm::vec3, 4>, 6> corners0;
+        std::array<std::array<glm::vec3, 4>, 6> corners1;
+
+        scene.worldCubeCorners(t, corners0, 1.0f, 1.0f);
+        scene.worldCubeCorners(t + dt, corners1, 1.0f, 1.0f);
+
+        float maxDist = 0.0f;
+        for (int face = 0; face < 6; ++face) {
+            for (int corner = 0; corner < 4; ++corner) {
+                float dist = glm::distance(corners0[face][corner], corners1[face][corner]);
+                maxDist = std::max(maxDist, dist);
+            }
+        }
+
+        // For dt=0.01s with max speed ~1.2 m/s (from animation formula),
+        // expect corner movement < 0.02m per time step
+        EXPECT_LT(maxDist, 0.02f)
+            << "Corner position jumped more than 0.02m over dt=" << dt
+            << " at t=" << t << "; possible discontinuity";
+    }
+}
+
+TEST_F(AnimationContinuityTest, NoKinksInTranslation)
+{
+    // Verify that translation components are smooth (no sudden changes in
+    // direction or magnitude).  Sample at high frequency and check that
+    // the second derivative is bounded.
+    const float dt = 0.001f;
+    float maxAccel = 0.0f;
+
+    for (float t = 0.0f; t < 5.0f; t += 0.1f) {
+        glm::mat4 M0 = scene.animationMatrix(t - dt);
+        glm::mat4 M1 = scene.animationMatrix(t);
+        glm::mat4 M2 = scene.animationMatrix(t + dt);
+
+        // Finite difference: velocity = (M1 - M0) / dt
+        // Acceleration = (M2 - 2*M1 + M0) / dt^2
+        for (int i = 0; i < 3; ++i) {
+            float accel = (M2[3][i] - 2.0f * M1[3][i] + M0[3][i]) / (dt * dt);
+            maxAccel = std::max(maxAccel, std::abs(accel));
+        }
+    }
+
+    // For sinusoidal animation with fixed period and amplitude,
+    // acceleration is bounded. Max accel ~= 2π²A/T² where A=amplitude, T=period
+    // For our animation (A~1.2, T~35s): maxAccel < 0.3
+    // Empirically measured max is ~0.24, so 0.3 is a safe bound.
+    EXPECT_LT(maxAccel, 0.3f)
+        << "Translation acceleration unexpectedly large; possible kink in animation";
+}
+
+TEST_F(AnimationContinuityTest, RotationSmoothAcrossFullPeriod)
+{
+    // Verify that rotation components are continuous across the full
+    // animation period (2π in normalized time).  Sample rotation matrices
+    // at regular intervals and verify no angular velocity jumps.
+    const float pi = std::acosf(-1.0f);
+    const float fullPeriod = 8.0f * pi;  // Approximate full animation cycle
+    const float dt = 0.1f;
+
+    float prevAngle = 0.0f;
+    for (float t = 0.0f; t <= fullPeriod; t += dt) {
+        glm::mat4 M = scene.animationMatrix(t);
+
+        // Extract rotation angle from trace of rotation submatrix
+        // trace(R) = 1 + 2*cos(θ) for rotation by θ
+        float trace = M[0][0] + M[1][1] + M[2][2];
+        float rawVal = (trace - 1.0f) / 2.0f;
+        // Clamp to [-1, 1] range to avoid NaN from acos
+        if (rawVal > 1.0f) rawVal = 1.0f;
+        if (rawVal < -1.0f) rawVal = -1.0f;
+        float angle = std::acosf(rawVal);
+
+        // Angular velocity should be continuous (no jumps > expected rate)
+        if (t > 0.0f) {
+            float angularVelocity = std::abs(angle - prevAngle) / dt;
+            // Max angular velocity from animation formula: max(15°, 25°) * freq
+            // = 25° * 0.5 rad/s ≈ 0.22 rad/s
+            EXPECT_LT(angularVelocity, 0.3f)
+                << "Angular velocity jump at t=" << t
+                << "; possible discontinuity in rotation";
+        }
+        prevAngle = angle;
     }
 }

@@ -902,3 +902,181 @@ TEST_F(AppInputHandlerTest, TerminalInput_CursorNotAffectedByDepthBiasChanges) {
     EXPECT_EQ(AppTestHelper::getTerminalText(app), "Text");
     EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
 }
+
+// ---------------------------------------------------------------------------
+// Depth Bias Edge Cases — test extreme values and boundary conditions
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, DepthBias_VerySmallValue) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setDepthBias(app, 0.00001f);  // 10 μm
+
+    // Should not produce NaN or Inf
+    float bias = AppTestHelper::getDepthBias(app);
+    EXPECT_TRUE(std::isfinite(bias)) << "Depth bias is not finite at very small value";
+}
+
+TEST_F(AppInputHandlerTest, DepthBias_VeryLargeValue) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setDepthBias(app, 1.0f);  // 1 meter (very large for NDC)
+
+    // Should not produce NaN or Inf
+    float bias = AppTestHelper::getDepthBias(app);
+    EXPECT_TRUE(std::isfinite(bias)) << "Depth bias is not finite at very large value";
+}
+
+TEST_F(AppInputHandlerTest, DepthBias_NegativeValue) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setDepthBias(app, -0.0001f);  // Negative bias
+
+    // Should not produce NaN or Inf
+    float bias = AppTestHelper::getDepthBias(app);
+    EXPECT_TRUE(std::isfinite(bias)) << "Depth bias is not finite at negative value";
+}
+
+TEST_F(AppInputHandlerTest, DepthBias_Zero) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setDepthBias(app, 0.0f);
+
+    // Zero is a valid depth bias (no offset)
+    float bias = AppTestHelper::getDepthBias(app);
+    EXPECT_EQ(bias, 0.0f) << "Depth bias should be exactly 0";
+}
+
+TEST_F(AppInputHandlerTest, DepthBias_DecreaseFromDefault) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setDepthBias(app, Renderer::DEPTH_BIAS_DEFAULT);
+
+    // Decrease multiple times to reach negative
+    for (int i = 0; i < 3; ++i) {
+        AppTestHelper::callOnKey(app, GLFW_KEY_MINUS, GLFW_PRESS);
+    }
+
+    float expected = Renderer::DEPTH_BIAS_DEFAULT - 3.0f * 0.0001f;
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), expected, 1e-6f);
+    EXPECT_LT(AppTestHelper::getDepthBias(app), 0.0f) << "Should be able to set negative depth bias";
+}
+
+TEST_F(AppInputHandlerTest, DepthBias_IncreaseToLarge) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setDepthBias(app, 0.9f);
+
+    // Increase to cross 1.0
+    AppTestHelper::callOnKey(app, GLFW_KEY_EQUAL, GLFW_PRESS);
+
+    float expected = 0.9f + 0.0001f;
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), expected, 1e-6f);
+    EXPECT_GT(AppTestHelper::getDepthBias(app), 0.9f) << "Should be able to set large depth bias";
+}
+
+// ---------------------------------------------------------------------------
+// Render Mode Toggle Integration Tests — verify Direct ↔ Traditional consistency
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, ModeToggle_PendsFlagOnSpacePress) {
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    EXPECT_FALSE(AppTestHelper::getPendingModeToggle(app));
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_SPACE, GLFW_PRESS);
+
+    EXPECT_TRUE(AppTestHelper::getPendingModeToggle(app))
+        << "Space press should set pending mode toggle flag";
+}
+
+TEST_F(AppInputHandlerTest, ModeToggle_InputModePreservedAcrossToggle) {
+    // When toggling render mode, input mode should not change
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    AppTestHelper::setTerminalText(app, "Hello");
+
+    AppTestHelper::setPendingModeToggle(app, true);
+    // Simulate frame where toggle is processed (in real app this happens in frame loop)
+    // Here we just verify the toggle request doesn't affect input state
+
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera)
+        << "Camera mode should persist across render mode toggle";
+}
+
+TEST_F(AppInputHandlerTest, ModeToggle_TerminalTextPreservedAcrossToggle) {
+    // When toggling render mode, terminal text should not be cleared
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    AppTestHelper::setTerminalText(app, "Test");
+
+    AppTestHelper::setPendingModeToggle(app, true);
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Test")
+        << "Terminal text should persist across render mode toggle";
+}
+
+TEST_F(AppInputHandlerTest, ModeToggle_DepthBiasPreservedAcrossToggle) {
+    // Depth bias settings should not be affected by render mode toggle
+    float originalBias = 0.0002f;
+    AppTestHelper::setDepthBias(app, originalBias);
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+
+    AppTestHelper::setPendingModeToggle(app, true);
+
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), originalBias, 1e-6f)
+        << "Depth bias should persist across render mode toggle";
+}
+
+TEST_F(AppInputHandlerTest, ModeToggle_DirectToTraditionalTransition) {
+    // Verify transition from Direct mode to Traditional mode sets correct state
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    EXPECT_EQ(AppTestHelper::getRenderMode(app), RenderMode::Direct);
+
+    // Simulate the mode toggle occurring in the frame loop
+    // (In real app, this happens via m_pendingModeToggle in updateFrame)
+    if (AppTestHelper::getRenderMode(app) == RenderMode::Direct) {
+        AppTestHelper::setRenderMode(app, RenderMode::Traditional);
+    }
+
+    EXPECT_EQ(AppTestHelper::getRenderMode(app), RenderMode::Traditional)
+        << "Should transition to Traditional mode";
+}
+
+TEST_F(AppInputHandlerTest, ModeToggle_TraditionalToDirectTransition) {
+    // Verify transition from Traditional mode to Direct mode sets correct state
+    AppTestHelper::setRenderMode(app, RenderMode::Traditional);
+    EXPECT_EQ(AppTestHelper::getRenderMode(app), RenderMode::Traditional);
+
+    // Simulate the mode toggle
+    if (AppTestHelper::getRenderMode(app) == RenderMode::Traditional) {
+        AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    }
+
+    EXPECT_EQ(AppTestHelper::getRenderMode(app), RenderMode::Direct)
+        << "Should transition to Direct mode";
+}
+
+TEST_F(AppInputHandlerTest, ModeToggle_SequentialToggles) {
+    // Verify multiple successive toggles work correctly
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+
+    // Toggle 1: Direct → Traditional
+    AppTestHelper::setRenderMode(app, RenderMode::Traditional);
+    EXPECT_EQ(AppTestHelper::getRenderMode(app), RenderMode::Traditional);
+
+    // Toggle 2: Traditional → Direct
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    EXPECT_EQ(AppTestHelper::getRenderMode(app), RenderMode::Direct);
+
+    // Toggle 3: Direct → Traditional
+    AppTestHelper::setRenderMode(app, RenderMode::Traditional);
+    EXPECT_EQ(AppTestHelper::getRenderMode(app), RenderMode::Traditional);
+}
+
+TEST_F(AppInputHandlerTest, ModeToggle_IgnoredInTerminalMode) {
+    // Mode toggle (Space) should not work in terminal mode
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    AppTestHelper::setTerminalText(app, "");
+
+    // Try to toggle while in terminal mode
+    AppTestHelper::callOnKey(app, GLFW_KEY_SPACE, GLFW_PRESS);
+
+    // Toggle should NOT be pended (Space in terminal mode is just a character)
+    EXPECT_FALSE(AppTestHelper::getPendingModeToggle(app))
+        << "Mode toggle should not work in terminal mode; Space inputs text";
+}

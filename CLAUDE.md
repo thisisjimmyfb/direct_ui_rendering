@@ -59,7 +59,7 @@ direct_ui_rendering/
 │   ├── CMakeLists.txt                # Test target configuration (tests_unit, tests_render, tests_sdf)
 │   ├── containment_fixture.h         # Shared ContainmentTest fixture + helpers for render tests
 │   ├── perf_reference.h              # Hardcoded performance regression baselines
-│   ├── test_app_input.cpp            # tests_unit: App input handling (key callbacks, mode toggle, depth bias, terminal input, cursor display, mouse) (60 tests)
+│   ├── test_app_input.cpp            # tests_unit: App input handling (key callbacks, mode toggle, depth bias edge cases, terminal input, cursor display, mouse) (74 tests)
 │   ├── test_clip_planes.cpp          # tests_unit: ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry, ClipPlaneYRotated, ClipPlane3DParallelogram (6 tests)
 │   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes (4 tests)
 │   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing
@@ -68,7 +68,7 @@ direct_ui_rendering/
 │   ├── test_perf.cpp                 # tests_render: performance regression tests
 │   ├── test_renderer.cpp             # tests_render: Renderer initialization, headless RT, UBO updates, geometry updates, render passes, pipelines, descriptor binding (30 tests)
 │   ├── test_scale_render.cpp         # tests_render: non-uniform scale clip plane tracking and font-size invariance (2 tests)
-│   ├── test_scene.cpp                # tests_unit: SceneInit, WorldCorners, WorldCubeCorners (7 tests), SceneAnimation, LightFrustum, UISurface (6 faces)
+│   ├── test_scene.cpp                # tests_unit: SceneInit, WorldCorners (animation continuity, extreme aspect ratios), WorldCubeCorners, SceneAnimation, LightFrustum, UISurface (63 tests)
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI cube shadow casting (3 tests)
 │   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface

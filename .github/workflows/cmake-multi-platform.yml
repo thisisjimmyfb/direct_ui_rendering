@@ -58,11 +58,11 @@ jobs:
       shell: bash
       working-directory: "${{ github.workspace }}/scripts"
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      run: ./build.sh
+      run: ./build.sh Release
 
     - name: Test
       shell: bash
       working-directory: "${{ github.workspace }}/scripts"
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ./test.sh
+      run: ./test.sh Release
