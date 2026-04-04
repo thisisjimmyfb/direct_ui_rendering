@@ -9,6 +9,7 @@ Once a task that can be worked on without changing the specification is identifi
 - run build.sh and execute /build/Debug/direct_ui_rendering.exe with a 10 second timeout, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
 - Investigate ways to strengthen testing based on staging changes, focus on testing systems introduced by this project. Consider refactoring the system to accommodate testing if system is important. Add all relevant tests from the investigation into the ['Pending Tasks'](#Pending-Tasks) section.
 - Investigate the pending changes and look for opportunities to refactor to either move common code into a common file or break up files into multiple smaller files if the file contains too many unrelated concepts. Do not break up files if doing so fragments logics that should naturally be co-located.
+- Come up with ideas to make the demo look better and add the task to the ['Pending Tasks'](#Pending-Tasks) section.
 - Update ['File Structure'](/CLAUDE.md/#File-Structure) to reflect current project structure.
 
 ## Out of Spec
