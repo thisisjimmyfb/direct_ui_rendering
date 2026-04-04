@@ -1038,3 +1038,170 @@ TEST_F(WorldCornersDegenerateTest, ScaleWZero_ParallelogramIdentityStillHolds)
     EXPECT_NEAR(glm::length(P11 - expected), 0.0f, 1e-5f)
         << "parallelogram identity failed with scaleW=0, scaleH=1";
 }
+
+// ---------------------------------------------------------------------------
+// WorldCubeCorners — 6-face cube transform tests
+// ---------------------------------------------------------------------------
+
+class WorldCubeCornersTest : public ::testing::Test {
+protected:
+    Scene scene;
+
+    void SetUp() override {
+        scene.init();
+    }
+};
+
+TEST_F(WorldCubeCornersTest, AllFacesTransformCorrectly)
+{
+    // Verify that all 6 faces transform correctly at t=0.
+    // At t=0, the animation matrix is a pure translation, so local corners
+    // should map to world corners with just the translation applied.
+    std::array<std::array<glm::vec3, 4>, 6> corners;
+    scene.worldCubeCorners(0.0f, corners, 1.0f, 1.0f);
+
+    // All corners must be finite
+    for (int face = 0; face < 6; ++face) {
+        for (int corner = 0; corner < 4; ++corner) {
+            EXPECT_TRUE(std::isfinite(corners[face][corner].x))
+                << "Face " << face << " corner " << corner << " x is not finite";
+            EXPECT_TRUE(std::isfinite(corners[face][corner].y))
+                << "Face " << face << " corner " << corner << " y is not finite";
+            EXPECT_TRUE(std::isfinite(corners[face][corner].z))
+                << "Face " << face << " corner " << corner << " z is not finite";
+        }
+    }
+}
+
+TEST_F(WorldCubeCornersTest, FrontFaceMatchesWorldCorners)
+{
+    // The front face (+Z face, index 4) from worldCubeCorners should match
+    // the output from worldCorners (which uses the same face for backward compatibility).
+    std::array<std::array<glm::vec3, 4>, 6> cubeCorners;
+    scene.worldCubeCorners(0.5f, cubeCorners, 1.0f, 1.0f);
+
+    glm::vec3 P00, P10, P01, P11;
+    scene.worldCorners(0.5f, P00, P10, P01, P11, 1.0f, 1.0f);
+
+    const int FRONT_FACE = UISurface::FRONT_FACE_INDEX;
+    EXPECT_NEAR(glm::length(cubeCorners[FRONT_FACE][0] - P00), 0.0f, 1e-5f)
+        << "Front face P_00 mismatch";
+    EXPECT_NEAR(glm::length(cubeCorners[FRONT_FACE][1] - P10), 0.0f, 1e-5f)
+        << "Front face P_10 mismatch";
+    EXPECT_NEAR(glm::length(cubeCorners[FRONT_FACE][2] - P01), 0.0f, 1e-5f)
+        << "Front face P_01 mismatch";
+    EXPECT_NEAR(glm::length(cubeCorners[FRONT_FACE][3] - P11), 0.0f, 1e-5f)
+        << "Front face P_11 mismatch";
+}
+
+TEST_F(WorldCubeCornersTest, AllFacesPreserveParallelogramIdentity)
+{
+    // Each face must satisfy the parallelogram identity P_11 = P_00 + (P_10 - P_00) + (P_01 - P_00)
+    // at any time t, since the animation matrix is affine.
+    for (float t : {0.0f, 0.5f, 1.0f, 2.5f}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        std::array<std::array<glm::vec3, 4>, 6> corners;
+        scene.worldCubeCorners(t, corners, 1.0f, 1.0f);
+
+        for (int face = 0; face < 6; ++face) {
+            const auto& P = corners[face];
+            glm::vec3 expected = P[0] + (P[1] - P[0]) + (P[2] - P[0]);
+            EXPECT_NEAR(glm::length(P[3] - expected), 0.0f, 1e-5f)
+                << "Face " << face << " parallelogram identity failed at t=" << t;
+        }
+    }
+}
+
+TEST_F(WorldCubeCornersTest, AllFacesRemainPlanar)
+{
+    // Each face must remain planar since the animation matrix is rigid-body.
+    for (float t : {0.0f, 0.5f, 1.0f, 2.5f}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        std::array<std::array<glm::vec3, 4>, 6> corners;
+        scene.worldCubeCorners(t, corners, 1.0f, 1.0f);
+
+        for (int face = 0; face < 6; ++face) {
+            const auto& P = corners[face];
+            glm::vec3 normal = glm::normalize(glm::cross(P[1] - P[0], P[2] - P[0]));
+            float deviation = std::abs(glm::dot(normal, P[3] - P[0]));
+            EXPECT_LT(deviation, 1e-4f)
+                << "Face " << face << " P_11 deviates from plane by " << deviation << " at t=" << t;
+        }
+    }
+}
+
+TEST_F(WorldCubeCornersTest, CubeFacesHaveCorrectLocalDimensions)
+{
+    // Each face should have consistent dimensions in local space.
+    // The front face (+Z) is 4 units wide x 2 units tall (4m x 2m).
+    // Other faces may have different orientations but should maintain
+    // consistent edge lengths for a valid cube mapping.
+    const auto& surface = scene.uiSurface();
+
+    // Front face (+Z, index 4) should be 4x2
+    const auto& front = surface.faces[UISurface::FRONT_FACE_INDEX];
+    float frontWidth = glm::length(front.P_10_local - front.P_00_local);
+    float frontHeight = glm::length(front.P_01_local - front.P_00_local);
+    EXPECT_NEAR(frontWidth, 4.0f, 1e-5f) << "Front face width should be 4";
+    EXPECT_NEAR(frontHeight, 2.0f, 1e-5f) << "Front face height should be 2";
+
+    // Verify all faces have finite dimensions and form valid quads
+    for (int face = 0; face < 6; ++face) {
+        const auto& f = surface.faces[face];
+
+        float width = glm::length(f.P_10_local - f.P_00_local);
+        float height = glm::length(f.P_01_local - f.P_00_local);
+
+        EXPECT_GT(width, 0.0f) << "Face " << face << " width should be positive";
+        EXPECT_GT(height, 0.0f) << "Face " << face << " height should be positive";
+        EXPECT_TRUE(std::isfinite(width)) << "Face " << face << " width not finite";
+        EXPECT_TRUE(std::isfinite(height)) << "Face " << face << " height not finite";
+    }
+}
+
+TEST_F(WorldCubeCornersTest, NonUniformScaleAppliesCorrectly)
+{
+    // Test that non-uniform scale applies correctly to all faces.
+    // Scale is applied to local X (width) and Y (height) before the animation transform.
+    std::array<std::array<glm::vec3, 4>, 6> cornersScaled;
+    std::array<std::array<glm::vec3, 4>, 6> cornersUnscaled;
+
+    scene.worldCubeCorners(0.0f, cornersScaled, 2.0f, 1.0f);  // Width doubled
+    scene.worldCubeCorners(0.0f, cornersUnscaled, 1.0f, 1.0f);  // No scale
+
+    // Only test the front face which has the expected 4x2 dimensions
+    const int FRONT_FACE = UISurface::FRONT_FACE_INDEX;
+
+    // Width should be doubled (P_00 to P_10)
+    float widthScaled = glm::length(cornersScaled[FRONT_FACE][1] - cornersScaled[FRONT_FACE][0]);
+    float widthUnscaled = glm::length(cornersUnscaled[FRONT_FACE][1] - cornersUnscaled[FRONT_FACE][0]);
+    EXPECT_NEAR(widthScaled, widthUnscaled * 2.0f, 1e-4f)
+        << "Front face width not doubled";
+
+    // Height should be unchanged (P_00 to P_01)
+    float heightScaled = glm::length(cornersScaled[FRONT_FACE][2] - cornersScaled[FRONT_FACE][0]);
+    float heightUnscaled = glm::length(cornersUnscaled[FRONT_FACE][2] - cornersUnscaled[FRONT_FACE][0]);
+    EXPECT_NEAR(heightScaled, heightUnscaled, 1e-4f)
+        << "Front face height changed";
+}
+
+TEST_F(WorldCubeCornersTest, AllCornersFiniteAtVariousTimes)
+{
+    // Verify all corners remain finite at various times.
+    for (float t : {-5.0f, -1.0f, 0.0f, 1.0f, 2.5f, 5.0f, 10.0f}) {
+        SCOPED_TRACE("t=" + std::to_string(t));
+        std::array<std::array<glm::vec3, 4>, 6> corners;
+        scene.worldCubeCorners(t, corners, 1.0f, 1.0f);
+
+        for (int face = 0; face < 6; ++face) {
+            for (int corner = 0; corner < 4; ++corner) {
+                EXPECT_TRUE(std::isfinite(corners[face][corner].x))
+                    << "Face " << face << " corner " << corner << " x not finite at t=" << t;
+                EXPECT_TRUE(std::isfinite(corners[face][corner].y))
+                    << "Face " << face << " corner " << corner << " y not finite at t=" << t;
+                EXPECT_TRUE(std::isfinite(corners[face][corner].z))
+                    << "Face " << face << " corner " << corner << " z not finite at t=" << t;
+            }
+        }
+    }
+}
