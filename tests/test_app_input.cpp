@@ -1,0 +1,694 @@
+#include <gtest/gtest.h>
+#include "app.h"
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
+#include <string>
+#include <cstring>
+
+// Test helper to access App private members for testing
+// This allows us to test input handling without exposing internals publicly
+class AppTestHelper {
+public:
+    // Direct access to private methods and members for testing
+    static void callOnKey(App& app, int key, int action) {
+        app.onKey(key, action);
+    }
+
+    static void callOnChar(App& app, unsigned int codepoint) {
+        app.onChar(codepoint);
+    }
+
+    static void callOnMouseMove(App& app, double x, double y) {
+        app.onMouseMove(x, y);
+    }
+
+    static void callOnMouseButton(App& app, int button, int action) {
+        app.onMouseButton(button, action);
+    }
+
+    // State accessors for verification
+    static RenderMode getRenderMode(const App& app) {
+        return app.m_mode;
+    }
+
+    static void setRenderMode(App& app, RenderMode mode) {
+        app.m_mode = mode;
+    }
+
+    static bool getPendingModeToggle(const App& app) {
+        return app.m_pendingModeToggle;
+    }
+
+    static void setPendingModeToggle(App& app, bool toggle) {
+        app.m_pendingModeToggle = toggle;
+    }
+
+    static float getDepthBias(const App& app) {
+        return app.m_depthBias;
+    }
+
+    static void setDepthBias(App& app, float bias) {
+        app.m_depthBias = bias;
+    }
+
+    static InputMode getInputMode(const App& app) {
+        return app.m_inputMode;
+    }
+
+    static void setInputMode(App& app, InputMode mode) {
+        app.m_inputMode = mode;
+    }
+
+    static const std::string& getTerminalText(const App& app) {
+        return app.m_terminalText;
+    }
+
+    static void setTerminalText(App& app, const std::string& text) {
+        app.m_terminalText = text;
+    }
+
+    static float getQuadW(const App& app) {
+        return app.m_quadW;
+    }
+
+    static float getQuadH(const App& app) {
+        return app.m_quadH;
+    }
+
+    static bool getMouseCapture(const App& app) {
+        return app.m_mouseCapture;
+    }
+
+    static void setMouseCapture(App& app, bool capture) {
+        app.m_mouseCapture = capture;
+    }
+
+    static void setMouseState(App& app, double x, double y, bool firstMouse) {
+        app.m_lastMouseX = x;
+        app.m_lastMouseY = y;
+        app.m_firstMouse = firstMouse;
+    }
+
+    static float getCamYaw(const App& app) {
+        return app.m_camYaw;
+    }
+
+    static float getCamPitch(const App& app) {
+        return app.m_camPitch;
+    }
+
+    static GLFWwindow* getWindow(const App& app) {
+        return app.m_window;
+    }
+
+    static void setWindow(App& app, GLFWwindow* win) {
+        app.m_window = win;
+    }
+};
+
+// ---------------------------------------------------------------------------
+// AppInputHandlerTest — Test keyboard input handling
+// ---------------------------------------------------------------------------
+
+class AppInputHandlerTest : public ::testing::Test {
+protected:
+    App app;
+    GLFWwindow* window = nullptr;
+
+    void SetUp() override {
+        // Initialize GLFW and create a hidden window for tests that need GLFW calls
+        if (!glfwInit()) {
+            // GTEST will continue without GLFW - some tests will skip
+        } else {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+            window = glfwCreateWindow(800, 600, "Test Window", nullptr, nullptr);
+            if (window) {
+                // Manually set the window pointer so GLFW calls in the app will work
+                AppTestHelper::setWindow(app, window);
+            }
+        }
+
+        // Initialize state for testing
+        AppTestHelper::setRenderMode(app, RenderMode::Direct);
+        AppTestHelper::setDepthBias(app, 0.0001f);
+        AppTestHelper::setInputMode(app, InputMode::Camera);
+        AppTestHelper::setTerminalText(app, "");
+        AppTestHelper::setPendingModeToggle(app, false);
+        AppTestHelper::setMouseCapture(app, false);
+    }
+
+    void TearDown() override {
+        if (window) {
+            glfwDestroyWindow(window);
+            window = nullptr;
+            AppTestHelper::setWindow(app, nullptr);
+        }
+        glfwTerminate();
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Mode Toggle Tests
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, ModeToggle_SpaceKey_SetsToggleFlag) {
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    EXPECT_FALSE(AppTestHelper::getPendingModeToggle(app));
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_SPACE, GLFW_PRESS);
+
+    EXPECT_TRUE(AppTestHelper::getPendingModeToggle(app));
+}
+
+TEST_F(AppInputHandlerTest, ModeToggle_SpaceKey_ReleasedDoesNothing) {
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    AppTestHelper::callOnKey(app, GLFW_KEY_SPACE, GLFW_RELEASE);
+    EXPECT_FALSE(AppTestHelper::getPendingModeToggle(app));
+}
+
+TEST_F(AppInputHandlerTest, ModeToggle_OtherKeyDoesNotToggle) {
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    AppTestHelper::callOnKey(app, GLFW_KEY_A, GLFW_PRESS);
+    EXPECT_FALSE(AppTestHelper::getPendingModeToggle(app));
+}
+
+// ---------------------------------------------------------------------------
+// Depth Bias Adjustment Tests
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, DepthBias_PlusKeyIncreases) {
+    float initialBias = 0.0001f;
+    AppTestHelper::setDepthBias(app, initialBias);
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_EQUAL, GLFW_PRESS);
+
+    float expected = initialBias + 0.0001f;
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), expected, 1e-6f);
+}
+
+TEST_F(AppInputHandlerTest, DepthBias_MinusKeyDecreases) {
+    float initialBias = 0.0002f;
+    AppTestHelper::setDepthBias(app, initialBias);
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_MINUS, GLFW_PRESS);
+
+    float expected = initialBias - 0.0001f;
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), expected, 1e-6f);
+}
+
+TEST_F(AppInputHandlerTest, DepthBias_KPAddIncreases) {
+    float initialBias = 0.0001f;
+    AppTestHelper::setDepthBias(app, initialBias);
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_KP_ADD, GLFW_PRESS);
+
+    float expected = initialBias + 0.0001f;
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), expected, 1e-6f);
+}
+
+TEST_F(AppInputHandlerTest, DepthBias_KPSubtractDecreases) {
+    float initialBias = 0.0002f;
+    AppTestHelper::setDepthBias(app, initialBias);
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_KP_SUBTRACT, GLFW_PRESS);
+
+    float expected = initialBias - 0.0001f;
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), expected, 1e-6f);
+}
+
+TEST_F(AppInputHandlerTest, DepthBias_IgnoredInTerminalMode) {
+    float initialBias = 0.0001f;
+    AppTestHelper::setDepthBias(app, initialBias);
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_EQUAL, GLFW_PRESS);
+
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), initialBias, 1e-6f);
+}
+
+// ---------------------------------------------------------------------------
+// Input Mode Toggle Tests (Tab Key)
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, InputModeToggle_TabInCameraMode_SwitchesToTerminal) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+}
+
+TEST_F(AppInputHandlerTest, InputModeToggle_TabInTerminalMode_SwitchesToCamera) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+}
+
+TEST_F(AppInputHandlerTest, InputModeToggle_TabReleaseDoesNothing) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_RELEASE);
+
+    // Should remain in Camera mode (only PRESS toggles)
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+}
+
+// ---------------------------------------------------------------------------
+// Terminal Input Mode Tests
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, TerminalInput_CharacterAccumulation) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    AppTestHelper::callOnChar(app, 'H');
+    AppTestHelper::callOnChar(app, 'i');
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Hi");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_OnlyPrintableASCII) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    // Character codes 32-126 are printable ASCII
+    AppTestHelper::callOnChar(app, 'A');  // 65, valid
+    AppTestHelper::callOnChar(app, ' ');  // 32, valid (space)
+    AppTestHelper::callOnChar(app, '~');  // 126, valid (tilde)
+    AppTestHelper::callOnChar(app, 31);   // 31, not printable, ignored
+    AppTestHelper::callOnChar(app, 127);  // 127, not printable, ignored
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "A ~");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_IgnoredInCameraMode) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setTerminalText(app, "");
+
+    AppTestHelper::callOnChar(app, 'X');
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_MaximumLength_255Characters) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    std::string maxText(255, 'A');
+    AppTestHelper::setTerminalText(app, maxText);
+
+    // Try to add another character
+    AppTestHelper::callOnChar(app, 'B');
+
+    // Should still be 255 characters (not 256)
+    EXPECT_EQ(AppTestHelper::getTerminalText(app).size(), 255U);
+    EXPECT_EQ(AppTestHelper::getTerminalText(app).back(), 'A');
+}
+
+// ---------------------------------------------------------------------------
+// Backspace Handling Tests
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, TerminalInput_BackspaceRemovesLastCharacter) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "Hello");
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_BACKSPACE, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Hell");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_BackspaceOnEmptyTextDoesNothing) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_BACKSPACE, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_BackspaceMultipleTimes) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "Test");
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_BACKSPACE, GLFW_PRESS);
+    AppTestHelper::callOnKey(app, GLFW_KEY_BACKSPACE, GLFW_PRESS);
+    AppTestHelper::callOnKey(app, GLFW_KEY_BACKSPACE, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "T");
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_BackspaceIgnoredInCameraMode) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setTerminalText(app, "Hello");
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_BACKSPACE, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Hello");
+}
+
+// ---------------------------------------------------------------------------
+// Exit Terminal Mode Tests
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, TerminalInput_EscapeReturnsToCamera) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_ESCAPE, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_EscapeInCameraModeDoesNothing) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setMouseCapture(app, false);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_ESCAPE, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+}
+
+TEST_F(AppInputHandlerTest, TerminalInput_CharacterAndBackspaceSequence) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    AppTestHelper::callOnChar(app, 'H');
+    AppTestHelper::callOnChar(app, 'e');
+    AppTestHelper::callOnChar(app, 'l');
+    AppTestHelper::callOnKey(app, GLFW_KEY_BACKSPACE, GLFW_PRESS);
+    AppTestHelper::callOnChar(app, 'p');
+
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "Hep");
+}
+
+// ---------------------------------------------------------------------------
+// Complex Input Sequences
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, ComplexSequence_ModeToggleAndDepthBias) {
+    AppTestHelper::setRenderMode(app, RenderMode::Direct);
+    AppTestHelper::setDepthBias(app, 0.0001f);
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    // Toggle rendering mode
+    AppTestHelper::callOnKey(app, GLFW_KEY_SPACE, GLFW_PRESS);
+    EXPECT_TRUE(AppTestHelper::getPendingModeToggle(app));
+
+    // Adjust depth bias
+    AppTestHelper::callOnKey(app, GLFW_KEY_EQUAL, GLFW_PRESS);
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), 0.0002f, 1e-6f);
+
+    // Both operations should be independent
+    EXPECT_TRUE(AppTestHelper::getPendingModeToggle(app));
+}
+
+TEST_F(AppInputHandlerTest, ComplexSequence_TerminalInputWithModeToggle) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    // Add some text
+    AppTestHelper::callOnChar(app, 'X');
+
+    // Try to toggle mode (should work via Tab)
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+
+    // Text should be preserved
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "X");
+}
+
+TEST_F(AppInputHandlerTest, ComplexSequence_DepthBiasMultipleAdjustments) {
+    AppTestHelper::setDepthBias(app, 0.0001f);
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    // Increase multiple times
+    for (int i = 0; i < 5; ++i) {
+        AppTestHelper::callOnKey(app, GLFW_KEY_EQUAL, GLFW_PRESS);
+    }
+
+    float expected = 0.0001f + (5 * 0.0001f);
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), expected, 1e-6f);
+
+    // Decrease multiple times
+    for (int i = 0; i < 3; ++i) {
+        AppTestHelper::callOnKey(app, GLFW_KEY_MINUS, GLFW_PRESS);
+    }
+
+    expected = 0.0001f + (2 * 0.0001f);
+    EXPECT_NEAR(AppTestHelper::getDepthBias(app), expected, 1e-6f);
+}
+
+// ---------------------------------------------------------------------------
+// Edge Cases
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, EdgeCase_RepeatActionsIgnoredForTab) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    // Tab with PRESS should toggle
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+
+    // Tab with REPEAT should be ignored (only PRESS toggles)
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_REPEAT);
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+}
+
+TEST_F(AppInputHandlerTest, EdgeCase_TerminalModeIgnoresNonTerminalKeys) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setTerminalText(app, "");
+
+    // These should be ignored in terminal mode
+    AppTestHelper::callOnKey(app, GLFW_KEY_SPACE, GLFW_PRESS);
+    AppTestHelper::callOnKey(app, GLFW_KEY_EQUAL, GLFW_PRESS);
+    AppTestHelper::callOnKey(app, GLFW_KEY_W, GLFW_PRESS);
+
+    // Only backspace and escape are handled in terminal mode
+    EXPECT_EQ(AppTestHelper::getTerminalText(app), "");
+}
+
+// ---------------------------------------------------------------------------
+// Mouse Input Handling Tests
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, MouseButton_RightClickTogglesCapture) {
+    AppTestHelper::setMouseCapture(app, false);
+
+    AppTestHelper::callOnMouseButton(app, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS);
+
+    EXPECT_TRUE(AppTestHelper::getMouseCapture(app));
+}
+
+TEST_F(AppInputHandlerTest, MouseButton_RightClickAgainTogglesCaptureOff) {
+    AppTestHelper::setMouseCapture(app, true);
+
+    AppTestHelper::callOnMouseButton(app, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS);
+
+    EXPECT_FALSE(AppTestHelper::getMouseCapture(app));
+}
+
+TEST_F(AppInputHandlerTest, MouseButton_RightClickReleasedDoesNothing) {
+    AppTestHelper::setMouseCapture(app, false);
+
+    AppTestHelper::callOnMouseButton(app, GLFW_MOUSE_BUTTON_RIGHT, GLFW_RELEASE);
+
+    EXPECT_FALSE(AppTestHelper::getMouseCapture(app));
+}
+
+TEST_F(AppInputHandlerTest, MouseButton_OtherButtonIgnored) {
+    AppTestHelper::setMouseCapture(app, false);
+
+    AppTestHelper::callOnMouseButton(app, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS);
+
+    EXPECT_FALSE(AppTestHelper::getMouseCapture(app));
+}
+
+TEST_F(AppInputHandlerTest, MouseMove_IgnoredWhenCaptureDisabled) {
+    AppTestHelper::setMouseCapture(app, false);
+    float initialYaw = AppTestHelper::getCamYaw(app);
+    float initialPitch = AppTestHelper::getCamPitch(app);
+
+    AppTestHelper::callOnMouseMove(app, 100.0, 50.0);
+
+    EXPECT_EQ(AppTestHelper::getCamYaw(app), initialYaw);
+    EXPECT_EQ(AppTestHelper::getCamPitch(app), initialPitch);
+}
+
+TEST_F(AppInputHandlerTest, MouseMove_FirstMoveInitializesState) {
+    AppTestHelper::setMouseCapture(app, true);
+    AppTestHelper::setMouseState(app, 0.0, 0.0, true);
+
+    AppTestHelper::callOnMouseMove(app, 100.0, 50.0);
+
+    // After first move, firstMouse should be false and last position updated
+    // We can't directly check firstMouse, but we can verify next move changes camera
+}
+
+TEST_F(AppInputHandlerTest, MouseMove_CameraRotationWithDelta) {
+    AppTestHelper::setMouseCapture(app, true);
+    AppTestHelper::setMouseState(app, 50.0, 50.0, false);
+
+    float initialYaw = AppTestHelper::getCamYaw(app);
+    float initialPitch = AppTestHelper::getCamPitch(app);
+
+    // Move right: dx = 100 - 50 = 50, applies 50 * 0.002 = 0.1 sensitivity
+    AppTestHelper::callOnMouseMove(app, 100.0, 50.0);
+
+    float expectedYaw = initialYaw + (50.0f * 0.002f);
+    float expectedPitch = initialPitch;  // dy = 50 - 50 = 0
+
+    EXPECT_NEAR(AppTestHelper::getCamYaw(app), expectedYaw, 1e-5f);
+    EXPECT_NEAR(AppTestHelper::getCamPitch(app), expectedPitch, 1e-5f);
+}
+
+TEST_F(AppInputHandlerTest, MouseMove_PitchClamped) {
+    AppTestHelper::setMouseCapture(app, true);
+
+    // Set pitch to near the upper clamp (close to 89 degrees)
+    float clampedPitch = glm::radians(88.0f);
+    AppTestHelper::setMouseState(app, 0.0, 0.0, false);
+
+    // Move down significantly to try to exceed the pitch clamp
+    // dy = 0 - 500 = -500, applies -500 * 0.002 = -1.0
+    AppTestHelper::callOnMouseMove(app, 0.0, 500.0);
+
+    // Pitch should be clamped at radians(89)
+    EXPECT_LE(AppTestHelper::getCamPitch(app), glm::radians(89.0f));
+}
+
+// ---------------------------------------------------------------------------
+// Quad Size Adjustment Tests
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, QuadWidth_RightBracketIncreases) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    float initialW = AppTestHelper::getQuadW(app);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_RIGHT_BRACKET, GLFW_PRESS);
+
+    EXPECT_GT(AppTestHelper::getQuadW(app), initialW);
+    EXPECT_NEAR(AppTestHelper::getQuadW(app), initialW + 0.1f, 1e-6f);
+}
+
+TEST_F(AppInputHandlerTest, QuadWidth_LeftBracketDecreases) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    float initialW = AppTestHelper::getQuadW(app);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_LEFT_BRACKET, GLFW_PRESS);
+
+    EXPECT_LT(AppTestHelper::getQuadW(app), initialW);
+    EXPECT_NEAR(AppTestHelper::getQuadW(app), initialW - 0.1f, 1e-6f);
+}
+
+TEST_F(AppInputHandlerTest, QuadWidth_ClampsAtMaximum) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    // Try to increase beyond 3.0
+    for (int i = 0; i < 50; ++i) {
+        AppTestHelper::callOnKey(app, GLFW_KEY_RIGHT_BRACKET, GLFW_PRESS);
+    }
+
+    EXPECT_LE(AppTestHelper::getQuadW(app), 3.0f);
+}
+
+TEST_F(AppInputHandlerTest, QuadWidth_ClampsAtMinimum) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    // Try to decrease below 0.1
+    for (int i = 0; i < 50; ++i) {
+        AppTestHelper::callOnKey(app, GLFW_KEY_LEFT_BRACKET, GLFW_PRESS);
+    }
+
+    EXPECT_GE(AppTestHelper::getQuadW(app), 0.1f);
+}
+
+TEST_F(AppInputHandlerTest, QuadHeight_PKeyIncreases) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    float initialH = AppTestHelper::getQuadH(app);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_P, GLFW_PRESS);
+
+    EXPECT_GT(AppTestHelper::getQuadH(app), initialH);
+    EXPECT_NEAR(AppTestHelper::getQuadH(app), initialH + 0.1f, 1e-6f);
+}
+
+TEST_F(AppInputHandlerTest, QuadHeight_OKeyDecreases) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    float initialH = AppTestHelper::getQuadH(app);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_O, GLFW_PRESS);
+
+    EXPECT_LT(AppTestHelper::getQuadH(app), initialH);
+    EXPECT_NEAR(AppTestHelper::getQuadH(app), initialH - 0.1f, 1e-6f);
+}
+
+TEST_F(AppInputHandlerTest, QuadHeight_ClampsAtMaximum) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    for (int i = 0; i < 50; ++i) {
+        AppTestHelper::callOnKey(app, GLFW_KEY_P, GLFW_PRESS);
+    }
+
+    EXPECT_LE(AppTestHelper::getQuadH(app), 3.0f);
+}
+
+TEST_F(AppInputHandlerTest, QuadHeight_ClampsAtMinimum) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    for (int i = 0; i < 50; ++i) {
+        AppTestHelper::callOnKey(app, GLFW_KEY_O, GLFW_PRESS);
+    }
+
+    EXPECT_GE(AppTestHelper::getQuadH(app), 0.1f);
+}
+
+// ---------------------------------------------------------------------------
+// Escape Key Handling Tests
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, EscapeKey_InCameraModeWithMouseCapture_DisablesCapture) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setMouseCapture(app, true);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_ESCAPE, GLFW_PRESS);
+
+    EXPECT_FALSE(AppTestHelper::getMouseCapture(app));
+}
+
+TEST_F(AppInputHandlerTest, EscapeKey_InCameraModeWithoutMouseCapture_DoesNothing) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setMouseCapture(app, false);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_ESCAPE, GLFW_PRESS);
+
+    EXPECT_FALSE(AppTestHelper::getMouseCapture(app));
+}
+
+// ---------------------------------------------------------------------------
+// Terminal Input Mode Switching and Mouse Capture
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, InputModeToggle_EnteringTerminalMode_ReleasesMouseCapture) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    AppTestHelper::setMouseCapture(app, true);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::UITerminal);
+    EXPECT_FALSE(AppTestHelper::getMouseCapture(app));
+}
+
+TEST_F(AppInputHandlerTest, InputModeToggle_ExitingTerminalMode_DoesNotAffectMouseCapture) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setMouseCapture(app, false);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_TAB, GLFW_PRESS);
+
+    EXPECT_EQ(AppTestHelper::getInputMode(app), InputMode::Camera);
+    EXPECT_FALSE(AppTestHelper::getMouseCapture(app));
+}

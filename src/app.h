@@ -14,9 +14,14 @@
 
 enum class InputMode { Camera, UITerminal };
 
+// Forward declare test helper
+class AppTestHelper;
+
 // App owns the window, renderer, scene, UI system, and metrics.
 // It drives the frame loop and handles keyboard input.
 class App {
+    friend class AppTestHelper;
+
 public:
     // Create window, initialise all subsystems, enter the frame loop.
     int run();

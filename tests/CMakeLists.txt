@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 include(GoogleTest)
 
 # ---------------------------------------------------------------------------
-# tests_unit — pure CPU math tests (no Vulkan context required)
+# tests_unit — pure CPU tests (no Vulkan context required)
 # Sources split by domain:
 #   test_matrix_math.cpp — TransformMath, DepthBias, ShadowBias
 #   test_clip_planes.cpp  — ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry
@@ -11,6 +11,7 @@ include(GoogleTest)
 #   test_ui_system.cpp    — SDFConstants, UISystemUVTable, TessellateString, UISurface
 #   test_metrics.cpp      — FrameTimingRollingAverage, UpdateGPUMem, AverageFrameMs
 #   test_hud.cpp          — MetricsTest HUDTessellation_* tests
+#   test_app_input.cpp    — AppInputHandler input handling, mode toggle, depth bias, terminal input
 # ---------------------------------------------------------------------------
 add_executable(tests_unit
     test_matrix_math.cpp
@@ -19,6 +20,7 @@ add_executable(tests_unit
     test_ui_system.cpp
     test_metrics.cpp
     test_hud.cpp
+    test_app_input.cpp
 )
 
 target_link_libraries(tests_unit PRIVATE
