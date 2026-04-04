@@ -71,5 +71,6 @@ direct_ui_rendering/
 │   ├── test_scene.cpp                # tests_unit: SceneInit, WorldCorners (animation continuity, extreme aspect ratios), WorldCubeCorners, SceneAnimation, LightFrustum, UISurface (63 tests)
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI cube shadow casting (3 tests)
+│   ├── test_wall_colors.cpp          # tests_render: wall color validation in both rendering modes (2 tests)
 │   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
 ```
