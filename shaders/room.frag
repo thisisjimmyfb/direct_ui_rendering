@@ -55,12 +55,11 @@ void main() {
     vec3 ambient = ambientColor.rgb;
     vec3 diffuse = diff * shadow * spotFactor * lightColor.rgb;
 
-    // Base grey room surface color
-    vec3 surfaceColor = vec3(0.75);
+    // Determine surface color based on which wall/surface we're on
+    vec3 surfaceColor = vec3(0.75);  // Default grey
 
     // Floor grid pattern (Y ≈ 0, the floor level)
-    // Grid helps visualize depth and perspective in the scene
-    if (abs(inWorldPos.y) < 0.05) {  // Check if on floor
+    if (abs(inWorldPos.y) < 0.05) {
         float gridSize = 0.5;  // Grid cell size in world units
         vec2 gridCoord = floor(inWorldPos.xz / gridSize);
         float gridPattern = mod(gridCoord.x + gridCoord.y, 2.0);
@@ -69,6 +68,26 @@ void main() {
         vec3 gridColor1 = vec3(0.75);  // Light grey
         vec3 gridColor2 = vec3(0.65);  // Slightly darker grey
         surfaceColor = mix(gridColor1, gridColor2, gridPattern);
+    }
+    // Ceiling (Y > 2.5)
+    else if (inWorldPos.y > 2.5) {
+        surfaceColor = vec3(0.85, 0.82, 0.75);  // Warm beige/tan
+    }
+    // Back wall (Z ≤ -2.8)
+    else if (inWorldPos.z < -2.8) {
+        surfaceColor = vec3(0.45, 0.75, 0.9);  // Cool cyan/blue
+    }
+    // Front wall (Z ≥ 2.8)
+    else if (inWorldPos.z > 2.8) {
+        surfaceColor = vec3(1.0, 0.65, 0.45);  // Warm coral/orange
+    }
+    // Left wall (X ≤ -1.8)
+    else if (inWorldPos.x < -1.8) {
+        surfaceColor = vec3(0.5, 0.8, 0.55);  // Soft green
+    }
+    // Right wall (X ≥ 1.8)
+    else if (inWorldPos.x > 1.8) {
+        surfaceColor = vec3(0.75, 0.6, 0.8);  // Soft purple
     }
 
     outColor = vec4((ambient + diffuse) * surfaceColor, 1.0);

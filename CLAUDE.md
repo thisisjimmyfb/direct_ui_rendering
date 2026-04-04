@@ -48,7 +48,7 @@ direct_ui_rendering/
 │   ├── composite.frag                # Traditional mode: blend UI render target onto teal quad
 │   ├── quad.vert                     # Vertex shader for surface/composite quad geometry
 │   ├── room.vert                     # Blinn-Phong room geometry vertex shader
-│   ├── room.frag                     # Blinn-Phong + PCF shadow fragment shader
+│   ├── room.frag                     # Blinn-Phong + PCF shadow fragment shader; per-wall coloring (cyan back, coral front, green left, purple right)
 │   ├── shadow.vert                   # Depth-only shadow pass vertex shader
 │   ├── surface.frag                  # Opaque teal quad fragment shader (direct mode base layer)
 │   ├── ui.frag                       # UI atlas sampling with SDF smoothstep

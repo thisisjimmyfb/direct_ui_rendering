@@ -6,8 +6,8 @@ Once a task that can be worked on without changing the specification is identifi
 
 - Improve demo visuals: Add color gradient or animated color changes to UI text
 - Improve demo visuals: Enhance room lighting and add more varied materials/colors to scene geometry
-- Improve demo visuals: Add different wall colors (paint some walls with distinct colors)
 - Improve demo visuals: Add a colored spotlight beam or volumetric lighting effect
+- Add tests for wall color rendering to validate colored geometry in both rendering modes
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section
