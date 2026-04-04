@@ -25,7 +25,7 @@ direct_ui_rendering/
 │   └── SPEC.md                       # Project specification
 ├── src/
 │   ├── app.h                         # Top-level App class: init, frame loop, cleanup
-│   ├── app.cpp                       # App implementation: window, event loop, render loop (514 lines)
+│   ├── app.cpp                       # App implementation: window, event loop, render loop (526 lines)
 │   ├── main.cpp                      # Entry point: window creation, event loop, input handling (22 lines)
 │   ├── shader_uniforms.h             # GPU-side uniform buffer structs: SceneUBO, SurfaceUBO
 │   ├── metrics.h                     # Metrics tracking: frame timer, VMA stats, HUD rendering

@@ -12,7 +12,6 @@ Once a task that can be worked on without changing the specification is identifi
 - Animate UI surface cube rotation or oscillation more dynamically for visual interest
 - Add subtle parallax mapping or normal map effects to room walls
 - Implement dynamic shadow intensity variation for more dramatic lighting changes
-- Add test coverage for UI color animation - expand from 15 tests to full coverage (HSV-to-RGB conversion and phase animation)
 - Add subtle spotlight flicker or intensity variation to create more dynamic lighting
 - Implement UV-based texture animation on walls (scrolling patterns)
 - Add depth variance or roughness variation to materials (normal map simulation)
@@ -22,7 +21,6 @@ Once a task that can be worked on without changing the specification is identifi
 - Create animated wave patterns on floor geometry for visual interest
 - Implement spotlight glow visualization near light source
 - Add rotating/scrolling geometry patterns for visual dynamism
-- Test UI color animation system more thoroughly (expand test coverage to 20 tests)
 - Add animated spotlight position (move light in a circular arc for dramatic effect)
 - Add subtle camera position animation (oscillating viewpoint for parallax effect)
 - Implement time-based ambient color cycling to complement light intensity animation

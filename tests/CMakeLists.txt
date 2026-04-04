@@ -14,6 +14,7 @@ include(GoogleTest)
 #   test_app_input.cpp    — AppInputHandler input handling, mode toggle, depth bias, terminal input
 #   test_light_intensity.cpp — LightIntensityPulsing time-based pulsing effect validation
 #   test_ambient_animation.cpp — AmbientColorAnimation time-based color animation validation
+#   test_ui_color_animation.cpp — HSVToRGB conversion and UI color phase animation validation
 # ---------------------------------------------------------------------------
 add_executable(tests_unit
     test_matrix_math.cpp
@@ -25,6 +26,7 @@ add_executable(tests_unit
     test_app_input.cpp
     test_light_intensity.cpp
     test_ambient_animation.cpp
+    test_ui_color_animation.cpp
 )
 
 target_link_libraries(tests_unit PRIVATE

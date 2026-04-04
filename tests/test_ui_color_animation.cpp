@@ -255,3 +255,64 @@ TEST_F(UIColorAnimationPhaseTest, PeriodIsExactly4Seconds) {
         EXPECT_NEAR(std::fmod(hue1, 1.0f), std::fmod(hue2, 1.0f), epsilon);
     }
 }
+
+// Test: Cyan hue (0.5) produces cyan color
+TEST_F(HSVToRGBTest, CyanHue_ProducesCyan) {
+    glm::vec3 rgb = hsvToRgb(0.5f, 1.0f, 1.0f);
+    EXPECT_NEAR(rgb.r, 0.0f, 1e-5f);
+    EXPECT_NEAR(rgb.g, 1.0f, 1e-5f);
+    EXPECT_NEAR(rgb.b, 1.0f, 1e-5f);
+}
+
+// Test: Yellow hue (1/6) produces yellow color
+TEST_F(HSVToRGBTest, YellowHue_ProducesYellow) {
+    glm::vec3 rgb = hsvToRgb(1.0f / 6.0f, 1.0f, 1.0f);
+    EXPECT_NEAR(rgb.r, 1.0f, 1e-5f);
+    EXPECT_NEAR(rgb.g, 1.0f, 1e-5f);
+    EXPECT_NEAR(rgb.b, 0.0f, 1e-5f);
+}
+
+// Test: Magenta hue (5/6) produces magenta color
+TEST_F(HSVToRGBTest, MagentaHue_ProducesMagenta) {
+    glm::vec3 rgb = hsvToRgb(5.0f / 6.0f, 1.0f, 1.0f);
+    EXPECT_NEAR(rgb.r, 1.0f, 1e-5f);
+    EXPECT_NEAR(rgb.g, 0.0f, 1e-5f);
+    EXPECT_NEAR(rgb.b, 1.0f, 1e-5f);
+}
+
+// Test: Intermediate value levels produce expected brightness
+TEST_F(HSVToRGBTest, IntermediateValue_ProducesCorrectBrightness) {
+    glm::vec3 rgbDim = hsvToRgb(0.0f, 1.0f, 0.5f);    // Red at 50% brightness
+    glm::vec3 rgbBright = hsvToRgb(0.0f, 1.0f, 1.0f); // Red at 100% brightness
+
+    // Bright version should have all components greater or equal
+    EXPECT_GE(rgbBright.r, rgbDim.r);
+    EXPECT_GE(rgbBright.g, rgbDim.g);
+    EXPECT_GE(rgbBright.b, rgbDim.b);
+
+    // Dimmer red should be around 0.5, bright red should be 1.0
+    EXPECT_NEAR(rgbDim.r, 0.5f, 1e-5f);
+    EXPECT_NEAR(rgbBright.r, 1.0f, 1e-5f);
+}
+
+// Test: Phase at 2 seconds (mid-cycle) produces distinct color
+TEST_F(UIColorAnimationPhaseTest, Phase2Seconds_MidCycleDifferentColor) {
+    float hue0 = phaseToHue(0.0f);   // Red
+    float hue2 = phaseToHue(2.0f);   // Mid-cycle (cyan-ish)
+    float hue4 = phaseToHue(4.0f);   // Back to red
+
+    glm::vec3 rgb0 = hsvToRgb(hue0, 1.0f, 1.0f);
+    glm::vec3 rgb2 = hsvToRgb(hue2, 1.0f, 1.0f);
+    glm::vec3 rgb4 = hsvToRgb(hue4, 1.0f, 1.0f);
+
+    // Mid-cycle should be different from start/end
+    float colorDiff02 = glm::length(rgb2 - rgb0);
+    float colorDiff24 = glm::length(rgb4 - rgb2);
+    EXPECT_GT(colorDiff02, 0.3f) << "Phase 2 should differ noticeably from phase 0";
+    EXPECT_GT(colorDiff24, 0.3f) << "Phase 4 should differ noticeably from phase 2";
+
+    // Start and end should be the same
+    EXPECT_NEAR(rgb0.r, rgb4.r, 1e-4f);
+    EXPECT_NEAR(rgb0.g, rgb4.g, 1e-4f);
+    EXPECT_NEAR(rgb0.b, rgb4.b, 1e-4f);
+}
