@@ -64,6 +64,7 @@ direct_ui_rendering/
 │   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes (4 tests)
 │   ├── test_depth_bias.cpp           # tests_render: depth bias effectiveness in direct mode (5 tests)
 │   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing
+│   ├── test_light_intensity.cpp      # tests_unit: LightIntensityPulsing time-based light animation validation (12 tests)
 │   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), FontSizeInvariance, Parallelogram
 │   ├── test_metrics.cpp              # tests_unit: frame timing ring buffer and GPU memory tracking
 │   ├── test_msaa_quality.cpp         # tests_render: MSAA edge smoothness comparison (direct vs traditional modes) (2 tests)

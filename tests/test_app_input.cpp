@@ -105,6 +105,14 @@ public:
     static void setWindow(App& app, GLFWwindow* win) {
         app.m_window = win;
     }
+
+    static float getTime(const App& app) {
+        return app.m_time;
+    }
+
+    static void setTime(App& app, float time) {
+        app.m_time = time;
+    }
 };
 
 // ---------------------------------------------------------------------------
