@@ -82,6 +82,8 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 #   test_renderer.cpp      — Renderer initialization, pipelines, descriptor binding tests
 #   test_wall_colors.cpp   — Wall color validation in direct and traditional modes (Tests 9-14)
 #   test_msaa_quality.cpp  — MSAA edge smoothness comparison (Tests 15-16)
+#   test_depth_bias.cpp    — Depth bias effectiveness in direct mode (Tests 17-21)
+#   test_spotlight_cone.cpp— Spotlight cone angle attenuation (Tests 22-26)
 # Uses test shaders (UI_TEST_COLOR) so magenta pixels can be identified.
 # ---------------------------------------------------------------------------
 add_executable(tests_render
@@ -92,6 +94,8 @@ add_executable(tests_render
     test_renderer.cpp
     test_wall_colors.cpp
     test_msaa_quality.cpp
+    test_depth_bias.cpp
+    test_spotlight_cone.cpp
 )
 
 add_dependencies(tests_render test_shaders)

@@ -4,12 +4,13 @@ Once a task that can be worked on without changing the specification is identifi
 
 ## Pending Tasks
 
-- Add render tests for spotlight cone angle attenuation behavior (validates inner/outer cone smoothstep)
-- Add render tests for depth bias effectiveness in direct mode UI rendering
 - Improve demo visuals: Add color gradient or animated color changes to UI text
 - Improve demo visuals: Enhance room lighting and add more varied materials/colors to scene geometry
 - Improve demo visuals: Add animated texture effects (e.g., pulsing light intensity or moving shadows)
 - Improve demo visuals: Add UI interaction feedback (e.g., color change on text input when terminal input active)
+- Implement UI text color variants for visual variety in demo scene
+- Add time-based lighting variations (pulsing spotlight intensity for dramatic effect)
+- Create wall texture variation or tiling patterns in room.frag for visual richness
 
 ## Iterate
 - run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section

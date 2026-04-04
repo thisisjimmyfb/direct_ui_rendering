@@ -62,6 +62,7 @@ direct_ui_rendering/
 │   ├── test_app_input.cpp            # tests_unit: App input handling (key callbacks, mode toggle, depth bias edge cases, terminal input, cursor display, mouse) (74 tests)
 │   ├── test_clip_planes.cpp          # tests_unit: ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry, ClipPlaneYRotated, ClipPlane3DParallelogram (6 tests)
 │   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes (4 tests)
+│   ├── test_depth_bias.cpp           # tests_render: depth bias effectiveness in direct mode (5 tests)
 │   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing
 │   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), FontSizeInvariance, Parallelogram
 │   ├── test_metrics.cpp              # tests_unit: frame timing ring buffer and GPU memory tracking
@@ -72,6 +73,7 @@ direct_ui_rendering/
 │   ├── test_scene.cpp                # tests_unit: SceneInit, WorldCorners (animation continuity, extreme aspect ratios), WorldCubeCorners, SceneAnimation, LightFrustum, UISurface (63 tests)
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI cube shadow casting (3 tests)
+│   ├── test_spotlight_cone.cpp       # tests_render: spotlight cone angle attenuation (5 tests)
 │   ├── test_wall_colors.cpp          # tests_render: wall color validation in both rendering modes (2 tests)
 │   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
 ```
