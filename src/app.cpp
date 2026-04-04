@@ -212,20 +212,38 @@ void App::drawFrame()
     SceneUBO sceneUBO{};
     sceneUBO.view        = view;
     sceneUBO.proj        = proj;
-    sceneUBO.lightViewProj = m_scene.lightViewProj();
-    sceneUBO.lightPos     = glm::vec4(m_scene.light().position, 1.0f);
+    sceneUBO.lightViewProj = m_scene.lightViewProj(m_time);
+    sceneUBO.lightPos     = glm::vec4(m_scene.spotlightPosition(m_time), 1.0f);
     sceneUBO.lightDir     = glm::vec4(m_scene.light().direction,
                                       std::cos(m_scene.light().outerConeAngle));
-    sceneUBO.lightColor   = glm::vec4(m_scene.light().color,
+    // Use animated spotlight color for dynamic atmospheric effect
+    sceneUBO.lightColor   = glm::vec4(m_scene.spotlightColor(m_time),
                                       std::cos(m_scene.light().innerConeAngle));
 
-    // Animate ambient color subtly over time for atmospheric effect
+    // Enhanced time-based ambient color cycling for atmospheric effect
+    // Creates a rich, multi-frequency color variation that complements light intensity animation
     glm::vec3 baseAmbient = m_scene.light().ambient;
-    float ambientPulse = 0.15f * std::sin(m_time * 0.7f);  // Slow pulse
-    float coolWarmShift = 0.1f * std::sin(m_time * 0.5f + 1.0f);  // Slow cool/warm shift
-    glm::vec3 animatedAmbient = baseAmbient + ambientPulse;
-    animatedAmbient.x += coolWarmShift * 0.5f;  // Add warmth (red)
-    animatedAmbient.z -= coolWarmShift * 0.3f;  // Reduce cool (blue)
+
+    // Multi-frequency oscillation for ambient intensity
+    float basePulse = 0.12f * std::sin(m_time * 0.6f);        // Slow base pulse
+    float midPulse  = 0.08f * std::sin(m_time * 1.3f);        // Medium frequency
+    float hiPulse   = 0.04f * std::sin(m_time * 2.1f);        // Higher frequency
+    float totalPulse = basePulse + midPulse + hiPulse;
+
+    // Color phase cycling - creates subtle hue shifts over time
+    // Red channel: warms up periodically (sunset-like effect)
+    float redPhase = 0.06f * std::sin(m_time * 0.45f);
+    // Green channel: follows a different phase for natural variation
+    float greenPhase = 0.05f * std::sin(m_time * 0.38f + 1.5f);
+    // Blue channel: cool tones cycle independently
+    float bluePhase = 0.07f * std::sin(m_time * 0.52f + 3.0f);
+
+    // Apply oscillation to intensity and color channels
+    glm::vec3 animatedAmbient = baseAmbient + glm::vec3(totalPulse);
+    animatedAmbient.x += redPhase;   // Warmth variation
+    animatedAmbient.y += greenPhase; // Natural variation
+    animatedAmbient.z += bluePhase;  // Cool tone variation
+
     sceneUBO.ambientColor = glm::vec4(glm::clamp(animatedAmbient, 0.0f, 1.0f), 1.0f);
 
     sceneUBO.lightIntensity = 1.0f + 0.3f * std::sin(m_time * 2.0f);  // Pulsing intensity

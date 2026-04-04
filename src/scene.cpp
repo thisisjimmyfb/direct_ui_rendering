@@ -150,14 +150,37 @@ glm::vec3 Scene::faceCorner(int faceIndex, int cornerIndex) const
 // Light
 // ---------------------------------------------------------------------------
 
-glm::mat4 Scene::lightViewProj() const
+glm::vec3 Scene::spotlightPosition(float t) const
 {
-    // Perspective shadow map from the spotlight position.
-    // The spotlight is positioned inside the room and aims toward the back wall,
-    // casting a shadow of the floating UI quad onto the back wall.
+    // Animate spotlight in a circular arc around the center of the room
+    // This creates a dramatic effect where light moves dynamically
+
+    // Circular motion in the horizontal (X-Z) plane at height Y
+    float radius = 1.5f;
+    float angle = t * 0.3f;  // Slow rotation: one complete circle every ~21 seconds
+    float circularX = radius * std::cos(angle);
+    float circularZ = radius * std::sin(angle);
+
+    // Base position with circular motion superimposed
+    glm::vec3 basePos(0.0f, 2.8f, 0.5f);  // Original position
+    glm::vec3 animatedPos = basePos + glm::vec3(circularX, 0.0f, circularZ);
+
+    // Add subtle vertical bobbing for more dynamic effect
+    float verticalBob = 0.3f * std::sin(t * 0.4f);
+    animatedPos.y += verticalBob;
+
+    return animatedPos;
+}
+
+glm::mat4 Scene::lightViewProj(float t) const
+{
+    // Perspective shadow map from the animated spotlight position.
+    // The spotlight moves in a circular arc while maintaining direction toward the scene.
+    glm::vec3 lightPos = spotlightPosition(t);
+
     glm::mat4 view = glm::lookAt(
-        m_light.position,
-        m_light.position + m_light.direction,
+        lightPos,
+        lightPos + m_light.direction,
         glm::vec3(0.0f, 1.0f, 0.0f));
 
     // FOV covers the full outer cone (outerConeAngle is the half-angle).
@@ -166,4 +189,27 @@ glm::mat4 Scene::lightViewProj() const
     float farZ  = 10.0f;
     glm::mat4 proj = glm::perspective(fov, 1.0f, nearZ, farZ);
     return proj * view;
+}
+
+glm::vec3 Scene::spotlightColor(float t) const
+{
+    // Dynamic spotlight color cycling between warm (sunset) and cool (moonlight) tones
+    // Creates atmospheric color variations without changing light intensity too drastically
+
+    glm::vec3 baseColor = m_light.color;  // Base warm white (1.0, 0.95, 0.85)
+
+    // Warm tone intensity: increases red/yellow periodically (sunset effect)
+    float warmCycle = 0.15f * std::sin(t * 0.33f);  // Slow warm-cool cycle
+
+    // Cool tone intensity: modulates blue channel for cool/moonlight effect
+    float coolCycle = -0.12f * std::sin(t * 0.28f + 1.0f);  // Offset phase
+
+    // Red channel: enhance warmth when in warm phase
+    glm::vec3 color = baseColor;
+    color.x += warmCycle * 0.3f;  // Boost red in warm phase
+    color.y += warmCycle * 0.15f; // Slight green boost
+    color.z += coolCycle * 0.25f; // Modulate blue for cool tones
+
+    // Ensure color values stay in valid range
+    return glm::clamp(color, 0.3f, 1.0f);  // Keep some minimum brightness
 }

@@ -100,8 +100,14 @@ public:
     void worldCubeCorners(float t, std::array<std::array<glm::vec3, 4>, 6>& outCorners,
                           float scaleW = 1.0f, float scaleH = 1.0f) const;
 
-    // Compute the light's view-projection matrix for shadow mapping.
-    glm::mat4 lightViewProj() const;
+    // Compute animated spotlight position at time t (circular arc with vertical bobbing).
+    glm::vec3 spotlightPosition(float t) const;
+
+    // Compute the light's view-projection matrix for shadow mapping using animated position.
+    glm::mat4 lightViewProj(float t) const;
+
+    // Compute animated spotlight color with warm/cool cycling for atmospheric effect.
+    glm::vec3 spotlightColor(float t) const;
 
    const RoomMesh&       roomMesh()  const { return m_room; }
     const UISurface&      uiSurface() const { return m_uiSurface; }

@@ -94,7 +94,7 @@ static SceneUBO makeSpotlightSceneUBO(const Scene& scene,
     SceneUBO ubo{};
     ubo.view          = view;
     ubo.proj          = proj;
-    ubo.lightViewProj = scene.lightViewProj();
+    ubo.lightViewProj = scene.lightViewProj(0.0f);
     ubo.lightPos      = glm::vec4(scene.light().position, 1.0f);
     ubo.lightDir      = glm::vec4(scene.light().direction,
                                   std::cos(scene.light().outerConeAngle));

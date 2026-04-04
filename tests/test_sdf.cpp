@@ -195,7 +195,7 @@ protected:
         SceneUBO sceneUBO{};
         sceneUBO.view         = view;
         sceneUBO.proj         = proj;
-        sceneUBO.lightViewProj = scene.lightViewProj();
+        sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
         sceneUBO.lightPos     = glm::vec4(scene.light().position, 1.0f);
         sceneUBO.lightDir     = glm::vec4(scene.light().direction,
                                           std::cos(scene.light().outerConeAngle));
@@ -597,7 +597,7 @@ protected:
         SceneUBO sceneUBO{};
         sceneUBO.view         = view;
         sceneUBO.proj         = proj;
-        sceneUBO.lightViewProj = scene.lightViewProj();
+        sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
         sceneUBO.lightPos     = glm::vec4(scene.light().position, 1.0f);
         sceneUBO.lightDir     = glm::vec4(scene.light().direction,
                                           std::cos(scene.light().outerConeAngle));
@@ -1050,7 +1050,7 @@ static SceneUBO makeAmbientOnlyUBO(const Scene& scene,
     SceneUBO ubo{};
     ubo.view          = view;
     ubo.proj          = proj;
-    ubo.lightViewProj = scene.lightViewProj();
+    ubo.lightViewProj = scene.lightViewProj(0.0f);
     ubo.lightPos      = glm::vec4(scene.light().position, 1.0f);
     ubo.lightDir      = glm::vec4(scene.light().direction,
                                   std::cos(scene.light().outerConeAngle));
@@ -1289,7 +1289,7 @@ protected:
         SceneUBO sceneUBO{};
         sceneUBO.view         = view;
         sceneUBO.proj         = proj;
-        sceneUBO.lightViewProj = scene.lightViewProj();
+        sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
         sceneUBO.lightPos     = glm::vec4(scene.light().position, 1.0f);
         sceneUBO.lightDir     = glm::vec4(scene.light().direction,
                                           std::cos(scene.light().outerConeAngle));

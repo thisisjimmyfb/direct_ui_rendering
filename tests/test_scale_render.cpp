@@ -32,7 +32,7 @@ TEST_F(ContainmentTest, NonUniformScale_DirectMode_ClipPlanesTrackReshapedSurfac
     SceneUBO sceneUBO{};
     sceneUBO.view          = view;
     sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj();
+    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
     sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
     sceneUBO.lightDir      = glm::vec4(scene.light().direction,
                                        std::cos(scene.light().outerConeAngle));
@@ -107,7 +107,7 @@ TEST_F(ContainmentTest, FontSizeInvariance_DirectVsTraditional_ScaledQuad)
     SceneUBO sceneUBO{};
     sceneUBO.view          = view;
     sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj();
+    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
     sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
     sceneUBO.lightDir      = glm::vec4(scene.light().direction,
                                        std::cos(scene.light().outerConeAngle));

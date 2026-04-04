@@ -3,6 +3,7 @@
 #
 # Uses local LLM during peak hours (5am-11am, 1pm-7pm) to avoid double token pricing.
 # Falls back to standard Claude endpoint during off-peak hours.
+# Peak hours are re-evaluated at the start of each iteration.
 #
 # Usage:
 #   ./ralph.sh [LOOP.md] [options]
@@ -10,6 +11,7 @@
 # Options:
 #   --auto, -a                    Skip the between-iteration pause
 #   --dangerously-skip-permissions  Bypass tool permission prompts
+#   --local, -l                   Force local LLM for all iterations
 #   --model <model>               Claude model to use
 #   --offline-url <url>           Local LLM endpoint (default: http://localhost:8088)
 #   --help, -h                    Show this help
@@ -21,25 +23,19 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOOP="$ROOT/spec/LOOP.md"
 AUTO=false
 SKIP_PERMISSIONS=true
+FORCE_LOCAL=false
 MODEL="claude-haiku-4-5"
 OFFLINE_LLM_URL="http://localhost:8088"
-
-# Peak hours: 5am-11am and 1pm-7pm (13:00-19:00) — double token pricing
-is_peak_hours() {
-    local hour
-    hour=$(date +%H)
-    hour=$((10#$hour))
-    if [[ $hour -ge 5 && $hour -lt 11 ]] || [[ $hour -ge 13 && $hour -lt 19 ]]; then
-        return 0
-    fi
-    return 1
-}
 
 # ── argument parsing ──────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --auto|-a)
             AUTO=true
+            shift
+            ;;
+        --local|-l)
+            FORCE_LOCAL=true
             shift
             ;;
         --dangerously-skip-permissions)
@@ -108,16 +104,6 @@ is_peak_hours() {
     return 1
 }
 
-# ── determine LLM mode ────────────────────────────────────────────────────────
-if is_peak_hours; then
-    USE_LOCAL=true
-    echo "  mode: local LLM (peak hours: double token pricing)"
-else
-    USE_LOCAL=false
-    echo "  mode: standard Claude (off-peak hours)"
-fi
-echo ""
-
 # ── helpers ───────────────────────────────────────────────────────────────────
 run_local_llm() {
 	cat "$LOOP" | ANTHROPIC_BASE_URL="$OFFLINE_LLM_URL" claude "${CLAUDE_FLAGS[@]}" 2>&1
@@ -150,10 +136,10 @@ echo "ralph"
 echo "  loop : $LOOP"
 echo "  mode : $( $AUTO && echo 'auto (ctrl+c to stop)' || echo 'manual (enter to advance)' )"
 $SKIP_PERMISSIONS && echo "  perms: bypassed"
-if $USE_LOCAL; then
-    echo "  llm  : local ($OFFLINE_LLM_URL)"
+if $FORCE_LOCAL; then
+    echo "  llm  : local (forced, $OFFLINE_LLM_URL)"
 else
-    echo "  llm  : standard Claude"
+    echo "  llm  : peak-hour routing (local=$OFFLINE_LLM_URL, checked each iteration)"
 fi
 echo ""
 
@@ -161,19 +147,34 @@ while true; do
     iteration=$((iteration + 1))
 
     iter_start=$(date +%s)
-    echo "┌─ iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S') ──────────────────────────────"
+
+    # Re-evaluate LLM mode each iteration
+    if $FORCE_LOCAL || is_peak_hours; then
+        USE_LOCAL=true
+    else
+        USE_LOCAL=false
+    fi
+
+    if $USE_LOCAL; then
+        echo "┌─ iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')  [local LLM$( $FORCE_LOCAL && echo ' (forced)' || echo ' (peak hours)' )] ──────────────────────────────"
+    else
+        echo "┌─ iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')  [Claude] ──────────────────────────────"
+    fi
     echo ""
 
-    # Always try Claude first
-	set +e
-	output=$(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}")
-    exit_code=$?
-	set -e
-	
-    if [[ $exit_code -ne 0 ]] || is_token_limit_error "$output"; then
-        echo "⚠ Token limit hit, using local LLM for this iteration"
-        echo ""
+    if $USE_LOCAL; then
         run_local_llm
+    else
+        set +e
+        output=$(cat "$LOOP" | claude "${CLAUDE_FLAGS[@]}")
+        exit_code=$?
+        set -e
+
+        if [[ $exit_code -ne 0 ]] || is_token_limit_error "$output"; then
+            echo "⚠ Token limit hit, falling back to local LLM"
+            echo ""
+            run_local_llm
+        fi
     fi
 
     iter_end=$(date +%s)

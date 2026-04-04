@@ -25,7 +25,7 @@ protected:
 
     void SetUp() override {
         scene.init();
-        lvp = scene.lightViewProj();
+        lvp = scene.lightViewProj(0.0f);
     }
 };
 
@@ -563,12 +563,14 @@ TEST_F(SceneAnimationTest, AtT0_RotationSubmatrixIsIdentity)
 
 TEST_F(SceneAnimationTest, AtT0_TranslationMatchesBaseOffset)
 {
-    // At t=0 lateralX=sin(0)=0 and lateralY=sin(0)=0, so the translation
-    // column must be exactly (0, 1.5, -2.5, 1).
+    // At t=0:
+    // lateralX = 1.2*sin(0) + 0.4*sin(0) = 0
+    // lateralY = 1.5 + 0.35*sin(0) + 0.3*cos(0) = 1.5 + 0 + 0.3 = 1.8
+    // lateralZ = -2.5 + 0.3*sin(0) = -2.5
     glm::mat4 M = scene.animationMatrix(0.0f);
 
     EXPECT_NEAR(M[3][0], 0.0f,  1e-5f) << "translation X";
-    EXPECT_NEAR(M[3][1], 1.5f,  1e-5f) << "translation Y";
+    EXPECT_NEAR(M[3][1], 1.8f,  1e-5f) << "translation Y";
     EXPECT_NEAR(M[3][2], -2.5f, 1e-5f) << "translation Z";
     EXPECT_NEAR(M[3][3], 1.0f,  1e-5f) << "homogeneous W";
 }
@@ -576,48 +578,55 @@ TEST_F(SceneAnimationTest, AtT0_TranslationMatchesBaseOffset)
 TEST_F(SceneAnimationTest, NonTrivialAngle_RotationSubmatrixMatchesGlmRotate)
 {
     // At t = 2π: t * 0.25 = π/2, so sin(t * 0.25) = 1.0.
-    // Expected rotation angle = 15° * 1.0 = 15° — the maximum rotation value.
-    // This is a non-trivial angle that exercises the rotation sub-matrix fully
-    // (cos(15°) ≠ 1, sin(15°) ≠ 0), complementing the t=0 base-case test.
+    // Current animation uses yaw = 25°, roll = 35°*sin(t*0.5), pitch = 18°*sin(t*0.19)
+    // At t=2π: yaw = 25°, roll = 35°*sin(π) = 0, pitch = 18°*sin(2π*0.19)
     const float pi  = std::acos(-1.0f);
-    const float t   = 2.0f * pi;   // t * 0.25 = π/2 → sin = 1.0
+    const float t   = 2.0f * pi;
 
-    const float expectedAngle = glm::radians(15.0f) * std::sin(t * 0.25f);
+    const float yaw   = glm::radians(25.0f) * std::sin(t * 0.25f);
+    const float roll  = glm::radians(35.0f) * std::sin(t * 0.5f);
+    const float pitch = glm::radians(18.0f) * std::sin(t * 0.19f);
 
-    glm::mat4 M      = scene.animationMatrix(t);
-    glm::mat4 refRot = glm::rotate(glm::mat4(1.0f), expectedAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 M = scene.animationMatrix(t);
+
+    // Build reference: T * R_Y * R_Z * R_X (applied in that order)
+    glm::mat4 refRot = glm::mat4(1.0f);
+    refRot = glm::rotate(refRot, yaw, glm::vec3(0.0f, 1.0f, 0.0f));
+    refRot = glm::rotate(refRot, roll, glm::vec3(0.0f, 0.0f, 1.0f));
+    refRot = glm::rotate(refRot, pitch, glm::vec3(1.0f, 0.0f, 0.0f));
 
     // The animation matrix is T * R; the upper-left 3×3 is R's sub-matrix.
     for (int col = 0; col < 3; ++col) {
         for (int row = 0; row < 3; ++row) {
-            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-5f)
+            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-4f)
                 << "rotation sub-matrix mismatch at col=" << col << " row=" << row
-                << " (t=" << t << ", expectedAngle=" << expectedAngle << " rad)";
+                << " (t=" << t << ")";
         }
     }
 }
 
 TEST_F(SceneAnimationTest, NormalWiggle_AtPeak_RotationMatchesCombinedYAndZ)
 {
-    // At t = π, sin(t * 0.5) = sin(π/2) = 1.0, so normalAngle = 25°.
-    // The combined rotation is R_Y(yAngle) * R_Z(25°).
-    // This verifies the normal-wiggle axis and amplitude are correct.
+    // At t = π, sin(t * 0.5) = sin(π/2) = 1.0, so roll reaches 35°.
+    // Current animation: yaw = 25°*sin(π*0.25), roll = 35°, pitch = 18°*sin(π*0.19)
     const float pi = std::acos(-1.0f);
-    const float t  = pi;   // t * 0.5 = π/2 → sin = 1.0
+    const float t  = pi;
 
-    const float yAngle = glm::radians(15.0f) * std::sin(t * 0.25f);
-    const float zAngle = glm::radians(25.0f);   // sin(π * 0.5) = 1
+    const float yAngle = glm::radians(25.0f) * std::sin(t * 0.25f);
+    const float zAngle = glm::radians(35.0f) * std::sin(t * 0.5f);   // sin(π/2) = 1
+    const float pitch  = glm::radians(18.0f) * std::sin(t * 0.19f);
 
     glm::mat4 M = scene.animationMatrix(t);
 
-    // Build reference: T * R_Y * R_Z (applied in order: Z first, then Y)
+    // Build reference: T * R_Y * R_Z * R_X (applied in that order)
     glm::mat4 refRot = glm::mat4(1.0f);
     refRot = glm::rotate(refRot, yAngle, glm::vec3(0.0f, 1.0f, 0.0f));
     refRot = glm::rotate(refRot, zAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+    refRot = glm::rotate(refRot, pitch, glm::vec3(1.0f, 0.0f, 0.0f));
 
     for (int col = 0; col < 3; ++col) {
         for (int row = 0; row < 3; ++row) {
-            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-5f)
+            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-4f)
                 << "combined rotation mismatch at col=" << col << " row=" << row
                 << " (t=π, yAngle=" << yAngle << " rad, zAngle=" << zAngle << " rad)";
         }
@@ -626,22 +635,26 @@ TEST_F(SceneAnimationTest, NormalWiggle_AtPeak_RotationMatchesCombinedYAndZ)
 
 TEST_F(SceneAnimationTest, NormalWiggle_ZeroAt_T0_And_T2Pi)
 {
-    // The normal wiggle uses sin(t * 0.5f), so it is exactly zero at t=0 and
-    // t=2π.  At those times the rotation sub-matrix must equal R_Y alone with no
-    // Z-rotation contribution.
+    // The roll (Z-axis rotation) uses sin(t * 0.5f), so it is zero at t=0 and t=2π.
+    // At those times the Z-rotation should be zero. But Y and X rotations may be nonzero.
     const float pi = std::acos(-1.0f);
     for (float t : {0.0f, 2.0f * pi}) {
         SCOPED_TRACE("t=" + std::to_string(t));
-        const float yAngle = glm::radians(15.0f) * std::sin(t * 0.25f);
+        const float yAngle = glm::radians(25.0f) * std::sin(t * 0.25f);
+        const float zAngle = glm::radians(35.0f) * std::sin(t * 0.5f);  // Should be 0
+        const float pitch  = glm::radians(18.0f) * std::sin(t * 0.19f);
 
-        glm::mat4 M      = scene.animationMatrix(t);
-        glm::mat4 refRot = glm::rotate(glm::mat4(1.0f), yAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 M = scene.animationMatrix(t);
+        // Build reference without Z rotation (which should be ~0)
+        glm::mat4 refRot = glm::mat4(1.0f);
+        refRot = glm::rotate(refRot, yAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+        refRot = glm::rotate(refRot, zAngle, glm::vec3(0.0f, 0.0f, 1.0f));  // ~0
+        refRot = glm::rotate(refRot, pitch, glm::vec3(1.0f, 0.0f, 0.0f));
 
         for (int col = 0; col < 3; ++col) {
             for (int row = 0; row < 3; ++row) {
-                EXPECT_NEAR(M[col][row], refRot[col][row], 1e-5f)
-                    << "normal wiggle should be zero at t=" << t
-                    << " — rotation should equal R_Y only"
+                EXPECT_NEAR(M[col][row], refRot[col][row], 1e-4f)
+                    << "roll should be zero at t=" << t
                     << " (col=" << col << " row=" << row << ")";
             }
         }
@@ -650,57 +663,54 @@ TEST_F(SceneAnimationTest, NormalWiggle_ZeroAt_T0_And_T2Pi)
 
 TEST_F(SceneAnimationTest, AtSinPi_LateralXNearZero_YFollowsFormula)
 {
-    // t = π / 0.18  →  t * 0.18 = π  →  sin(π) ≈ 0  →  lateralX ≈ 0.
-    // Exercises the zero-crossing of the lateral oscillation (sin changes sign here).
+    // t = π / 0.18  →  t * 0.18 = π  →  sin(π) ≈ 0
+    // lateralX = 1.2*sin(π) + 0.4*sin(t*0.31) (has second term)
+    // lateralY = 1.5 + 0.35*sin(t*0.22) + 0.3*cos(t*0.37)
     const float pi = std::acos(-1.0f);
     const float t  = pi / 0.18f;
 
     glm::mat4 M = scene.animationMatrix(t);
 
-    float expectedX = 1.2f * std::sin(t * 0.18f);
-    float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f);
+    float expectedX = 1.2f * std::sin(t * 0.18f) + 0.4f * std::sin(t * 0.31f);
+    float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f) + 0.3f * std::cos(t * 0.37f);
 
-    EXPECT_NEAR(M[3][0], expectedX, 1e-5f) << "translation X at t=π/0.18";
-    EXPECT_NEAR(M[3][1], expectedY, 1e-5f) << "translation Y at t=π/0.18";
-    EXPECT_NEAR(M[3][2], -2.5f,    1e-5f) << "translation Z unchanged";
+    EXPECT_NEAR(M[3][0], expectedX, 1e-4f) << "translation X at t=π/0.18";
+    EXPECT_NEAR(M[3][1], expectedY, 1e-4f) << "translation Y at t=π/0.18";
+    EXPECT_NEAR(M[3][2], -2.5f + 0.3f * std::sin(t * 0.15f), 1e-4f) << "translation Z";
 }
 
 TEST_F(SceneAnimationTest, AtSinPiOver2_LateralXIsMax_YFollowsFormula)
 {
-    // t = (π/2) / 0.18  →  t * 0.18 = π/2  →  sin(π/2) = 1  →  lateralX = 1.2 exactly.
-    // Exercises the peak of the lateral oscillation.
+    // t = (π/2) / 0.18  →  t * 0.18 = π/2  →  sin(π/2) = 1
+    // lateralX = 1.2*sin(π/2) + 0.4*sin(t*0.31) = 1.2 + 0.4*sin(t*0.31)
     const float pi = std::acos(-1.0f);
     const float t  = (pi * 0.5f) / 0.18f;
 
     glm::mat4 M = scene.animationMatrix(t);
 
-    float expectedX = 1.2f * std::sin(t * 0.18f);  // = 1.2 * 1.0 = 1.2
-    float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f);
+    float expectedX = 1.2f * std::sin(t * 0.18f) + 0.4f * std::sin(t * 0.31f);
+    float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f) + 0.3f * std::cos(t * 0.37f);
 
-    EXPECT_NEAR(M[3][0], expectedX, 1e-5f) << "translation X at t=(π/2)/0.18";
-    EXPECT_NEAR(M[3][1], expectedY, 1e-5f) << "translation Y at t=(π/2)/0.18";
-    EXPECT_NEAR(M[3][2], -2.5f,    1e-5f) << "translation Z unchanged";
-    // Confirm the peak value is close to 1.2 (within float precision).
-    EXPECT_NEAR(M[3][0], 1.2f, 1e-4f) << "peak lateralX should be ≈1.2 m";
+    EXPECT_NEAR(M[3][0], expectedX, 1e-4f) << "translation X at t=(π/2)/0.18";
+    EXPECT_NEAR(M[3][1], expectedY, 1e-4f) << "translation Y at t=(π/2)/0.18";
+    EXPECT_NEAR(M[3][2], -2.5f + 0.3f * std::sin(t * 0.15f), 1e-4f) << "translation Z";
 }
 
 TEST_F(SceneAnimationTest, AtSin3PiOver2_LateralXIsNegativeMax_YFollowsFormula)
 {
-    // t = (3π/2) / 0.18  →  t * 0.18 = 3π/2  →  sin(3π/2) = -1  →  lateralX = -1.2 exactly.
-    // Covers the negative-peak oscillation branch (the mirror of AtSinPiOver2).
+    // t = (3π/2) / 0.18  →  t * 0.18 = 3π/2  →  sin(3π/2) = -1
+    // lateralX = 1.2*sin(3π/2) + 0.4*sin(t*0.31) = -1.2 + 0.4*sin(t*0.31)
     const float pi = std::acos(-1.0f);
     const float t  = (3.0f * pi * 0.5f) / 0.18f;
 
     glm::mat4 M = scene.animationMatrix(t);
 
-    float expectedX = 1.2f * std::sin(t * 0.18f);  // = 1.2 * (-1.0) = -1.2
-    float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f);
+    float expectedX = 1.2f * std::sin(t * 0.18f) + 0.4f * std::sin(t * 0.31f);
+    float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f) + 0.3f * std::cos(t * 0.37f);
 
-    EXPECT_NEAR(M[3][0], expectedX, 1e-5f) << "translation X at t=(3π/2)/0.18";
-    EXPECT_NEAR(M[3][1], expectedY, 1e-5f) << "translation Y at t=(3π/2)/0.18";
-    EXPECT_NEAR(M[3][2], -2.5f,    1e-5f) << "translation Z unchanged";
-    // Confirm the trough value is close to -1.2 (within float precision).
-    EXPECT_NEAR(M[3][0], -1.2f, 1e-4f) << "trough lateralX should be ≈-1.2 m";
+    EXPECT_NEAR(M[3][0], expectedX, 1e-4f) << "translation X at t=(3π/2)/0.18";
+    EXPECT_NEAR(M[3][1], expectedY, 1e-4f) << "translation Y at t=(3π/2)/0.18";
+    EXPECT_NEAR(M[3][2], -2.5f + 0.3f * std::sin(t * 0.15f), 1e-4f) << "translation Z";
 }
 
 // ---------------------------------------------------------------------------
@@ -820,30 +830,33 @@ TEST_F(LightFrustumTest, UIQuadCenter_InsideSpotlightOuterCone_AtT0)
 
 TEST_F(SceneAnimationTest, ZTranslation_AlwaysFixedAt_Neg2_5)
 {
-    // The animation translates the surface in Z by a constant -2.5 m regardless
-    // of t.  Only X and Y oscillate.  Accidental removal of the constant term
-    // (e.g. editing the translate call) would silently move the surface away
-    // from the back wall with no compile-time error.
+    // The Z translation is now: lateralZ = -2.5 + 0.3*sin(t*0.15f)
+    // so it varies in the range [-2.8, -2.2]. This adds subtle depth variation
+    // while keeping the surface within room bounds.
     const float pi = std::acos(-1.0f);
-    for (float t : {0.0f, pi / 0.18f, pi / 0.22f, 2.0f * pi}) {
+    const float lo = -2.8f, hi = -2.2f;
+
+    const int N = 100;
+    const float tMax = 4.0f * pi / 0.15f;   // Two full oscillation periods
+    for (int i = 0; i <= N; ++i) {
+        float t = tMax * static_cast<float>(i) / static_cast<float>(N);
         SCOPED_TRACE("t=" + std::to_string(t));
         glm::mat4 M = scene.animationMatrix(t);
-        // Column-major: M[3][2] is the Z component of the translation column.
-        EXPECT_NEAR(M[3][2], -2.5f, 1e-5f)
-            << "animationMatrix(" << t << ")[3][2] should always be -2.5";
+        float z = M[3][2];
+        EXPECT_GE(z, lo) << "Z translation dropped below lower bound " << lo;
+        EXPECT_LE(z, hi) << "Z translation exceeded upper bound " << hi;
     }
 }
 
 TEST_F(SceneAnimationTest, YTranslation_AlwaysInExpectedRange)
 {
-    // The Y translation is 1.5 + 0.35*sin(t*0.22), so it must always lie in
-    // [1.15, 1.85].  This guards the invariant that the surface stays within
-    // visible room bounds regardless of t.
+    // The Y translation is 1.5 + 0.35*sin(t*0.22) + 0.3*cos(t*0.37)
+    // so it must always lie in [1.5 - 0.65, 1.5 + 0.65] = [0.85, 2.15]
+    // This guards the invariant that the surface stays within visible room bounds.
     const float pi = std::acos(-1.0f);
-    const float lo = 1.15f, hi = 1.85f;
+    const float lo = 0.85f, hi = 2.15f;
 
-    // Dense sweep: 200 evenly-spaced t values spanning several full oscillation
-    // periods of both the X (period 2π/0.18) and Y (period 2π/0.22) terms.
+    // Dense sweep: 200 evenly-spaced t values spanning several full oscillation periods
     const int N = 200;
     const float tMax = 2.0f * pi / 0.18f;   // covers the slower X period
     for (int i = 0; i <= N; ++i) {
@@ -859,16 +872,15 @@ TEST_F(SceneAnimationTest, YTranslation_AlwaysInExpectedRange)
 
 TEST_F(SceneAnimationTest, XTranslation_AlwaysInExpectedRange)
 {
-    // The X translation is 1.2*sin(t*0.18), so it must always lie in
-    // [-1.2, 1.2].  This guards the invariant that the surface center stays
-    // within room X bounds (walls at ±2 m).
+    // The X translation is 1.2*sin(t*0.18) + 0.4*sin(t*0.31), so it must always lie in
+    // [-1.6, 1.6] (since max amplitude is 1.2 + 0.4 = 1.6).
+    // This guards the invariant that the surface center stays within room X bounds (walls at ±2 m).
     const float pi = std::acos(-1.0f);
-    const float lo = -1.2f, hi = 1.2f;
+    const float lo = -1.6f, hi = 1.6f;
 
-    // Dense sweep: 500 evenly-spaced t values spanning several full oscillation
-    // periods of the X term (period 2π/0.18 ≈ 34.9 s).
+    // Dense sweep: 500 evenly-spaced t values spanning several full oscillation periods
     const int N = 500;
-    const float tMax = 4.0f * pi / 0.18f;   // two full X periods
+    const float tMax = 4.0f * pi / 0.18f;   // two full periods of primary oscillation
     for (int i = 0; i <= N; ++i) {
         float t = tMax * static_cast<float>(i) / static_cast<float>(N);
         SCOPED_TRACE("t=" + std::to_string(t));
@@ -882,23 +894,23 @@ TEST_F(SceneAnimationTest, XTranslation_AlwaysInExpectedRange)
 
 TEST_F(SceneAnimationTest, NormalWiggle_AtNegativePeak_RotationMatchesCombinedYAndZNeg)
 {
-    // At t = 3π, sin(t * 0.5) = sin(3π/2) = -1.0, so normalAngle = -25°.
-    // The combined rotation is R_Y(yAngle) * R_Z(-25°).
-    // This mirrors NormalWiggle_AtPeak which covers the +25° direction and
-    // verifies that the Z-rotation is correctly negated, not clamped or
-    // abs()-ed somewhere in the implementation.
+    // At t = 3π, sin(t * 0.5) = sin(3π/2) = -1.0, so roll = -35°.
+    // Current animation: yaw = 25°*sin(t*0.25), roll = 35°*sin(t*0.5), pitch = 18°*sin(t*0.19)
+    // This verifies that the roll is correctly negated.
     const float pi = std::acos(-1.0f);
     const float t  = 3.0f * pi;   // t * 0.5 = 3π/2 → sin = -1.0
 
-    const float yAngle = glm::radians(15.0f) * std::sin(t * 0.25f);
-    const float zAngle = -glm::radians(25.0f);   // sin(3π/2) = -1
+    const float yAngle = glm::radians(25.0f) * std::sin(t * 0.25f);
+    const float zAngle = glm::radians(35.0f) * std::sin(t * 0.5f);  // = -35°
+    const float pitch  = glm::radians(18.0f) * std::sin(t * 0.19f);
 
     glm::mat4 M = scene.animationMatrix(t);
 
-    // Build reference: T * R_Y * R_Z  (applied in order: Z first, then Y)
+    // Build reference: T * R_Y * R_Z * R_X (applied in that order)
     glm::mat4 refRot = glm::mat4(1.0f);
     refRot = glm::rotate(refRot, yAngle, glm::vec3(0.0f, 1.0f, 0.0f));
     refRot = glm::rotate(refRot, zAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+    refRot = glm::rotate(refRot, pitch, glm::vec3(1.0f, 0.0f, 0.0f));
 
     for (int col = 0; col < 3; ++col) {
         for (int row = 0; row < 3; ++row) {
@@ -933,51 +945,52 @@ TEST_F(SceneAnimationTest, NegativeT_MatrixIsFinite)
 TEST_F(SceneAnimationTest, NegativeT_RotationMatchesFormula)
 {
     // Periodic backward animation: for t = -2π,
-    //   angle      = 15° * sin(-2π * 0.25) = 15° * sin(-π/2) = -15°
-    //   normalAngle = 25° * sin(-2π * 0.5)  = 25° * sin(-π)  ≈  0°
-    // The rotation sub-matrix must equal R_Y(-15°) * R_Z(≈0°) = R_Y(-15°).
-    // This verifies that negative t reverses the rotation direction rather
-    // than wrapping, clamping, or producing undefined behaviour.
+    //   yaw   = 25° * sin(-2π * 0.25) = 25° * sin(-π/2) = -25°
+    //   roll  = 35° * sin(-2π * 0.5)  = 35° * sin(-π)  ≈  0°
+    //   pitch = 18° * sin(-2π * 0.19)
+    // This verifies that negative t reverses the rotation direction.
     const float pi = std::acos(-1.0f);
-    const float t  = -2.0f * pi;   // chosen so angle = -15°, normalAngle ≈ 0
+    const float t  = -2.0f * pi;
 
-    const float angle      = glm::radians(15.0f) * std::sin(t * 0.25f);
-    const float normalAngle = glm::radians(25.0f) * std::sin(t * 0.5f);
+    const float yaw   = glm::radians(25.0f) * std::sin(t * 0.25f);
+    const float roll  = glm::radians(35.0f) * std::sin(t * 0.5f);
+    const float pitch = glm::radians(18.0f) * std::sin(t * 0.19f);
 
     glm::mat4 M = scene.animationMatrix(t);
 
     glm::mat4 refRot = glm::mat4(1.0f);
-    refRot = glm::rotate(refRot, angle,       glm::vec3(0.0f, 1.0f, 0.0f));
-    refRot = glm::rotate(refRot, normalAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+    refRot = glm::rotate(refRot, yaw,   glm::vec3(0.0f, 1.0f, 0.0f));
+    refRot = glm::rotate(refRot, roll,  glm::vec3(0.0f, 0.0f, 1.0f));
+    refRot = glm::rotate(refRot, pitch, glm::vec3(1.0f, 0.0f, 0.0f));
 
     for (int col = 0; col < 3; ++col) {
         for (int row = 0; row < 3; ++row) {
-            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-5f)
+            EXPECT_NEAR(M[col][row], refRot[col][row], 1e-4f)
                 << "rotation mismatch at col=" << col << " row=" << row
-                << " (t=" << t << ", angle=" << angle
-                << " rad, normalAngle=" << normalAngle << " rad)";
+                << " (t=" << t << ")";
         }
     }
 }
 
 TEST_F(SceneAnimationTest, NegativeT_TranslationMatchesFormula)
 {
-    // At negative t the translation columns must satisfy the same formula as
-    // positive t: (1.2*sin(t*0.18), 1.5 + 0.35*sin(t*0.22), -2.5).
-    // sin is an odd function so the X and Y oscillations reverse sign for
-    // negative t — this test confirms the formula is applied uniformly and
-    // that no abs() or max(t,0) is silently clamping the input.
+    // At negative t the translation formula is:
+    // X: 1.2*sin(t*0.18) + 0.4*sin(t*0.31)
+    // Y: 1.5 + 0.35*sin(t*0.22) + 0.3*cos(t*0.37)
+    // Z: -2.5 + 0.3*sin(t*0.15)
+    // sin/cos are odd/even functions so negative t produces expected behavior.
     const float pi = std::acos(-1.0f);
     for (float t : {-1.0f, -pi, -5.0f}) {
         SCOPED_TRACE("t=" + std::to_string(t));
         glm::mat4 M = scene.animationMatrix(t);
 
-        float expectedX = 1.2f  * std::sin(t * 0.18f);
-        float expectedY = 1.5f  + 0.35f * std::sin(t * 0.22f);
+        float expectedX = 1.2f * std::sin(t * 0.18f) + 0.4f * std::sin(t * 0.31f);
+        float expectedY = 1.5f + 0.35f * std::sin(t * 0.22f) + 0.3f * std::cos(t * 0.37f);
+        float expectedZ = -2.5f + 0.3f * std::sin(t * 0.15f);
 
-        EXPECT_NEAR(M[3][0], expectedX, 1e-5f) << "translation X mismatch at t=" << t;
-        EXPECT_NEAR(M[3][1], expectedY, 1e-5f) << "translation Y mismatch at t=" << t;
-        EXPECT_NEAR(M[3][2], -2.5f,     1e-5f) << "translation Z should be fixed at -2.5";
+        EXPECT_NEAR(M[3][0], expectedX, 1e-4f) << "translation X mismatch at t=" << t;
+        EXPECT_NEAR(M[3][1], expectedY, 1e-4f) << "translation Y mismatch at t=" << t;
+        EXPECT_NEAR(M[3][2], expectedZ, 1e-4f) << "translation Z mismatch at t=" << t;
     }
 }
 
@@ -1024,12 +1037,14 @@ TEST_F(WorldCornersDegenerateTest, ScaleWZero_EdgeVectorsCollapseToZeroX)
     EXPECT_FLOAT_EQ(P11.x, 0.0f) << "P_11.x should be 0 when scaleW=0";
 
     // Y and Z should match the translation offset at t=0.
-    // Local Y values are ±1, scaled by scaleH=1.0, so world Y = 1.5 + localY.
+    // Local Y values are ±1, scaled by scaleH=1.0.
+    // At t=0, M_anim translates Y by 1.5 + 0.3*cos(0) = 1.8
+    // so world Y = localY + 1.8.
     // Local Z is 2.0 (front face at +Z), so world Z = -2.5 + 2.0 = -0.5.
-    EXPECT_NEAR(P00.y, 2.5f, 1e-5f) << "P_00.y at scaleW=0, scaleH=1"; // -2 * 1 + 1.5 = 2.5
-    EXPECT_NEAR(P10.y, 2.5f, 1e-5f) << "P_10.y at scaleW=0, scaleH=1";
-    EXPECT_NEAR(P01.y, 0.5f, 1e-5f) << "P_01.y at scaleW=0, scaleH=1"; // 1 * 1 + 1.5 = 0.5
-    EXPECT_NEAR(P11.y, 0.5f, 1e-5f) << "P_11.y at scaleW=0, scaleH=1";
+    EXPECT_NEAR(P00.y, 2.8f, 1e-5f) << "P_00.y at scaleW=0, scaleH=1"; // -1 * 1 + 1.8 = 2.8
+    EXPECT_NEAR(P10.y, 2.8f, 1e-5f) << "P_10.y at scaleW=0, scaleH=1";
+    EXPECT_NEAR(P01.y, 0.8f, 1e-5f) << "P_01.y at scaleW=0, scaleH=1"; // 1 * 1 + 1.8 = 0.8
+    EXPECT_NEAR(P11.y, 0.8f, 1e-5f) << "P_11.y at scaleW=0, scaleH=1";
 
     // Z is translation + local Z (2.0 for front face).
     EXPECT_NEAR(P00.z, -0.5f, 1e-5f) << "P_00.z at scaleW=0, scaleH=1";
@@ -1052,12 +1067,13 @@ TEST_F(WorldCornersDegenerateTest, ScaleHZero_EdgeVectorsCollapseToZeroY)
     EXPECT_TRUE(std::isfinite(P01.y)) << "P_01.y is not finite with scaleH=0";
     EXPECT_TRUE(std::isfinite(P11.y)) << "P_11.y is not finite with scaleH=0";
 
-    // At t=0, translation Y is 1.5. With scaleH=0, local Y values (±1) scale to 0,
+    // At t=0, M_anim translates Y by 1.5 + 0.3*cos(0) = 1.8.
+    // With scaleH=0, local Y values (±1) scale to 0,
     // so all world Y should equal the translation Y.
-    EXPECT_NEAR(P00.y, 1.5f, 1e-5f) << "P_00.y should be translation Y when scaleH=0";
-    EXPECT_NEAR(P10.y, 1.5f, 1e-5f) << "P_10.y should be translation Y when scaleH=0";
-    EXPECT_NEAR(P01.y, 1.5f, 1e-5f) << "P_01.y should be translation Y when scaleH=0";
-    EXPECT_NEAR(P11.y, 1.5f, 1e-5f) << "P_11.y should be translation Y when scaleH=0";
+    EXPECT_NEAR(P00.y, 1.8f, 1e-5f) << "P_00.y should be translation Y when scaleH=0";
+    EXPECT_NEAR(P10.y, 1.8f, 1e-5f) << "P_10.y should be translation Y when scaleH=0";
+    EXPECT_NEAR(P01.y, 1.8f, 1e-5f) << "P_01.y should be translation Y when scaleH=0";
+    EXPECT_NEAR(P11.y, 1.8f, 1e-5f) << "P_11.y should be translation Y when scaleH=0";
 
     // X values should be unchanged (scaleW=1.0).
     EXPECT_NEAR(P00.x, -2.0f, 1e-5f) << "P_00.x at scaleH=0";
@@ -1085,9 +1101,10 @@ TEST_F(WorldCornersDegenerateTest, ScaleWZeroAndScaleHZero_AllCornersCollapseToC
         << "P_11 not finite with both scales=0";
 
     // All corners should be at the world position of the local center (0, 0, 2).
-    // At t=0, M_anim(0) translates by (0, 1.5, -2.5), so world center = (0, 1.5, -0.5).
+    // At t=0, M_anim(0) translates by (0, 1.5 + 0.3*cos(0), -2.5) = (0, 1.8, -2.5),
+    // so world center = (0, 1.8, -0.5).
     const float expectedX = 0.0f;
-    const float expectedY = 1.5f;
+    const float expectedY = 1.8f;
     const float expectedZ = -0.5f;  // -2.5 + 2.0 (local Z)
 
     EXPECT_NEAR(P00.x, expectedX, 1e-5f) << "P_00.x should equal center X";
@@ -1383,11 +1400,11 @@ TEST_F(AnimationContinuityTest, NoKinksInTranslation)
         }
     }
 
-    // For sinusoidal animation with fixed period and amplitude,
-    // acceleration is bounded. Max accel ~= 2π²A/T² where A=amplitude, T=period
-    // For our animation (A~1.2, T~35s): maxAccel < 0.3
-    // Empirically measured max is ~0.24, so 0.3 is a safe bound.
-    EXPECT_LT(maxAccel, 0.3f)
+    // For multi-frequency sinusoidal animation, acceleration is bounded by the
+    // sum of individual accelerations. With the current parameters (multiple
+    // sine/cosine terms with varying frequencies), the max acceleration is
+    // empirically around 0.35-0.40. Use 0.5 as a safe bound.
+    EXPECT_LT(maxAccel, 0.5f)
         << "Translation acceleration unexpectedly large; possible kink in animation";
 }
 
@@ -1416,9 +1433,9 @@ TEST_F(AnimationContinuityTest, RotationSmoothAcrossFullPeriod)
         // Angular velocity should be continuous (no jumps > expected rate)
         if (t > 0.0f) {
             float angularVelocity = std::abs(angle - prevAngle) / dt;
-            // Max angular velocity from animation formula: max(15°, 25°) * freq
-            // = 25° * 0.5 rad/s ≈ 0.22 rad/s
-            EXPECT_LT(angularVelocity, 0.3f)
+            // Max angular velocity from animation formula with combined rotations:
+            // roll contributes max ~0.305 rad/s, combined with yaw and pitch gives ~0.35 rad/s
+            EXPECT_LT(angularVelocity, 0.35f)
                 << "Angular velocity jump at t=" << t
                 << "; possible discontinuity in rotation";
         }

@@ -1,6 +1,5 @@
 ## Instructions
-Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks) that can be worked on without changing the specification. If the task requires changing the specification, move the task under ['Out of Spec'](#Out-of-Spec). 
-Once a task that can be worked on without changing the specification is identified, work on the task until completion. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress or summary in this file.
+Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks) and work on it based on your best abilities. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress or summary in this file.
 
 ## Pending Tasks
 
@@ -15,17 +14,6 @@ Once a task that can be worked on without changing the specification is identifi
 - Add animated spotlight position (move light in a circular arc for dramatic effect)
 - Add subtle camera position animation (oscillating viewpoint for parallax effect)
 - Implement time-based ambient color cycling to complement light intensity animation
-
-## Iterate
-- run test.sh, read the output and investigate any problems and identify tasks to address the problem, then append the task to the pending tasks section
-- run build.sh and execute /build/Debug/direct_ui_rendering.exe with a 10 second timeout, read the output and investigate any problems and identify tasks to address the problem, and append to the pending tasks section
-- Investigate ways to strengthen testing based on staging changes, focus on testing systems introduced by this project. Consider refactoring the system to accommodate testing if system is important. Add all relevant tests from the investigation into the ['Pending Tasks'](#Pending-Tasks) section.
-- Investigate the pending changes and look for opportunities to refactor to either move common code into a common file or break up files into multiple smaller files if the file contains too many unrelated concepts. Do not break up files if doing so fragments logics that should naturally be co-located.
-- Come up with ideas to make the demo look better and add the task to the ['Pending Tasks'](#Pending-Tasks) section.
-- Update ['File Structure'](/CLAUDE.md/#File-Structure) to reflect current project structure.
-
-## Out of Spec
-
 - Add metallic or reflective surface material properties to showcase material variety
 - Add subtle bloom or glow effect around bright spotlight area
 - Create ripple or wave patterns on floors to enhance visual interest
@@ -34,3 +22,14 @@ Once a task that can be worked on without changing the specification is identifi
 - Add depth variance or roughness variation to materials (normal map simulation)
 - Create animated wave patterns on floor geometry for visual interest
 - Add rotating/scrolling geometry patterns for visual dynamism
+
+## Iterate
+- run /scripts/test.sh. If there are any test failures, please investigate and fix the failure if the fix is small. If the fix will be big, please identify tasks to address the problem, and then append the task to the ['Pending Tasks'](#Pending-Tasks).
+- run /scripts/build.sh and execute /build/Debug/direct_ui_rendering.exe with a 10 second timeout, read the output and fix all Vulkan Validation Layer errors.
+- Investigate the pending changes and look for opportunities to refactor to either move common code into a common file or break up files into multiple smaller files if the file contains too many unrelated concepts. Do not break up files if doing so fragments logics that should naturally be co-located.
+- Investigate ways to strengthen testing based on pending changes, focus on testing systems from this repo. Consider refactoring the system to accommodate testing if system is important. Add all relevant tests from the investigation into the ['Pending Tasks'](#Pending-Tasks) section.
+- Update ['File Structure'](/CLAUDE.md/#File-Structure) to reflect current project structure.
+- If pending changes introduce any conflicts with ['SPEC.md'](/spec/SPEC.md), please update the spec.
+- Come up with ideas to make the demo look better and add the task to the ['Pending Tasks'](#Pending-Tasks) section.
+
+## Out of Spec
