@@ -37,29 +37,41 @@ The primary claim to validate:
 A static indoor room constructed from hardcoded geometry (vertex/index data compiled into the binary):
 
 - Floor, ceiling, and four walls — each a simple quad/two triangles.
-- One light source (point or directional) that casts shadows via a shadow map.
-- A moving quad (the "UI surface") parented to a transform that animates over time.
+- One spotlight that casts shadows via a shadow map.
+- A 6-face cube (the "UI surface") parented to a transform that animates over time.
 
 All geometry uses a simple Phong or Blinn-Phong shading model. No mesh loading from disk is required.
 
-### 2.2 UI Surface
+### 2.2 UI Surface — 6-Face Cube
 
-A rectangular quad in the scene that acts as the target surface for UI rendering. Its world-space corners `P_00`, `P_10`, `P_01` (top-left, top-right, bottom-left) define the affine frame used by both rendering modes.
+A cube with 6 faces in the scene that acts as the target surface for UI rendering. Each face is a rectangular quad with its own local coordinate frame. The cube faces are:
 
-The quad is attached to an animation matrix `M_anim(t)` that updates every frame:
+- **+X face** (right): normal points +X
+- **-X face** (left): normal points -X
+- **+Y face** (top): normal points +Y
+- **-Y face** (bottom): normal points -Y
+- **+Z face** (front): normal points +Z
+- **-Z face** (back): normal points -Z
+
+Each face is 4 units wide (X) × 2 units tall (Y) in its local frame, centered at origin. Face normals point outward from cube center.
+
+The cube corners are attached to an animation matrix `M_anim(t)` that updates every frame:
 
 ```
 P_corner_world(t) = M_anim(t) * P_corner_local
 ```
 
-A simple looping animation is sufficient — e.g., a gentle rotation or oscillation so the quad visibly moves through the scene. This demonstrates that both rendering modes correctly follow a moving surface without requiring any changes to the UI geometry itself.
+A simple looping animation is sufficient — e.g., a gentle rotation or oscillation so the cube visibly moves through the scene. This demonstrates that both rendering modes correctly follow a moving surface without requiring any changes to the UI geometry itself.
 
-### 2.3 Lighting and Shadow Map
+### 2.3 Spotlight Lighting and Shadow Map
 
-- One directional light with a configurable direction hardcoded at startup.
+- One spotlight with position `(0, 2.8, 0.5)`, direction pointing toward `(0, -1.3, -3.5)`.
+- Spotlight cone angles: inner `35°`, outer `50°`.
+- Light color: warm white `(1.0, 0.95, 0.85)`; ambient: `(0.08, 0.08, 0.12)`.
 - Shadow map rendered in a dedicated depth-only pre-pass to a `VK_FORMAT_D32_SFLOAT` image (1024×1024).
 - Main pass samples the shadow map with a `sampler2DShadow` and basic PCF (2×2 tap) for soft edges.
-- The UI surface and room geometry both receive shadow.
+- The UI surface cube faces and room geometry both receive shadow.
+- The UI surface casts shadows onto the room walls.
 
 ---
 
@@ -83,7 +95,7 @@ Press `Space` to toggle between modes at runtime. The current mode is displayed 
 
 **Pass 2 — Main Scene Pass:**
 1. Render room geometry with lighting and shadow.
-2. Render the UI surface quad with the offscreen RT bound as a texture. The quad's fragment shader samples the RT and alpha-blends the result.
+2. Render the 6 cube faces with the offscreen RT bound as a texture. Each face's fragment shader samples the RT and alpha-blends the result.
 
 **Pass 3 — Metrics Overlay Pass:** (see Section 8)
 
@@ -93,7 +105,7 @@ Press `Space` to toggle between modes at runtime. The current mode is displayed 
 
 **Main Scene Pass:**
 1. Render room geometry with lighting and shadow.
-2. Render UI elements directly as world-space geometry using `M_total` (see Section 4). No separate UI pass. No offscreen RT.
+2. Render UI elements directly as world-space geometry for all 6 cube faces using per-face `M_total` (see Section 4). No separate UI pass. No offscreen RT.
 
 **Metrics Overlay Pass:** (see Section 8)
 
@@ -137,12 +149,29 @@ Full shader source is in Section 7.1.
 
 ### 5.1 Scope
 
-A minimal retained-mode UI system sufficient to render "Hello World" as a textured quad using a pre-rendered glyph atlas. No layout engine, no event handling, no animation.
+A minimal retained-mode UI system sufficient to render text as a textured quad using either:
+- A pre-rendered PNG glyph atlas (traditional raster), or
+- An SDF (signed distance field) atlas generated at runtime for smooth scaling
 
-### 5.2 Atlas
+No layout engine, no event handling beyond terminal input, no animation.
 
-- A single `512×512` RGBA PNG atlas containing pre-rendered glyphs for ASCII printable characters (generated offline, embedded as a C array or loaded from disk at startup).
-- Each glyph has a fixed cell size (e.g., 32×32 px) for simplicity.
+### 5.2 Atlas — SDF Mode
+
+The UI system supports two rendering modes:
+
+**SDF Mode (default)** — Signed distance field atlas generated at runtime:
+- A `512×512` RGBA atlas where the R channel stores the signed distance field value.
+- Each glyph cell is `32×32` pixels with a `4px` border padding for SDF bleeding.
+- Distance values: `0` (inside), `128` (edge), `255` (outside).
+- The fragment shader uses `smoothstep` with a configurable threshold (default `0.5`) for anti-aliased rendering.
+- SDF constants defined in `ui_system.h`:
+  - `SDF_ON_EDGE_VALUE = 128`
+  - `SDF_PIXEL_DIST_SCALE = 16.0f` (pixels per SDF distance unit)
+  - `SDF_THRESHOLD_DEFAULT = 0.5f`
+
+**PNG Fallback Mode** — Pre-rendered raster atlas:
+- A `512×512` RGBA PNG atlas containing pre-rendered glyphs for ASCII printable characters.
+- Each glyph has a fixed cell size (`32×32` px).
 - A lookup table maps ASCII code → UV rect in the atlas.
 
 ### 5.3 UI Canvas
@@ -152,18 +181,30 @@ A minimal retained-mode UI system sufficient to render "Hello World" as a textur
   - `inUIPos` — corner positions in UI space (pixels)
   - `inUITexCoord` — UV coordinates into the atlas
 - This geometry is uploaded once to a vertex buffer and reused every frame.
+- Interactive terminal input mode allows user typing (up to 255 characters) with a cursor (`|`) display.
 
 ### 5.4 Rendering in Traditional Mode
 
 The UI quad list is rendered into the offscreen RT using an orthographic projection matrix:
 
 ```
-M_ortho = ortho(0, W_ui, H_ui, 0, -1, 1)
+M_ortho = ortho(0, W_ui * scaleW, H_ui * scaleH, 0, -1, 1)
 ```
+
+The `scaleW` and `scaleH` parameters allow non-uniform scaling of the canvas while preserving text content.
 
 ### 5.5 Rendering in Direct Mode
 
 The same quad list is rendered with the composite matrix `M_total` (Section 4.5) instead of `M_ortho`. No other changes to the geometry or draw calls.
+
+### 5.6 Interactive Terminal Input
+
+- Press `Tab` to toggle between camera mode and terminal input mode.
+- In terminal mode, the mouse is released for keyboard input.
+- Type characters (printable ASCII) — up to 255 characters.
+- `Backspace` deletes the last character.
+- `Escape` returns to camera mode.
+- A cursor (`|`) is appended to the display text when in terminal mode.
 
 ---
 
@@ -183,37 +224,45 @@ The same quad list is rendered with the composite matrix `M_total` (Section 4.5)
 
 | Pipeline | Vertex shader | Fragment shader | Notes |
 |----------|--------------|-----------------|-------|
+| `pipe_shadow` | `shadow.vert` | (none) | Depth-only, room geometry from light POV |
 | `pipe_room` | `room.vert` | `room.frag` | Blinn-Phong + shadow map |
+| `pipe_ui_direct` | `ui_direct.vert` | `ui_direct.frag` | M_total transform, clip distances, SDF + PCF shadow |
 | `pipe_ui_rt` | `ui_ortho.vert` | `ui.frag` | Orthographic, for RT pass |
-| `pipe_ui_direct` | `ui_direct.vert` | `ui.frag` | M_total transform, clip distances |
-| `pipe_composite` | `quad.vert` | `composite.frag` | Samples offscreen RT onto quad |
-| `pipe_surface` | `quad.vert` | `surface.frag` | Opaque teal quad drawn before direct-mode UI geometry |
+| `pipe_surface` | `quad.vert` | `surface.frag` / `composite.frag` | Base quad per cube face; `surface.frag` in direct mode, `composite.frag` in traditional mode |
 | `pipe_metrics` | `ui_ortho.vert` | `ui.frag` | Reuses UI pipeline for HUD |
 
 ### 6.3 Descriptor Sets
 
 | Set | Binding | Content | Updated |
 |-----|---------|---------|---------|
-| 0 | 0 | `SceneUBO` — view, proj, light params, shadow map matrix | Per frame |
-| 0 | 1 | Shadow map sampler | Static |
-| 1 | 0 | `SurfaceUBO` — M_total, M_world, clip planes, depth bias | Per frame |
+| 0 | 0 | `SceneUBO` — view, proj, light params (spotlight position/direction), shadow map matrix | Per frame |
+| 0 | 1 | Shadow map sampler (`sampler2DShadow`) | Static |
+| 1 | 0 | `SurfaceUBO` — M_total, M_world, clip planes, depth bias | Per frame (one per cube face: 6 sets) |
 | 2 | 0 | UI atlas sampler | Static |
 | 2 | 1 | Offscreen RT sampler (traditional mode) | On toggle |
 
-### 6.4 SceneUBO Layout
+### 6.4 SceneUBO Layout — Spotlight
 
 ```c
 struct SceneUBO {
     mat4 view;
     mat4 proj;
     mat4 lightViewProj;   // for shadow map sampling
-    vec4 lightDir;        // world-space directional light
-    vec4 lightColor;
+    vec4 lightPos;        // xyz = spotlight world position, w = 1
+    vec4 lightDir;        // xyz = spotlight direction, w = cos(outerConeAngle)
+    vec4 lightColor;      // rgb = light color, w = cos(innerConeAngle)
     vec4 ambientColor;
 };
 ```
 
-### 6.5 SurfaceUBO Layout
+The spotlight parameters include:
+- Position: `(0, 2.8, 0.5)` in world space
+- Direction: normalized vector toward `(0, -1.3, -3.5)`
+- Inner cone angle: `35°` (`cos(35°)` stored in `lightColor.w`)
+- Outer cone angle: `50°` (`cos(50°)` stored in `lightDir.w`)
+- The fragment shader computes spotlight attenuation using smoothstep between the inner and outer cone angles.
+
+### 6.5 SurfaceUBO Layout — Per Face
 
 ```c
 struct SurfaceUBO {
@@ -224,6 +273,8 @@ struct SurfaceUBO {
     float _pad[3];
 };
 ```
+
+**6 SurfaceUBOs are allocated** — one for each cube face (indices 0-5 corresponding to +X, -X, +Y, -Y, +Z, -Z). Each face's UBO contains the per-face `M_total` transform and clip planes computed from that face's world-space corners.
 
 ### 6.6 Synchronization
 
@@ -241,7 +292,7 @@ Use [VMA (Vulkan Memory Allocator)](https://github.com/GPUOpen-LibrariesAndSDKs/
 
 All shaders target SPIR-V via `glslc`. Shader source files live in `shaders/`.
 
-### 7.1 `ui_direct.vert`
+### 7.1 `ui_direct.vert` — Direct Mode UI Vertex
 
 ```glsl
 #version 450
@@ -256,6 +307,8 @@ layout(set = 1, binding = 0) uniform SurfaceUBO {
 layout(location = 0) in vec2 inUIPos;
 layout(location = 1) in vec2 inUITexCoord;
 layout(location = 0) out vec2 outTexCoord;
+layout(location = 1) out vec4 outShadowCoord;
+layout(location = 2) out vec3 outWorldPos;
 
 out gl_PerVertex {
     vec4  gl_Position;
@@ -275,62 +328,12 @@ void main() {
     gl_Position.z -= depthBias * gl_Position.w;
 
     outTexCoord = inUITexCoord;
+    outShadowCoord = vec4(worldPos, 1.0);
+    outWorldPos = worldPos.xyz;
 }
 ```
 
-### 7.2 `ui_ortho.vert`
-
-```glsl
-#version 450
-
-layout(push_constant) uniform PC {
-    mat4 orthoMatrix;
-};
-
-layout(location = 0) in vec2 inUIPos;
-layout(location = 1) in vec2 inUITexCoord;
-layout(location = 0) out vec2 outTexCoord;
-
-void main() {
-    gl_Position = orthoMatrix * vec4(inUIPos, 0.0, 1.0);
-    outTexCoord = inUITexCoord;
-}
-```
-
-### 7.3 `ui.frag`
-
-```glsl
-#version 450
-
-layout(set = 2, binding = 0) uniform sampler2D uiAtlas;
-
-layout(location = 0) in  vec2 inTexCoord;
-layout(location = 0) out vec4 outColor;
-
-void main() {
-    outColor = texture(uiAtlas, inTexCoord);
-    // Pre-multiplied alpha assumed in atlas
-}
-```
-
-### 7.4 `composite.frag` (traditional mode only)
-
-```glsl
-#version 450
-
-layout(set = 2, binding = 1) uniform sampler2D uiRT;
-
-layout(location = 0) in  vec2 inTexCoord;
-layout(location = 0) out vec4 outColor;
-
-void main() {
-    outColor = texture(uiRT, inTexCoord);
-}
-```
-
-### 7.5 `room.vert` / `room.frag`
-
-Standard Blinn-Phong with shadow map lookup. `room.frag` samples `SceneUBO.lightViewProj` to compute shadow coordinates and compares depth with a `sampler2DShadow` using `textureProj` for hardware PCF.
+Outputs world-space position and shadow coordinates for the fragment shader to sample spotlight attenuation and PCF shadows.
 
 ---
 
@@ -343,17 +346,16 @@ A HUD rendered in the final pass on top of the swapchain image. Drawn using `pip
 | Field | Source | Example |
 |-------|--------|---------|
 | Mode | App state | `Mode: DIRECT` / `Mode: TRADITIONAL` |
+| Render toggle | App state | `[Space] toggle render mode` |
+| Input mode toggle | App state | `[Tab] toggle input mode` |
+| Depth bias | App state | `[+] [-] adjust depth bias` |
+| Quad width | App state | `[(] [)] quad width` |
+| Quad height | App state | `[O] [P] quad height` |
+| Mouse look | App state | `[RClick] mouse look` |
+| Input mode | App state | `Input: CAMERA` / `Input: TERMINAL` |
 | Frame time | CPU timer (`std::chrono`) per frame | `Frame: 3.2 ms` |
 | GPU memory | VMA total allocated bytes | `GPU Mem: 48.3 MB` |
 | MSAA | Compile-time / runtime constant | `MSAA: 4x` |
-
-### 8.2 Layout
-
-Top-left corner, one line per field, fixed-width glyph rendering from the same atlas as the UI panel.
-
-### 8.3 Frame Time Measurement
-
-Average over the last 60 frames to avoid jitter. Use `VK_EXT_host_query_reset` + timestamp queries if GPU-side timing is desired in a future iteration; for now CPU-side timing is sufficient.
 
 ---
 
