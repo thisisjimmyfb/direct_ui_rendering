@@ -65,6 +65,7 @@ direct_ui_rendering/
 │   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing
 │   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), FontSizeInvariance, Parallelogram
 │   ├── test_metrics.cpp              # tests_unit: frame timing ring buffer and GPU memory tracking
+│   ├── test_msaa_quality.cpp         # tests_render: MSAA edge smoothness comparison (direct vs traditional modes) (2 tests)
 │   ├── test_perf.cpp                 # tests_render: performance regression tests
 │   ├── test_renderer.cpp             # tests_render: Renderer initialization, headless RT, UBO updates, geometry updates, render passes, pipelines, descriptor binding (30 tests)
 │   ├── test_scale_render.cpp         # tests_render: non-uniform scale clip plane tracking and font-size invariance (2 tests)

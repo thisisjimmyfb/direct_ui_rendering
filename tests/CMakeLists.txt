@@ -81,6 +81,7 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 #   test_perf.cpp          — performance regression tests with skip-if-unset guards
 #   test_renderer.cpp      — Renderer initialization, pipelines, descriptor binding tests
 #   test_wall_colors.cpp   — Wall color validation in direct and traditional modes (Tests 9-14)
+#   test_msaa_quality.cpp  — MSAA edge smoothness comparison (Tests 15-16)
 # Uses test shaders (UI_TEST_COLOR) so magenta pixels can be identified.
 # ---------------------------------------------------------------------------
 add_executable(tests_render
@@ -90,6 +91,7 @@ add_executable(tests_render
     test_perf.cpp
     test_renderer.cpp
     test_wall_colors.cpp
+    test_msaa_quality.cpp
 )
 
 add_dependencies(tests_render test_shaders)
