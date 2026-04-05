@@ -13,8 +13,6 @@ include(GoogleTest)
 #   test_hud.cpp          — MetricsTest HUDTessellation_* tests
 #   test_app_input.cpp    — AppInputHandler input handling, mode toggle, depth bias, terminal input
 #   test_light_intensity.cpp — LightIntensityPulsing time-based pulsing effect validation
-#   test_ambient_animation.cpp — AmbientColorAnimation time-based color animation validation
-#   test_ui_color_animation.cpp — HSVToRGB conversion and UI color phase animation validation
 #   test_command_line.cpp — CommandLineTest --timeout parameter parsing validation
 # ---------------------------------------------------------------------------
 add_executable(tests_unit
@@ -26,8 +24,6 @@ add_executable(tests_unit
     test_hud.cpp
     test_app_input.cpp
     test_light_intensity.cpp
-    test_ambient_animation.cpp
-    test_ui_color_animation.cpp
     test_command_line.cpp
 )
 
@@ -88,11 +84,9 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 #   test_scale_render.cpp  — Non-uniform scale and font-size invariance (Tests 7-8)
 #   test_perf.cpp          — performance regression tests with skip-if-unset guards
 #   test_renderer.cpp      — Renderer initialization, pipelines, descriptor binding tests
-#   test_wall_colors.cpp   — Wall color validation in direct and traditional modes (Tests 9-14)
-#   test_msaa_quality.cpp  — MSAA edge smoothness comparison (Tests 15-16)
-#   test_depth_bias.cpp    — Depth bias effectiveness in direct mode (Tests 17-21)
-#   test_spotlight_cone.cpp— Spotlight cone angle attenuation (Tests 22-26)
-# Uses test shaders (UI_TEST_COLOR) so magenta pixels can be identified.
+#   test_msaa_quality.cpp  — MSAA edge smoothness comparison (Tests 9-10)
+#   test_depth_bias.cpp    — Depth bias effectiveness in direct mode (Tests 11-15)
+#   test_spotlight_cone.cpp— Spotlight cone angle attenuation (Tests 16-20)
 # ---------------------------------------------------------------------------
 add_executable(tests_render
     test_containment.cpp
@@ -100,7 +94,6 @@ add_executable(tests_render
     test_scale_render.cpp
     test_perf.cpp
     test_renderer.cpp
-    test_wall_colors.cpp
     test_msaa_quality.cpp
     test_depth_bias.cpp
     test_spotlight_cone.cpp

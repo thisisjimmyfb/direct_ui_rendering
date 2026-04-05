@@ -11,7 +11,7 @@
 # Options:
 #   --auto, -a                    Skip the between-iteration pause
 #   --dangerously-skip-permissions  Bypass tool permission prompts
-#   --local, -l                   Force local LLM for all iterations
+#   --llm <local|claude|auto>     LLM selection: force local, force Claude, or peak-hour routing (default: auto)
 #   --model <model>               Claude model to use
 #   --offline-url <url>           Local LLM endpoint (default: http://localhost:8088)
 #   --help, -h                    Show this help
@@ -23,7 +23,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOOP="$ROOT/spec/LOOP.md"
 AUTO=false
 SKIP_PERMISSIONS=true
-FORCE_LOCAL=false
+LLM_MODE="auto"
 MODEL="claude-haiku-4-5"
 OFFLINE_LLM_URL="http://localhost:8088"
 
@@ -34,9 +34,19 @@ while [[ $# -gt 0 ]]; do
             AUTO=true
             shift
             ;;
-        --local|-l)
-            FORCE_LOCAL=true
-            shift
+        --llm)
+            if [[ -z "${2:-}" ]]; then
+                echo "error: --llm requires an argument (local|claude|auto)" >&2
+                exit 1
+            fi
+            case "$2" in
+                local|claude|auto) LLM_MODE="$2" ;;
+                *)
+                    echo "error: --llm must be one of: local, claude, auto" >&2
+                    exit 1
+                    ;;
+            esac
+            shift 2
             ;;
         --dangerously-skip-permissions)
             SKIP_PERMISSIONS=true
@@ -136,11 +146,11 @@ echo "ralph"
 echo "  loop : $LOOP"
 echo "  mode : $( $AUTO && echo 'auto (ctrl+c to stop)' || echo 'manual (enter to advance)' )"
 $SKIP_PERMISSIONS && echo "  perms: bypassed"
-if $FORCE_LOCAL; then
-    echo "  llm  : local (forced, $OFFLINE_LLM_URL)"
-else
-    echo "  llm  : peak-hour routing (local=$OFFLINE_LLM_URL, checked each iteration)"
-fi
+case "$LLM_MODE" in
+    local)  echo "  llm  : local (forced, $OFFLINE_LLM_URL)" ;;
+    claude) echo "  llm  : Claude (forced, ignoring peak hours)" ;;
+    auto)   echo "  llm  : peak-hour routing (local=$OFFLINE_LLM_URL, checked each iteration)" ;;
+esac
 echo ""
 
 while true; do
@@ -149,16 +159,16 @@ while true; do
     iter_start=$(date +%s)
 
     # Re-evaluate LLM mode each iteration
-    if $FORCE_LOCAL || is_peak_hours; then
+    if [[ "$LLM_MODE" == "local" ]] || { [[ "$LLM_MODE" == "auto" ]] && is_peak_hours; }; then
         USE_LOCAL=true
     else
         USE_LOCAL=false
     fi
 
     if $USE_LOCAL; then
-        echo "┌─ iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')  [local LLM$( $FORCE_LOCAL && echo ' (forced)' || echo ' (peak hours)' )] ──────────────────────────────"
+        echo "┌─ iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')  [local LLM$( [[ "$LLM_MODE" == "local" ]] && echo ' (forced)' || echo ' (peak hours)' )] ──────────────────────────────"
     else
-        echo "┌─ iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')  [Claude] ──────────────────────────────"
+        echo "┌─ iteration $iteration  $(date '+%Y-%m-%d %H:%M:%S')  [Claude$( [[ "$LLM_MODE" == "claude" ]] && echo ' (forced)' || true )] ──────────────────────────────"
     fi
     echo ""
 
@@ -198,7 +208,7 @@ while true; do
         echo ""
     fi
 	unset COMMIT_REPLY
-	
+
     if ! $AUTO; then
         printf "  press enter for iteration $((iteration + 1)), ctrl+c to stop... "
         read -r

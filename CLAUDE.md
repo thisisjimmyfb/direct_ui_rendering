@@ -51,15 +51,14 @@ direct_ui_rendering/
 │   ├── room.frag                     # Blinn-Phong with specular highlights + PCF shadow fragment shader; per-wall coloring and material properties; Fresnel effect for grazing angles; subtle surface patterns
 │   ├── shadow.vert                   # Depth-only shadow pass vertex shader
 │   ├── surface.frag                  # Opaque teal quad fragment shader (direct mode base layer)
-│   ├── ui.frag                       # UI atlas sampling with SDF smoothstep (white text) or bitmap with rainbow gradient
-│   ├── ui_direct.frag                # Direct-mode UI fragment: SDF smoothstep, lighting model (ambient + spotlight), PCF shadow, animated color gradient
+│   ├── ui.frag                       # UI atlas sampling with SDF smoothstep (white text) or bitmap mode
+│   ├── ui_direct.frag                # Direct-mode UI fragment: SDF smoothstep, lighting model (ambient + spotlight), PCF shadow
 │   ├── ui_direct.vert                # Direct-mode UI vertex: M_total transform, clip distances, shadow coordinates
 │   └── ui_ortho.vert                 # Orthographic UI vertex shader (RT pass + metrics overlay)
 ├── tests/
 │   ├── CMakeLists.txt                # Test target configuration (tests_unit, tests_render, tests_sdf)
 │   ├── containment_fixture.h         # Shared ContainmentTest fixture + helpers for render tests
 │   ├── perf_reference.h              # Hardcoded performance regression baselines
-│   ├── test_ambient_animation.cpp    # tests_unit: AmbientColorAnimation time-based color animation validation (11 tests)
 │   ├── test_app_input.cpp            # tests_unit: App input handling (key callbacks, mode toggle, depth bias edge cases, terminal input, cursor display, mouse) (74 tests)
 │   ├── test_clip_planes.cpp          # tests_unit: ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry, ClipPlaneYRotated, ClipPlane3DParallelogram (6 tests)
 │   ├── test_command_line.cpp         # tests_unit: CommandLineTest --timeout parameter parsing (10 tests)
@@ -77,7 +76,5 @@ direct_ui_rendering/
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI cube shadow casting (3 tests)
 │   ├── test_spotlight_cone.cpp       # tests_render: spotlight cone angle attenuation (5 tests)
-│   ├── test_wall_colors.cpp          # tests_render: wall color validation in both rendering modes (2 tests)
-│   ├── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
-│   └── test_ui_color_animation.cpp   # tests_unit: HSVToRGB conversion and UI color phase animation (20 tests)
+│   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
 ```

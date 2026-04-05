@@ -1442,3 +1442,255 @@ TEST_F(AnimationContinuityTest, RotationSmoothAcrossFullPeriod)
         prevAngle = angle;
     }
 }
+
+// ---------------------------------------------------------------------------
+// RoomGeometryTest — ceiling-wall edge alignment (no visible gaps)
+// ---------------------------------------------------------------------------
+
+class RoomGeometryTest : public ::testing::Test {
+protected:
+    Scene scene;
+
+    void SetUp() override {
+        scene.init();
+    }
+};
+
+TEST_F(RoomGeometryTest, CeilingEdgesAlignWithWallTopEdges)
+{
+    // The ceiling must share exact vertex positions with the top edges of all
+    // four walls to prevent visible gaps at the corners. This is critical for
+    // clean geometry attachment without Z-fighting or rendering artifacts.
+    //
+    // Room bounds (from Scene::init): W=2, H=3, D=3
+    // Ceiling vertices (from addQuad for ceiling):
+    //   V0 = {-W, H, -D}, V1 = {W, H, -D}, V2 = {W, H, D}, V3 = {-W, H, D}
+    //
+    // Wall top edges must match:
+    //   Back wall (Z=-D): top edge = {(-W,H,-D), (W,H,-D)} = {V0, V1}
+    //   Front wall (Z=D): top edge = {(W,H,D), (-W,H,D)} = {V2, V3} (reversed winding)
+    //   Left wall (X=-W): top edge = {(-W,H,D), (-W,H,-D)} = {V3, V0} (reversed)
+    //   Right wall (X=W): top edge = {(W,H,-D), (W,H,D)} = {V1, V2}
+
+    const auto& mesh = scene.roomMesh();
+
+    constexpr float W = 2.0f;
+    constexpr float H = 3.0f;
+    constexpr float D = 3.0f;
+
+    // Expected ceiling vertices
+    const glm::vec3 ceilingV0{-W, H, -D};
+    const glm::vec3 ceilingV1{ W, H, -D};
+    const glm::vec3 ceilingV2{ W, H,  D};
+    const glm::vec3 ceilingV3{-W, H,  D};
+
+    // Collect all vertices at Y = H (ceiling/wall junction)
+    std::vector<glm::vec3> ceilingVertices;
+    std::vector<glm::vec3> wallTopVertices;
+
+    for (const auto& v : mesh.vertices) {
+        if (std::abs(v.pos.y - H) < 0.001f) {
+            ceilingVertices.push_back(v.pos);
+            // Check if this vertex is at a wall edge (X or Z at boundary)
+            if (std::abs(v.pos.x - W) < 0.001f || std::abs(v.pos.x + W) < 0.001f ||
+                std::abs(v.pos.z - D) < 0.001f || std::abs(v.pos.z + D) < 0.001f) {
+                wallTopVertices.push_back(v.pos);
+            }
+        }
+    }
+
+    // All ceiling vertices should also be wall top vertices (at the junction)
+    EXPECT_GT(ceilingVertices.size(), 0u) << "No ceiling vertices found at Y=H";
+
+    // Check that each expected ceiling corner exists within tolerance
+    const glm::vec3 expectedCorners[4] = {ceilingV0, ceilingV1, ceilingV2, ceilingV3};
+    for (const auto& expected : expectedCorners) {
+        bool found = false;
+        for (const auto& actual : ceilingVertices) {
+            float dist = glm::length(actual - expected);
+            if (dist < 0.001f) {
+                found = true;
+                break;
+            }
+        }
+        EXPECT_TRUE(found) << "Expected ceiling corner (" << expected.x << ","
+                           << expected.y << "," << expected.z << ") not found";
+    }
+}
+
+TEST_F(RoomGeometryTest, WallTopEdgeVerticesMatchCeiling)
+{
+    // Each wall's top edge vertices must exactly match the corresponding
+    // ceiling vertices. This test verifies the geometry is watertight
+    // with no gaps at the ceiling-wall junctions.
+
+    const auto& mesh = scene.roomMesh();
+
+    constexpr float W = 2.0f;
+    constexpr float H = 3.0f;
+    constexpr float D = 3.0f;
+
+    // Expected wall top edge vertices
+    const glm::vec3 backWallTop[2] = {{-W, H, -D}, {W, H, -D}};
+    const glm::vec3 frontWallTop[2] = {{W, H, D}, {-W, H, D}};
+    const glm::vec3 leftWallTop[2] = {{-W, H, D}, {-W, H, -D}};
+    const glm::vec3 rightWallTop[2] = {{W, H, -D}, {W, H, D}};
+
+    // Collect all vertices at Y = H
+    std::vector<glm::vec3> wallTopVertices;
+    for (const auto& v : mesh.vertices) {
+        if (std::abs(v.pos.y - H) < 0.001f) {
+            wallTopVertices.push_back(v.pos);
+        }
+    }
+
+    // Check each wall's top edge
+    struct WallEdgeTest {
+        const char* name;
+        glm::vec3 v[2];
+    };
+
+    WallEdgeTest wallEdges[] = {
+        {"Back wall (Z=-D)", {backWallTop[0], backWallTop[1]}},
+        {"Front wall (Z=D)", {frontWallTop[0], frontWallTop[1]}},
+        {"Left wall (X=-W)", {leftWallTop[0], leftWallTop[1]}},
+        {"Right wall (X=W)", {rightWallTop[0], rightWallTop[1]}}
+    };
+
+    for (const auto& wall : wallEdges) {
+        SCOPED_TRACE(wall.name);
+        for (int i = 0; i < 2; ++i) {
+            bool found = false;
+            for (const auto& pos : wallTopVertices) {
+                float dist = glm::length(pos - wall.v[i]);
+                if (dist < 0.001f) {
+                    found = true;
+                    break;
+                }
+            }
+            EXPECT_TRUE(found) << "Wall edge vertex " << i << " of " << wall.name
+                               << " at (" << wall.v[i].x << "," << wall.v[i].y
+                               << "," << wall.v[i].z << ") not found";
+        }
+    }
+}
+
+TEST_F(RoomGeometryTest, CeilingWallCornerExactMatch)
+{
+    // The four corners where ceiling meets walls must be exactly identical
+    // (within floating-point tolerance) between the ceiling quad and the
+    // wall quads. This prevents visible gaps at the junction.
+    //
+    // The room corners at Y=H are:
+    //   (-2, 3, -3), (2, 3, -3), (2, 3, 3), (-2, 3, 3)
+    //
+    // Each corner is shared by 3 surfaces: ceiling + 2 walls.
+    // The vertex positions must match within a tight tolerance.
+
+    const auto& mesh = scene.roomMesh();
+
+    constexpr float W = 2.0f;
+    constexpr float H = 3.0f;
+    constexpr float D = 3.0f;
+
+    // The four ceiling-wall corners
+    const glm::vec3 corners[4] = {
+        {-W, H, -D},  // back-left
+        { W, H, -D},  // back-right
+        { W, H,  D},  // front-right
+        {-W, H,  D}   // front-left
+    };
+
+    // Collect all unique positions at Y = H
+    std::vector<glm::vec3> ceilingWallVertices;
+    for (const auto& v : mesh.vertices) {
+        if (std::abs(v.pos.y - H) < 0.0001f) {  // Tight tolerance
+            ceilingWallVertices.push_back(v.pos);
+        }
+    }
+
+    // Each expected corner should have a matching vertex
+    for (int i = 0; i < 4; ++i) {
+        SCOPED_TRACE("corner " + std::to_string(i));
+        bool found = false;
+        for (const auto& v : ceilingWallVertices) {
+            float dist = glm::length(v - corners[i]);
+            if (dist < 0.0001f) {  // Very tight tolerance for exact match
+                found = true;
+                break;
+            }
+        }
+        EXPECT_TRUE(found) << "Ceiling-wall corner " << i
+                           << " (" << corners[i].x << "," << corners[i].y
+                           << "," << corners[i].z << ") not found";
+    }
+
+    // Additional check: the number of unique vertices at Y=H should be
+    // exactly 4 (the four corners), not more. If there are more, it means
+    // the ceiling and walls don't share vertices exactly.
+    // However, since normals differ per surface, we expect some duplication.
+    // The key is that positions must match within tight tolerance.
+    EXPECT_GE(ceilingWallVertices.size(), 4u)
+        << "Expected at least 4 vertices at Y=H junction";
+}
+
+TEST_F(RoomGeometryTest, CeilingWallSharedEdgeLength)
+{
+    // Verify that the ceiling shares exact edge lengths with wall top edges.
+    // This ensures the geometry is properly aligned and prevents gaps due
+    // to mismatched edge lengths.
+    //
+    // Each wall top edge should have length equal to the room width (4.0 units).
+
+    const auto& mesh = scene.roomMesh();
+
+    constexpr float W = 2.0f;
+    constexpr float H = 3.0f;
+    constexpr float D = 3.0f;
+
+    // Expected wall top edge lengths (all should be 4.0)
+    const float expectedEdgeLength = 2.0f * W;  // 4.0
+
+    // Collect vertex positions at Y = H
+    std::vector<glm::vec3> ceilingVertices;
+    for (const auto& v : mesh.vertices) {
+        if (std::abs(v.pos.y - H) < 0.001f) {
+            ceilingVertices.push_back(v.pos);
+        }
+    }
+
+    // The ceiling is a single quad with 4 vertices.
+    // Check that the edges have correct lengths.
+    // From Scene::init, ceiling quad is:
+    //   {-W, H, -D}, {W, H, -D}, {W, H, D}, {-W, H, D}
+    if (ceilingVertices.size() >= 4) {
+        // Check width (X direction): distance between (-W,H,-D) and (W,H,-D)
+        float width = 0.0f;
+        for (const auto& v : ceilingVertices) {
+            if (std::abs(v.z - (-D)) < 0.001f) {  // Back edge (Z = -D)
+                width = glm::length(v - glm::vec3(-v.x, v.y, v.z));
+                break;
+            }
+        }
+        EXPECT_NEAR(width, expectedEdgeLength, 0.001f)
+            << "Ceiling width mismatch: expected " << expectedEdgeLength
+            << ", got " << width;
+
+        // Check depth (Z direction): distance between (-W,H,-D) and (-W,H,D)
+        float depth = 0.0f;
+        for (const auto& v : ceilingVertices) {
+            if (std::abs(v.x - (-W)) < 0.001f && std::abs(v.z - (-D)) < 0.001f) {
+                for (const auto& v2 : ceilingVertices) {
+                    if (std::abs(v2.x - (-W)) < 0.001f && std::abs(v2.z - D) < 0.001f) {
+                        depth = glm::length(v2 - v);
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+        EXPECT_NEAR(depth, 2.0f * D, 0.001f)
+            << "Ceiling depth mismatch: expected " << (2.0f * D)
+            << ", got " << depth;
+    }
+}

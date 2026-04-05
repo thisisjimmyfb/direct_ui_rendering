@@ -91,8 +91,8 @@ void main() {
         shininess = 4.0;  // Matte floor
         specularColor = vec3(0.5);
     }
-    // Ceiling (Y > 2.5)
-    else if (inWorldPos.y > 2.5) {
+    // Ceiling (Y ≥ 3.0) - matches geometry boundary exactly to prevent gaps
+    else if (inWorldPos.y >= 3.0) {
         surfaceColor = vec3(0.85, 0.82, 0.75);  // Warm beige/tan
 
         // Add very subtle ceiling panels
@@ -104,8 +104,8 @@ void main() {
         shininess = 6.0;
         specularColor = vec3(0.6);
     }
-    // Back wall (Z ≤ -2.8)
-    else if (inWorldPos.z < -2.8) {
+    // Back wall (Z ≤ -3.0) - matches geometry boundary exactly to prevent gaps
+    else if (inWorldPos.z <= -3.0) {
         surfaceColor = vec3(0.45, 0.75, 0.9);  // Cool cyan/blue
 
         // Add very subtle vertical wall panels
@@ -118,8 +118,8 @@ void main() {
         shininess = 12.0;  // Slightly glossy
         specularColor = vec3(0.8, 0.9, 1.0);  // Cyan-tinted specular
     }
-    // Front wall (Z ≥ 2.8)
-    else if (inWorldPos.z > 2.8) {
+    // Front wall (Z ≥ 3.0) - matches geometry boundary exactly to prevent gaps
+    else if (inWorldPos.z >= 3.0) {
         surfaceColor = vec3(1.0, 0.65, 0.45);  // Warm coral/orange
 
         // Add very subtle horizontal wall stripes
@@ -132,8 +132,8 @@ void main() {
         shininess = 10.0;
         specularColor = vec3(1.0, 0.8, 0.7);  // Warm specular
     }
-    // Left wall (X ≤ -1.8)
-    else if (inWorldPos.x < -1.8) {
+    // Left wall (X ≤ -2.0) - matches geometry boundary exactly to prevent gaps
+    else if (inWorldPos.x <= -2.0) {
         surfaceColor = vec3(0.5, 0.8, 0.55);  // Soft green
 
         // Add very subtle diagonal pattern
@@ -144,8 +144,8 @@ void main() {
         shininess = 8.0;
         specularColor = vec3(0.7, 0.9, 0.7);  // Green-tinted specular
     }
-    // Right wall (X ≥ 1.8)
-    else if (inWorldPos.x > 1.8) {
+    // Right wall (X ≥ 2.0) - matches geometry boundary exactly to prevent gaps
+    else if (inWorldPos.x >= 2.0) {
         surfaceColor = vec3(0.75, 0.6, 0.8);  // Soft purple
 
         // Add very subtle wave pattern
