@@ -10,10 +10,25 @@
 // the offscreen RT allocation and the RT readback bandwidth, and inherits the
 // main pass MSAA for free."
 //
+// MSAA Quality Advantage: Direct UI Rendering in View Clip Space
+//
 // Direct mode UI is rendered directly into the 4x MSAA main scene pass.
 // Traditional mode UI is rendered to a 1x MSAA offscreen RT, then composited.
-// The result: direct mode edges should be smoother (more anti-aliased) due to
-// MSAA coverage.
+// The quality difference stems from when anti-aliasing is applied:
+//
+// - Traditional mode: MSAA is applied in UI clip space (the offscreen RT).
+//   Even with high-quality 4x MSAA on the RT, the transformation from UI clip
+//   space to world space can introduce aliasing if the UI geometry is rendered
+//   at a steep angle in relation to the viewer. The RT readback and composite
+//   operation then happen at 1x MSAA, and the steep-angle transformation
+//   cannot be corrected.
+//
+// - Direct mode: MSAA is applied in view clip space (the final rendered image).
+//   By rendering UI geometry directly into world space and then applying
+//   anti-aliasing in the final view clip space, direct mode eliminates the
+//   transformation-induced aliasing problem. The coverage samples are taken
+//   after all transformations are complete, ensuring accurate anti-aliasing
+//   regardless of the UI surface's angle relative to the camera.
 //
 // We validate this by measuring edge smoothness: direct mode should produce
 // more intermediate color values at hard geometric edges (more sampling),

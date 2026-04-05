@@ -165,8 +165,8 @@ glm::vec3 Scene::spotlightPosition(float t) const
     glm::vec3 basePos(0.0f, 2.8f, 0.5f);  // Original position
     glm::vec3 animatedPos = basePos + glm::vec3(circularX, 0.0f, circularZ);
 
-    // Add subtle vertical bobbing for more dynamic effect
-    float verticalBob = 0.3f * std::sin(t * 0.4f);
+    // Add subtle vertical bobbing for more dynamic effect (max 0.2 to keep within ceiling at Y=3.0)
+    float verticalBob = 0.2f * std::sin(t * 0.4f);
     animatedPos.y += verticalBob;
 
     return animatedPos;

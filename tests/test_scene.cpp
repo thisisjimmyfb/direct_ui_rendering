@@ -1694,3 +1694,43 @@ TEST_F(RoomGeometryTest, CeilingWallSharedEdgeLength)
             << ", got " << depth;
     }
 }
+
+// ---------------------------------------------------------------------------
+// AnimatedSpotlightBoundsTest — verify animated spotlight stays in room
+// ---------------------------------------------------------------------------
+
+class AnimatedSpotlightBoundsTest : public ::testing::Test {
+protected:
+    Scene scene;
+    static constexpr float W = 2.0f;
+    static constexpr float H = 3.0f;
+    static constexpr float D = 3.0f;
+
+    void SetUp() override {
+        scene.init();
+    }
+};
+
+TEST_F(AnimatedSpotlightBoundsTest, AnimatedSpotlightStaysInRoomBounds)
+{
+    // The spotlight position is animated over time with circular motion and vertical bobbing.
+    // It must never leave the room bounds: X in [-2, 2], Y in [0, 3], Z in [-3, 3].
+    // This is a regression test to catch issues where animation parameters cause the light
+    // to clip through the ceiling or walls.
+
+    // Test over a full animation cycle (approximately 21 seconds for the circular motion)
+    // and several additional cycles to be thorough
+    constexpr float duration = 100.0f;  // seconds
+    constexpr float step = 0.1f;        // 0.1 second steps
+
+    for (float t = 0.0f; t < duration; t += step) {
+        glm::vec3 pos = scene.spotlightPosition(t);
+
+        EXPECT_GE(pos.x, -W) << "spotlight X below left wall at t=" << t;
+        EXPECT_LE(pos.x,  W) << "spotlight X above right wall at t=" << t;
+        EXPECT_GE(pos.y,  0) << "spotlight Y below floor at t=" << t;
+        EXPECT_LE(pos.y,  H) << "spotlight Y above ceiling at t=" << t << " (pos.y=" << pos.y << ")";
+        EXPECT_GE(pos.z, -D) << "spotlight Z beyond back wall at t=" << t;
+        EXPECT_LE(pos.z,  D) << "spotlight Z beyond front wall at t=" << t;
+    }
+}
