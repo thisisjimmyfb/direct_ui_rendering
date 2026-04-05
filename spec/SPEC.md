@@ -13,6 +13,7 @@
 9. [MSAA](#9-msaa)
 10. [Testing](#10-testing)
 11. [Build and Dependencies](#11-build-and-dependencies)
+12. [Command-Line Parameters](#12-command-line-parameters)
 
 ---
 
@@ -424,6 +425,39 @@ GoogleTest is added as a `FetchContent` dependency. Both test targets link again
 ### 11.5 Validation Layers
 
 Enabled in Debug builds: `VK_LAYER_KHRONOS_validation`. Disabled in Release.
+
+---
+
+## 12. Command-Line Parameters
+
+The application accepts the following command-line parameters at startup:
+
+### 12.1 `--timeout <seconds>`
+
+Execute the application for a specified duration and then automatically exit. This is useful for automated testing, benchmarking, or CI/CD pipelines.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `--timeout` | integer | No | `0` | Maximum runtime in seconds. Value must be positive; zero or negative values disable the timeout. |
+
+**Examples:**
+
+```bash
+# Run for 30 seconds, then exit automatically
+./direct_ui_rendering --timeout 30
+
+# Run for 1 hour (3600 seconds)
+./direct_ui_rendering --timeout 3600
+
+# No timeout (default behavior)
+./direct_ui_rendering
+```
+
+**Behavior:**
+- When `--timeout 0` or a negative value is provided, the timeout is disabled (same as not providing the parameter).
+- The application prints a message when the timeout expires: `Timeout reached: <seconds> seconds. Exiting.`
+- The timeout is checked once per frame in the main loop.
+- If the timeout expires, the application sets the window close flag and exits cleanly after the current frame completes.
 
 ---
 

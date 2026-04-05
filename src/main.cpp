@@ -8,8 +8,9 @@ int main(int argc, char* argv[])
     int timeoutSeconds = 0;  // 0 = no timeout (default)
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--timeout") == 0 && i + 1 < argc) {
-            timeoutSeconds = std::atoi(argv[i + 1]);
-            if (timeoutSeconds > 0) {
+            int parsed = std::atoi(argv[i + 1]);
+            if (parsed > 0) {
+                timeoutSeconds = parsed;
                 printf("Starting with timeout: %d seconds\n", timeoutSeconds);
             }
             ++i;  // Skip the next argument

@@ -1,8 +1,8 @@
 ## Instructions
-Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks) and work on it based on your best abilities. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress or summary in this file.
+Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks), but don't implement it yet. Before implementation, create tests that will fail without the implementation of the task. After tests are created, work on the implementation. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit to github and do not write progress or summary in this file.
 
 ## Pending Tasks
-
+- Make sure the room ceilings are cleanly attached to the walls at the edges and don't have visible gaps.
 - Improve demo visuals: Add moving shadow effects or dynamic lighting variations
 - Implement UI text color variants for visual variety in demo scene
 - Implement dynamic shadow intensity variation for more dramatic lighting changes
@@ -22,6 +22,7 @@ Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_r
 - Add depth variance or roughness variation to materials (normal map simulation)
 - Create animated wave patterns on floor geometry for visual interest
 - Add rotating/scrolling geometry patterns for visual dynamism
+- Add comprehensive command-line parameter tests: --timeout parameter validation and edge cases (NEW - completed tests added)
 
 ## Iterate
 - run /scripts/test.sh. If there are any test failures, please investigate and fix the failure if the fix is small. If the fix will be big, please identify tasks to address the problem, and then append the task to the ['Pending Tasks'](#Pending-Tasks).

@@ -25,8 +25,8 @@ direct_ui_rendering/
 │   └── SPEC.md                       # Project specification
 ├── src/
 │   ├── app.h                         # Top-level App class: init, frame loop, cleanup
-│   ├── app.cpp                       # App implementation: window, event loop, render loop (526 lines)
-│   ├── main.cpp                      # Entry point: window creation, event loop, input handling (22 lines)
+│   ├── app.cpp                       # App implementation: window, event loop, render loop (521 lines)
+│   ├── main.cpp                      # Entry point: window creation, event loop, input handling (23 lines)
 │   ├── shader_uniforms.h             # GPU-side uniform buffer structs: SceneUBO, SurfaceUBO
 │   ├── metrics.h                     # Metrics tracking: frame timer, VMA stats, HUD rendering
 │   ├── metrics.cpp                   # Metrics implementation (105 lines)
@@ -62,6 +62,7 @@ direct_ui_rendering/
 │   ├── test_ambient_animation.cpp    # tests_unit: AmbientColorAnimation time-based color animation validation (11 tests)
 │   ├── test_app_input.cpp            # tests_unit: App input handling (key callbacks, mode toggle, depth bias edge cases, terminal input, cursor display, mouse) (74 tests)
 │   ├── test_clip_planes.cpp          # tests_unit: ClipPlane, ClipPlaneTilted, ClipPlane3D, ClipPlaneSymmetry, ClipPlaneYRotated, ClipPlane3DParallelogram (6 tests)
+│   ├── test_command_line.cpp         # tests_unit: CommandLineTest --timeout parameter parsing (10 tests)
 │   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes (4 tests)
 │   ├── test_depth_bias.cpp           # tests_render: depth bias effectiveness in direct mode (5 tests)
 │   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing

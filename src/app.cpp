@@ -220,31 +220,8 @@ void App::drawFrame()
     sceneUBO.lightColor   = glm::vec4(m_scene.spotlightColor(m_time),
                                       std::cos(m_scene.light().innerConeAngle));
 
-    // Enhanced time-based ambient color cycling for atmospheric effect
-    // Creates a rich, multi-frequency color variation that complements light intensity animation
-    glm::vec3 baseAmbient = m_scene.light().ambient;
-
-    // Multi-frequency oscillation for ambient intensity
-    float basePulse = 0.12f * std::sin(m_time * 0.6f);        // Slow base pulse
-    float midPulse  = 0.08f * std::sin(m_time * 1.3f);        // Medium frequency
-    float hiPulse   = 0.04f * std::sin(m_time * 2.1f);        // Higher frequency
-    float totalPulse = basePulse + midPulse + hiPulse;
-
-    // Color phase cycling - creates subtle hue shifts over time
-    // Red channel: warms up periodically (sunset-like effect)
-    float redPhase = 0.06f * std::sin(m_time * 0.45f);
-    // Green channel: follows a different phase for natural variation
-    float greenPhase = 0.05f * std::sin(m_time * 0.38f + 1.5f);
-    // Blue channel: cool tones cycle independently
-    float bluePhase = 0.07f * std::sin(m_time * 0.52f + 3.0f);
-
-    // Apply oscillation to intensity and color channels
-    glm::vec3 animatedAmbient = baseAmbient + glm::vec3(totalPulse);
-    animatedAmbient.x += redPhase;   // Warmth variation
-    animatedAmbient.y += greenPhase; // Natural variation
-    animatedAmbient.z += bluePhase;  // Cool tone variation
-
-    sceneUBO.ambientColor = glm::vec4(glm::clamp(animatedAmbient, 0.0f, 1.0f), 1.0f);
+    // Static ambient color - no pulsation or variation
+    sceneUBO.ambientColor = glm::vec4(m_scene.light().ambient, 1.0f);
 
     sceneUBO.lightIntensity = 1.0f + 0.3f * std::sin(m_time * 2.0f);  // Pulsing intensity
     sceneUBO.uiColorPhase = m_time;  // Time-based color animation for UI text
