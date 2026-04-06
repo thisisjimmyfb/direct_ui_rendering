@@ -45,11 +45,11 @@ direct_ui_rendering/
 │   ├── ui_surface.cpp                # UI surface transform calculations (100 lines)
 │   └── vk_utils.h                    # Thin Vulkan helpers: image barriers, buffer upload utilities (102 lines)
 ├── shaders/
-│   ├── common.glsl                   # Shared GLSL functions: sampleShadowPCF, hash, noisePerlin (included by room.frag, ui_direct.frag)
+│   ├── common.glsl                   # Shared GLSL functions: sampleShadowPCF, hash, noisePerlin (included by room.vert, room.frag, ui_direct.frag)
 │   ├── composite.frag                # Traditional mode: blend UI render target onto teal quad
 │   ├── quad.vert                     # Vertex shader for surface/composite quad geometry
-│   ├── room.vert                     # PBR room geometry vertex shader (transforms, material properties)
-│   ├── room.frag                     # PBR (Cook-Torrance BRDF) with metallic/roughness properties + PCF shadow; Fresnel-Schlick approximation; GGX distribution; procedural roughness variation (normal map simulation); material variety
+│   ├── room.vert                     # PBR room geometry vertex shader (transforms, material properties, floor ripple displacement)
+│   ├── room.frag                     # PBR (Cook-Torrance BRDF) with metallic/roughness properties + PCF shadow; Fresnel-Schlick approximation; GGX distribution; procedural roughness variation (normal map simulation); material variety; ripple-based normal perturbation
 │   ├── shadow.vert                   # Depth-only shadow pass vertex shader
 │   ├── surface.frag                  # Opaque teal quad fragment shader (direct mode base layer)
 │   ├── ui.frag                       # UI atlas sampling with SDF smoothstep (white text) or bitmap mode
@@ -65,6 +65,7 @@ direct_ui_rendering/
 │   ├── test_command_line.cpp         # tests_unit: CommandLineTest --timeout parameter parsing (10 tests)
 │   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes (4 tests)
 │   ├── test_depth_bias.cpp           # tests_render: depth bias effectiveness in direct mode (5 tests)
+│   ├── test_floor_ripple.cpp         # tests_render: floor ripple pattern animation and visual effects (4 tests)
 │   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing
 │   ├── test_light_intensity.cpp      # tests_unit: LightIntensityPulsing time-based light animation validation (12 tests)
 │   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), FontSizeInvariance, Parallelogram

@@ -13,6 +13,9 @@ layout(set = 0, binding = 0) uniform SceneUBO {
     vec4 lightColor;       // rgb = color, w = cos(innerConeAngle)
     vec4 ambientColor;
     float lightIntensity;  // time-based pulsing intensity multiplier
+    float uiColorPhase;    // time-based color animation phase for UI text
+    float isTerminalMode;  // 1.0 if in terminal input mode, 0.0 otherwise
+    float time;            // elapsed time in seconds for ripple animation
 };
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
@@ -109,8 +112,38 @@ vec3 perturbNormal(vec3 N, vec3 worldPos, float strength) {
     return mix(N, perturbedN, strength);
 }
 
+// Apply ripple-based normal perturbation for animated floor effects
+// Creates dynamic wave patterns that enhance visual interest
+vec3 applyRippleNormalPerturbation(vec3 N, vec3 worldPos, float baseStrength) {
+    // Check if this is a floor surface (normal points up/down)
+    float floorness = abs(dot(N, vec3(0, 1, 0)));
+    if (floorness < 0.95) return N;  // Not a floor, no ripple perturbation
+
+    // Multi-frequency ripple pattern for natural wave appearance
+    float ripple1 = sin(worldPos.x * 2.5 + time * 1.5);
+    float ripple2 = sin(worldPos.z * 1.8 + time * 1.2);
+    float ripple3 = sin((worldPos.x + worldPos.z) * 3.5 + time * 2.2);
+    float ripple4 = sin((worldPos.x - worldPos.z) * 2.8 + time * 1.8);
+
+    // Combine ripples into perturbed normals (tangent and bitangent directions)
+    // Increased amplitudes for stronger visual effect
+    float perturbX = ripple1 * 0.5 + ripple3 * 0.4 + ripple4 * 0.3;
+    float perturbZ = ripple2 * 0.5 + ripple3 * 0.4 - ripple4 * 0.3;
+
+    // Create a perturbed normal that varies with ripple pattern
+    // For a floor with normal (0, 1, 0), perturb along X-Z plane
+    vec3 perturbation = vec3(perturbX, 0.0, perturbZ) * baseStrength;
+    vec3 perturbedN = normalize(N + perturbation);
+
+    return perturbedN;
+}
+
 void main() {
     vec3 N = normalize(inNormal);
+
+    // Apply ripple-based normal perturbation to floor surfaces for dynamic effect
+    float ripplePerturbationStrength = 0.35;  // Strong ripple perturbation strength for visibility
+    N = applyRippleNormalPerturbation(N, inWorldPos, ripplePerturbationStrength);
 
     // Apply subtle normal perturbation to simulate normal map effects
     // Strength varies with roughness: rougher surfaces get more pronounced normal variation

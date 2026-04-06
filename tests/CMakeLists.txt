@@ -88,6 +88,7 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 #   test_msaa_quality.cpp    — MSAA edge smoothness comparison (Tests 11-12)
 #   test_depth_bias.cpp      — Depth bias effectiveness in direct mode (Tests 13-17)
 #   test_spotlight_cone.cpp  — Spotlight cone angle attenuation (Tests 18-22)
+#   test_floor_ripple.cpp    — Floor ripple pattern animation and visual effects
 # ---------------------------------------------------------------------------
 add_executable(tests_render
     test_containment.cpp
@@ -101,6 +102,7 @@ add_executable(tests_render
     test_spotlight_cone.cpp
     test_pbr.cpp
     test_metallic_materials.cpp
+    test_floor_ripple.cpp
 )
 
 add_dependencies(tests_render test_shaders)
