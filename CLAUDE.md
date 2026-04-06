@@ -69,6 +69,7 @@ direct_ui_rendering/
 │   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), FontSizeInvariance, Parallelogram
 │   ├── test_metrics.cpp              # tests_unit: frame timing ring buffer and GPU memory tracking
 │   ├── test_msaa_quality.cpp         # tests_render: MSAA edge smoothness comparison (direct vs traditional modes) (2 tests)
+│   ├── test_metallic_materials.cpp   # tests_render: metallic material definitions, rendering validation (8 tests)
 │   ├── test_pbr.cpp                  # tests_render: PBR material properties, roughness variation, rendering validation (10 tests)
 │   ├── test_perf.cpp                 # tests_render: performance regression tests
 │   ├── test_renderer.cpp             # tests_render: Renderer initialization, headless RT, UBO updates, geometry updates, render passes, pipelines, descriptor binding (30 tests)

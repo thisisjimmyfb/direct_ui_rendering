@@ -2,7 +2,6 @@
 Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks), but don't implement it yet. If the task affects the core execution of the demo, then please create tests that will fail without implementing the task. After tests are created, work on the implementation. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit and do not write progress or summary in this file.
 
 ## Pending Tasks
-- Add metallic or reflective surface material properties to showcase material variety
 - Create ripple or wave patterns on floors to enhance visual interest
 - Add subtle parallax mapping or normal map effects to room walls
 - Add depth variance or roughness variation to materials (normal map simulation)

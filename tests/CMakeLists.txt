@@ -100,6 +100,7 @@ add_executable(tests_render
     test_depth_bias.cpp
     test_spotlight_cone.cpp
     test_pbr.cpp
+    test_metallic_materials.cpp
 )
 
 add_dependencies(tests_render test_shaders)

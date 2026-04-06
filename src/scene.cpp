@@ -21,20 +21,20 @@ void addQuad(std::vector<Vertex>& verts, std::vector<uint32_t>& idxs,
 }
 
 // Material definitions for different room surfaces
-// Demonstrates PBR with various roughness levels (all dielectric for stability)
+// Demonstrates PBR with varied materials: dielectrics and metallics
 const MaterialDefinition g_surfaceMaterials[] = {
     // Floor - polished concrete (dielectric, moderate roughness)
     {{0.0f, 0.7f}, "Floor"},
-    // Ceiling - painted drywall (dielectric, high roughness)
-    {{0.0f, 0.9f}, "Ceiling"},
+    // Ceiling - polished aluminum (metallic, very low roughness)
+    {{0.85f, 0.2f}, "Ceiling_Aluminum"},
     // Back wall - smooth painted wall (dielectric, smooth)
     {{0.0f, 0.6f}, "BackWall"},
     // Front wall - textured wallpaper (dielectric, high roughness)
     {{0.0f, 0.85f}, "FrontWall"},
-    // Left wall - semi-gloss paint (dielectric, low roughness)
-    {{0.0f, 0.4f}, "LeftWall"},
-    // Right wall - glossy painted wall (dielectric, very low roughness)
-    {{0.0f, 0.25f}, "RightWall"}
+    // Left wall - brushed steel panel (metallic, moderate roughness)
+    {{0.8f, 0.5f}, "LeftWall_Steel"},
+    // Right wall - polished copper (metallic, low roughness)
+    {{0.9f, 0.25f}, "RightWall_Copper"}  // metallic=0.9 > 0.3 threshold
 };
 
 } // anonymous namespace
@@ -60,9 +60,9 @@ void Scene::init()
         {-W, 0,  D}, { W, 0,  D}, { W, 0, -D}, {-W, 0, -D},
         {0, 1, 0}, floorMat, floorColor);
 
-    // Ceiling (Y = H, normal down) - painted drywall (dielectric, high roughness)
-    Material ceilingMat{0.0f, 0.9f};
-    glm::vec3 ceilingColor(0.85f, 0.82f, 0.75f);
+    // Ceiling (Y = H, normal down) - polished aluminum (metallic, very low roughness)
+    Material ceilingMat{0.85f, 0.2f};
+    glm::vec3 ceilingColor(0.85f, 0.82f, 0.75f);  // Similar to original drywall
     addQuad(v, i,
         {-W, H, -D}, { W, H, -D}, { W, H,  D}, {-W, H,  D},
         {0, -1, 0}, ceilingMat, ceilingColor);
@@ -81,16 +81,16 @@ void Scene::init()
         { W, 0,  D}, {-W, 0,  D}, {-W, H,  D}, { W, H,  D},
         {0, 0, -1}, frontWallMat, frontWallColor);
 
-    // Left wall  (X = -W, normal right) - semi-gloss paint (dielectric, low roughness)
-    Material leftWallMat{0.0f, 0.4f};
-    glm::vec3 leftWallColor(0.5f, 0.8f, 0.55f);
+    // Left wall  (X = -W, normal right) - brushed steel panel (metallic, moderate roughness)
+    Material leftWallMat{0.8f, 0.5f};
+    glm::vec3 leftWallColor(0.5f, 0.8f, 0.55f);  // Similar to original green
     addQuad(v, i,
         {-W, 0,  D}, {-W, 0, -D}, {-W, H, -D}, {-W, H,  D},
         {1, 0, 0}, leftWallMat, leftWallColor);
 
-    // Right wall (X = +W, normal left) - glossy painted wall (dielectric, very low roughness)
-    Material rightWallMat{0.0f, 0.25f};
-    glm::vec3 rightWallColor(0.75f, 0.6f, 0.8f);
+    // Right wall (X = +W, normal left) - polished copper (metallic, low roughness)
+    Material rightWallMat{0.9f, 0.25f};
+    glm::vec3 rightWallColor(0.75f, 0.6f, 0.8f);  // Similar to original purple
     addQuad(v, i,
         { W, 0, -D}, { W, 0,  D}, { W, H,  D}, { W, H, -D},
         {-1, 0, 0}, rightWallMat, rightWallColor);
