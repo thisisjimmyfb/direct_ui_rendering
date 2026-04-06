@@ -40,10 +40,6 @@ struct CubeFace {
     glm::vec3 P_01_local;
     glm::vec3 P_11_local;
 
-    // Backward compatibility for tests that expect the old quad structure.
-    // The +Z face (index 4) has the same dimensions as the original quad.
-    static constexpr int FRONT_FACE_INDEX = 4;
-
     glm::vec3& operator[](int i) { return (&P_00_local)[i]; }
     const glm::vec3& operator[](int i) const { return (&P_00_local)[i]; }
 };
