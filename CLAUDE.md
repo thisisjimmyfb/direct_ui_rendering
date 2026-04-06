@@ -45,6 +45,7 @@ direct_ui_rendering/
 │   ├── ui_surface.cpp                # UI surface transform calculations (100 lines)
 │   └── vk_utils.h                    # Thin Vulkan helpers: image barriers, buffer upload utilities (102 lines)
 ├── shaders/
+│   ├── common.glsl                   # Shared GLSL functions: sampleShadowPCF, hash, noisePerlin (included by room.frag, ui_direct.frag)
 │   ├── composite.frag                # Traditional mode: blend UI render target onto teal quad
 │   ├── quad.vert                     # Vertex shader for surface/composite quad geometry
 │   ├── room.vert                     # PBR room geometry vertex shader (transforms, material properties)

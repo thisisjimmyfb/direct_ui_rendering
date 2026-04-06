@@ -4,7 +4,6 @@ Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_r
 ## Pending Tasks
 - Create ripple or wave patterns on floors to enhance visual interest
 - Add subtle parallax mapping or normal map effects to room walls
-- Refactor shader code: Extract common functions (sampleShadowPCF, hash, noisePerlin) into shared GLSL header file to reduce duplication
 
 ## Iterate
 - Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct.

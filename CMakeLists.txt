@@ -109,6 +109,11 @@ set(SHADER_SOURCES
     ${SHADER_DIR}/shadow.vert
 )
 
+# Shared shader headers
+set(SHADER_HEADERS
+    ${SHADER_DIR}/common.glsl
+)
+
 # Production shader SPIRVs (no test defines)
 set(PROD_SPIRV_OUTPUTS "")
 foreach(SRC ${SHADER_SOURCES})
@@ -116,8 +121,8 @@ foreach(SRC ${SHADER_SOURCES})
     set(SPV ${SHADER_OUTPUT_DIR}/${NAME}.spv)
     add_custom_command(
         OUTPUT  ${SPV}
-        COMMAND Vulkan::glslc ${SRC} -o ${SPV}
-        DEPENDS ${SRC}
+        COMMAND Vulkan::glslc -I${SHADER_DIR} ${SRC} -o ${SPV}
+        DEPENDS ${SRC} ${SHADER_HEADERS}
         COMMENT "Compiling shader ${NAME}"
         VERBATIM
     )

@@ -1,5 +1,7 @@
 #version 450
 
+#include "common.glsl"
+
 layout(set = 0, binding = 0) uniform SceneUBO {
     mat4 view;
     mat4 proj;
@@ -29,22 +31,6 @@ layout(location = 2) in vec3 inWorldPos;
 
 layout(location = 0) out vec4 outColor;
 
-// 2x2 PCF with fixed depth bias for degenerate UI mesh.
-// Matches surface.frag PCF kernel for consistent shadow quality.
-float sampleShadowPCF(vec4 shadowCoord) {
-    vec3 proj = shadowCoord.xyz / shadowCoord.w;
-    proj.z -= 0.002;  // Fixed bias for flat UI geometry
-    float shadow = 0.0;
-    vec2 texelSize = vec2(1.0 / 1024.0);
-    for (float x = -0.5; x <= 0.5; x += 1.0) {
-        for (float y = -0.5; y <= 0.5; y += 1.0) {
-            shadow += texture(shadowMap,
-                vec3(proj.xy + vec2(x, y) * texelSize, proj.z));
-        }
-    }
-    return shadow * 0.25;
-}
-
 void main() {
 #ifdef UI_TEST_COLOR
     outColor = vec4(1.0, 0.0, 1.0, 1.0);  // Solid magenta for render tests
@@ -68,7 +54,7 @@ void main() {
     // Apply same lighting model as surface.frag: ambient + spotlight with shadow.
     // This ensures UI text is readable even in shadow areas (ambient contribution)
     // and receives full lighting where illuminated by the spotlight.
-    float shadow = sampleShadowPCF(inShadowCoord);
+    float shadow = sampleShadowPCF(inShadowCoord, shadowMap);
     vec3 lit = clamp(ambientColor.rgb + shadow * lightColor.rgb * lightIntensity, 0.0, 1.0);
 
     // Output text with pre-multiplied blending: RGB channels modulated by static white and lighting, alpha preserved
