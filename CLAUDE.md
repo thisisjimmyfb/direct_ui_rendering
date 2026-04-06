@@ -30,6 +30,7 @@ direct_ui_rendering/
 │   ├── shader_uniforms.h             # GPU-side uniform buffer structs: SceneUBO, SurfaceUBO
 │   ├── metrics.h                     # Metrics tracking: frame timer, VMA stats, HUD rendering
 │   ├── metrics.cpp                   # Metrics implementation (105 lines)
+│   ├── msaa_config.h                 # MSAA sample count configuration: constexpr msaaSampleCount() (configurable via CMake)
 │   ├── renderer.h                    # Renderer class declaration: Vulkan device, pipelines, render passes
 │   ├── renderer.cpp                  # Thin coordinator: includes the four renderer modules (6 lines)
 │   ├── renderer_init.cpp             # Device, instance, swapchain, render pass setup (475 lines)

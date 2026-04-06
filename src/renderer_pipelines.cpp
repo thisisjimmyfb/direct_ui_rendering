@@ -4,6 +4,7 @@
 #include "vk_utils.h"
 #include "scene.h"
 #include "ui_system.h"
+#include "msaa_config.h"
 
 #include <GLFW/glfw3.h>
 #include <cstdio>
@@ -215,7 +216,7 @@ bool Renderer::createPipelines()
 
         VkPipelineMultisampleStateCreateInfo msaa{
             VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
-        msaa.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+        msaa.rasterizationSamples = msaaSampleCount();
 
         VkPipelineDepthStencilStateCreateInfo depth{
             VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
@@ -261,7 +262,7 @@ bool Renderer::createPipelines()
 
         VkPipelineMultisampleStateCreateInfo msaa{
             VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
-        msaa.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+        msaa.rasterizationSamples = msaaSampleCount();
 
         VkPipelineDepthStencilStateCreateInfo depth{
             VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
@@ -350,7 +351,7 @@ bool Renderer::createPipelines()
 
         VkPipelineMultisampleStateCreateInfo msaa{
             VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
-        msaa.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+        msaa.rasterizationSamples = msaaSampleCount();
 
         VkPipelineDepthStencilStateCreateInfo depth{
             VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
@@ -396,7 +397,7 @@ bool Renderer::createPipelines()
 
         VkPipelineMultisampleStateCreateInfo msaa{
             VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
-        msaa.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
+        msaa.rasterizationSamples = msaaSampleCount();
 
         VkPipelineDepthStencilStateCreateInfo depth{
             VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};

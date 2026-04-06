@@ -2,6 +2,7 @@
 #include "renderer.h"
 #include "scene.h"
 #include "shader_uniforms.h"
+#include "msaa_config.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vk_mem_alloc.h>

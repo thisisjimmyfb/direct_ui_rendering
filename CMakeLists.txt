@@ -70,6 +70,17 @@ target_compile_definitions(validation_layer_config INTERFACE
 )
 
 # ---------------------------------------------------------------------------
+# MSAA sample count configuration (default 4x, override with -DMSAA_SAMPLES=N)
+# ---------------------------------------------------------------------------
+set(MSAA_SAMPLES 4 CACHE STRING "MSAA sample count: 1, 2, 4, 8, or 16")
+set_property(CACHE MSAA_SAMPLES PROPERTY STRINGS 1 2 4 8 16)
+
+add_library(msaa_config INTERFACE)
+target_compile_definitions(msaa_config INTERFACE
+    MSAA_SAMPLES=${MSAA_SAMPLES}
+)
+
+# ---------------------------------------------------------------------------
 # glslc shader compilation helper
 # ---------------------------------------------------------------------------
 # Usage: compile_shader(target shader_src output_spv [DEFINES ...])
@@ -163,6 +174,7 @@ target_link_libraries(direct_ui_rendering_lib PUBLIC
     glm::glm
     stb_image
     validation_layer_config
+    msaa_config
 )
 
 target_compile_definitions(direct_ui_rendering_lib PUBLIC

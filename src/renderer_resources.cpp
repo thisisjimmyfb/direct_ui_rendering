@@ -5,6 +5,7 @@
 #include "renderer.h"
 #include "vk_utils.h"
 #include "scene.h"
+#include "msaa_config.h"
 
 #include <cstdio>
 #include <cstring>
@@ -326,7 +327,7 @@ bool Renderer::createFramebuffers()
         ci.extent        = {m_swapExtent.width, m_swapExtent.height, 1};
         ci.mipLevels     = 1;
         ci.arrayLayers   = 1;
-        ci.samples       = VK_SAMPLE_COUNT_4_BIT;
+        ci.samples       = msaaSampleCount();
         ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
         ci.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
@@ -357,7 +358,7 @@ bool Renderer::createFramebuffers()
         ci.extent        = {m_swapExtent.width, m_swapExtent.height, 1};
         ci.mipLevels     = 1;
         ci.arrayLayers   = 1;
-        ci.samples       = VK_SAMPLE_COUNT_4_BIT;
+        ci.samples       = msaaSampleCount();
         ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
         ci.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
@@ -756,7 +757,7 @@ bool Renderer::createHeadlessRT(uint32_t width, uint32_t height, HeadlessRenderT
         ci.extent        = {width, height, 1};
         ci.mipLevels     = 1;
         ci.arrayLayers   = 1;
-        ci.samples       = VK_SAMPLE_COUNT_4_BIT;
+        ci.samples       = msaaSampleCount();
         ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
         ci.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
@@ -783,7 +784,7 @@ bool Renderer::createHeadlessRT(uint32_t width, uint32_t height, HeadlessRenderT
         ci.extent        = {width, height, 1};
         ci.mipLevels     = 1;
         ci.arrayLayers   = 1;
-        ci.samples       = VK_SAMPLE_COUNT_4_BIT;
+        ci.samples       = msaaSampleCount();
         ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
         ci.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;

@@ -4,6 +4,7 @@
 #include "vk_utils.h"
 #include "scene.h"
 #include "ui_system.h"
+#include "msaa_config.h"
 
 #include <GLFW/glfw3.h>
 #include <cstdio>
@@ -120,7 +121,7 @@ bool Renderer::createRenderPasses()
         VkAttachmentDescription attaches[3]{};
 
         attaches[0].format         = m_colorFormat;
-        attaches[0].samples        = VK_SAMPLE_COUNT_4_BIT;
+        attaches[0].samples        = msaaSampleCount();
         attaches[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
         attaches[0].storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE; // transient
         attaches[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -129,7 +130,7 @@ bool Renderer::createRenderPasses()
         attaches[0].finalLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         attaches[1].format         = VK_FORMAT_D32_SFLOAT;
-        attaches[1].samples        = VK_SAMPLE_COUNT_4_BIT;
+        attaches[1].samples        = msaaSampleCount();
         attaches[1].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
         attaches[1].storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE; // transient
         attaches[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
