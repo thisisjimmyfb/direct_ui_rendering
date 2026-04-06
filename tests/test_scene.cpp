@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "scene.h"
 #include "ui_surface.h"
+#include "renderer.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -1732,5 +1733,107 @@ TEST_F(AnimatedSpotlightBoundsTest, AnimatedSpotlightStaysInRoomBounds)
         EXPECT_LE(pos.y,  H) << "spotlight Y above ceiling at t=" << t << " (pos.y=" << pos.y << ")";
         EXPECT_GE(pos.z, -D) << "spotlight Z beyond back wall at t=" << t;
         EXPECT_LE(pos.z,  D) << "spotlight Z beyond front wall at t=" << t;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// QuadVertexNormal — QuadVertex struct must expose a normal field used by
+// surface.frag to compute NdotL and spotlight cone attenuation.
+// These tests verify the struct layout and the face-normal computation logic
+// that updateCubeSurface() uses (cross(eu, ev)).
+// ---------------------------------------------------------------------------
+
+// Test: QuadVertex has an accessible glm::vec3 normal field.
+// Fails at compile time if the field is removed from the struct.
+TEST(QuadVertexNormal, NormalFieldExists_AndIsWritable)
+{
+    QuadVertex v{};
+    v.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+    EXPECT_NEAR(v.normal.x, 0.0f, 1e-5f);
+    EXPECT_NEAR(v.normal.y, 1.0f, 1e-5f);
+    EXPECT_NEAR(v.normal.z, 0.0f, 1e-5f);
+}
+
+// Test: cross(P_10-P_00, P_01-P_00) gives +Y for a horizontal upward-facing quad.
+// Matches the cross-product logic in Renderer::updateCubeSurface().
+TEST(QuadVertexNormal, UpwardFaceNormal_IsPositiveY)
+{
+    // Horizontal quad at y=1 in XZ plane.
+    // eu = P_10 - P_00 = (+2, 0, 0),  ev = P_01 - P_00 = (0, 0, -1)
+    // cross(eu, ev) = (0*(-1)-0*0, 0*0-2*(-1), 2*0-0*0) = (0, 2, 0) → +Y
+    glm::vec3 P_00{0.0f, 1.0f, -2.0f};
+    glm::vec3 P_10{2.0f, 1.0f, -2.0f};
+    glm::vec3 P_01{0.0f, 1.0f, -3.0f};
+    glm::vec3 eu = P_10 - P_00;
+    glm::vec3 ev = P_01 - P_00;
+    glm::vec3 n  = glm::normalize(glm::cross(eu, ev));
+    EXPECT_NEAR(n.x,  0.0f, 1e-5f);
+    EXPECT_NEAR(n.y,  1.0f, 1e-5f);
+    EXPECT_NEAR(n.z,  0.0f, 1e-5f);
+}
+
+// Test: Swapping the P_10 and P_01 corner assignments reverses the winding and
+// flips the computed normal to -Y, validating the orientation contract used by
+// updateCubeSurface() when building cube face geometry.
+TEST(QuadVertexNormal, DownwardFaceNormal_IsNegativeY)
+{
+    // Swap P_10 / P_01 from the upward case to flip winding.
+    // eu = (0, 0, -1),  ev = (2, 0, 0)
+    // cross(eu, ev) = (0*0-(-1)*0, (-1)*2-0*0, 0*0-0*2) = (0, -2, 0) → -Y
+    glm::vec3 P_00{ 0.0f, 1.0f, -2.0f};
+    glm::vec3 P_10{ 0.0f, 1.0f, -3.0f};  // formerly P_01
+    glm::vec3 P_01{ 2.0f, 1.0f, -2.0f};  // formerly P_10
+    glm::vec3 eu = P_10 - P_00;
+    glm::vec3 ev = P_01 - P_00;
+    glm::vec3 n  = glm::normalize(glm::cross(eu, ev));
+    EXPECT_NEAR(n.x,  0.0f, 1e-5f);
+    EXPECT_NEAR(n.y, -1.0f, 1e-5f);
+    EXPECT_NEAR(n.z,  0.0f, 1e-5f);
+}
+
+// Test: The outward-normal correction logic in updateCubeSurface produces correct
+// outward normals for all 6 cube faces, including face 4 (+Z) whose raw cross-product
+// is inward (-Z) because the UV convention (P_00=top-left => ev points -Y in world
+// space) conflicts with the right-hand rule for +Z outward direction.
+// The fix: compute cube centre from all 24 corners and flip any face normal that
+// points toward the centre instead of away from it.
+TEST(QuadVertexNormal, CubeFaceNormals_PointOutward)
+{
+    Scene scene;
+    scene.init();
+
+    // Build corner arrays matching how updateCubeSurface receives them.
+    std::array<std::array<glm::vec3, 4>, 6> corners;
+    for (int f = 0; f < 6; ++f) {
+        const auto& face = scene.uiSurface().faces[f];
+        corners[f][0] = face.P_00_local;
+        corners[f][1] = face.P_10_local;
+        corners[f][2] = face.P_01_local;
+        corners[f][3] = face.P_11_local;
+    }
+
+    // Cube centre — same computation as updateCubeSurface.
+    glm::vec3 cubeCenter(0.0f);
+    for (int f = 0; f < 6; ++f)
+        for (int c = 0; c < 4; ++c)
+            cubeCenter += corners[f][c];
+    cubeCenter /= 24.0f;
+
+    const glm::vec3 expected[6] = {
+        { 1, 0, 0}, {-1, 0, 0},
+        { 0, 1, 0}, { 0,-1, 0},
+        { 0, 0, 1}, { 0, 0,-1}
+    };
+    for (int f = 0; f < 6; ++f) {
+        glm::vec3 eu = corners[f][1] - corners[f][0];
+        glm::vec3 ev = corners[f][2] - corners[f][0];
+        glm::vec3 n  = glm::normalize(glm::cross(eu, ev));
+        // Apply the same outward-correction as updateCubeSurface.
+        glm::vec3 faceCentroid = (corners[f][0] + corners[f][1] + corners[f][2] + corners[f][3]) * 0.25f;
+        if (glm::dot(n, faceCentroid - cubeCenter) < 0.0f)
+            n = -n;
+        EXPECT_NEAR(glm::dot(n, expected[f]), 1.0f, 0.1f)
+            << "Face " << f << " outward-corrected normal " << n.x << "," << n.y << "," << n.z
+            << " does not match expected " << expected[f].x << "," << expected[f].y << "," << expected[f].z;
     }
 }

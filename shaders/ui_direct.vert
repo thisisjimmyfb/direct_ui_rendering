@@ -15,6 +15,7 @@ layout(location = 1) in vec2 inUITexCoord;
 layout(location = 0) out vec2 outTexCoord;
 layout(location = 1) out vec4 outShadowCoord;
 layout(location = 2) out vec3 outWorldPos;
+layout(location = 3) out vec3 outNormal;
 
 out gl_PerVertex {
     vec4  gl_Position;
@@ -35,5 +36,6 @@ void main() {
 
     outTexCoord = inUITexCoord;
     outWorldPos = worldPos.xyz;
+    outNormal   = surfaceNormal.xyz;  // World-space outward normal from SurfaceUBO
     outShadowCoord = biasMat * lightViewProj * worldPos;
 }

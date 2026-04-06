@@ -132,18 +132,19 @@ bool Renderer::createPipelines()
     uiVertexInput.vertexAttributeDescriptionCount = 2;
     uiVertexInput.pVertexAttributeDescriptions    = uiAttrs;
 
-    // Vertex input: composite quad (pos:vec3, uv:vec2, faceIndex:int = 24 bytes).
+    // Vertex input: composite quad (pos:vec3, uv:vec2, normal:vec3, faceIndex:int).
     VkVertexInputBindingDescription quadBinding{0, sizeof(QuadVertex), VK_VERTEX_INPUT_RATE_VERTEX};
-    VkVertexInputAttributeDescription quadAttrs[3]{
+    VkVertexInputAttributeDescription quadAttrs[4]{
         {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(QuadVertex, pos)},
         {1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(QuadVertex, uv)},
-        {2, 0, VK_FORMAT_R32_SINT,         offsetof(QuadVertex, faceIndex)},
+        {2, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(QuadVertex, normal)},
+        {3, 0, VK_FORMAT_R32_SINT,         offsetof(QuadVertex, faceIndex)},
     };
     VkPipelineVertexInputStateCreateInfo quadVertexInput{
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
     quadVertexInput.vertexBindingDescriptionCount   = 1;
     quadVertexInput.pVertexBindingDescriptions      = &quadBinding;
-    quadVertexInput.vertexAttributeDescriptionCount = 3;
+    quadVertexInput.vertexAttributeDescriptionCount = 4;
     quadVertexInput.pVertexAttributeDescriptions    = quadAttrs;
 
     // --- 0. pipe_shadow: depth-only, renders room geometry using lightViewProj ---

@@ -147,12 +147,16 @@ bool Renderer::selectPhysicalDevice()
         vkGetPhysicalDeviceProperties(d, &props);
         if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
             m_physDevice = d;
+            m_maxAnisotropy = props.limits.maxSamplerAnisotropy;
             return true;
         }
     }
 
     // Fallback: accept the first device (e.g. integrated GPU or software renderer).
     m_physDevice = devices[0];
+    VkPhysicalDeviceProperties props;
+    vkGetPhysicalDeviceProperties(m_physDevice, &props);
+    m_maxAnisotropy = props.limits.maxSamplerAnisotropy;
     return true;
 }
 
@@ -187,8 +191,15 @@ bool Renderer::createLogicalDevice()
     if (!m_headless)
         devExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
+    VkPhysicalDeviceFeatures supportedFeatures{};
+    vkGetPhysicalDeviceFeatures(m_physDevice, &supportedFeatures);
+
     VkPhysicalDeviceFeatures features{};
     features.shaderClipDistance = VK_TRUE;
+    if (supportedFeatures.samplerAnisotropy) {
+        features.samplerAnisotropy = VK_TRUE;
+        m_anisotropyEnabled = true;
+    }
 
     VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     dci.queueCreateInfoCount    = 1;

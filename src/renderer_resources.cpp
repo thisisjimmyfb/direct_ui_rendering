@@ -262,6 +262,8 @@ bool Renderer::createShadowResources()
     samplerInfo.borderColor   = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
     samplerInfo.compareEnable = VK_TRUE;
     samplerInfo.compareOp     = VK_COMPARE_OP_LESS_OR_EQUAL;
+    samplerInfo.anisotropyEnable = m_anisotropyEnabled ? VK_TRUE : VK_FALSE;
+    samplerInfo.maxAnisotropy   = m_anisotropyEnabled ? m_maxAnisotropy : 1.0f;
 
     if (vkCreateSampler(m_device, &samplerInfo, nullptr, &m_shadowSampler) != VK_SUCCESS)
         return false;
@@ -629,13 +631,18 @@ void Renderer::updateSurfaceQuad(const glm::vec3& P00, const glm::vec3& P10,
     if (!m_surfaceQuadBuf) return;
 
     // Two CCW triangles: (P00, P10, P11) and (P00, P11, P01)
+    // Compute surface normal from edge vectors
+    glm::vec3 eu = P10 - P00;
+    glm::vec3 ev = P01 - P00;
+    glm::vec3 n = glm::normalize(glm::cross(eu, ev));
+
     QuadVertex verts[6] = {
-        {P00, {0.0f, 0.0f}},
-        {P10, {1.0f, 0.0f}},
-        {P11, {1.0f, 1.0f}},
-        {P00, {0.0f, 0.0f}},
-        {P11, {1.0f, 1.0f}},
-        {P01, {0.0f, 1.0f}},
+        {P00, {0.0f, 0.0f}, n},
+        {P10, {1.0f, 0.0f}, n},
+        {P11, {1.0f, 1.0f}, n},
+        {P00, {0.0f, 0.0f}, n},
+        {P11, {1.0f, 1.0f}, n},
+        {P01, {0.0f, 1.0f}, n},
     };
 
     void* mapped = nullptr;
@@ -652,15 +659,34 @@ void Renderer::updateCubeSurface(const std::array<std::array<glm::vec3, 4>, 6>& 
     // Each face's corners: P_00(0,0), P_10(1,0), P_11(1,1), P_01(0,1)
     // Triangles: (0,1,2) and (0,2,3) for CCW winding
     QuadVertex verts[36];
+
+    // Compute cube centre so we can orient each face normal outward.
+    glm::vec3 cubeCenter(0.0f);
+    for (int f = 0; f < 6; ++f)
+        for (int c = 0; c < 4; ++c)
+            cubeCenter += faceCorners[f][c];
+    cubeCenter /= 24.0f;
+
     for (int face = 0; face < 6; ++face) {
         const auto& f = faceCorners[face];
+
+        // Compute surface normal from edge vectors (same logic as updateUIShadowCube).
+        glm::vec3 eu = f[1] - f[0];  // P_10 - P_00
+        glm::vec3 ev = f[2] - f[0];  // P_01 - P_00
+        glm::vec3 n  = glm::normalize(glm::cross(eu, ev));
+
+        // Ensure normal points outward from the cube centre.
+        glm::vec3 faceCentroid = (f[0] + f[1] + f[2] + f[3]) * 0.25f;
+        if (glm::dot(n, faceCentroid - cubeCenter) < 0.0f)
+            n = -n;
+
         int base = face * 6;
-        verts[base + 0] = {f[0], {0.0f, 0.0f}, face};  // P_00
-        verts[base + 1] = {f[1], {1.0f, 0.0f}, face};  // P_10
-        verts[base + 2] = {f[3], {1.0f, 1.0f}, face};  // P_11
-        verts[base + 3] = {f[0], {0.0f, 0.0f}, face};  // P_00
-        verts[base + 4] = {f[3], {1.0f, 1.0f}, face};  // P_11
-        verts[base + 5] = {f[2], {0.0f, 1.0f}, face};  // P_01
+        verts[base + 0] = {f[0], {0.0f, 0.0f}, n, face};  // P_00
+        verts[base + 1] = {f[1], {1.0f, 0.0f}, n, face};  // P_10
+        verts[base + 2] = {f[3], {1.0f, 1.0f}, n, face};  // P_11
+        verts[base + 3] = {f[0], {0.0f, 0.0f}, n, face};  // P_00
+        verts[base + 4] = {f[3], {1.0f, 1.0f}, n, face};  // P_11
+        verts[base + 5] = {f[2], {0.0f, 1.0f}, n, face};  // P_01
     }
 
     void* mapped = nullptr;

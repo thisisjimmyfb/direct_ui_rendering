@@ -120,10 +120,12 @@ TEST_F(ShadowAcneWallTest, BackWall_NoSelfShadowAcne_DirectMode)
 
     auto pixels = renderAndReadback(/*directMode=*/true);
 
-    // Define the center region of the back wall in screen space
-    // The back wall should fill most of the screen from this view
-    const int stripLeft   = FB_WIDTH / 4;
-    const int stripRight  = 3 * FB_WIDTH / 4;
+    // Define the center region of the back wall in screen space.
+    // The room is 4m wide (x: -2 to +2); from this camera the back wall edges
+    // project to roughly screen x=390 and x=890.  Clamp to 5/16 and 11/16 of
+    // FB_WIDTH to stay well within the back wall and avoid the metallic side walls.
+    const int stripLeft   = 5 * FB_WIDTH  / 16;  // ≈ 400 px
+    const int stripRight  = 11 * FB_WIDTH / 16;  // ≈ 880 px
     const int stripTop    = FB_HEIGHT / 4;
     const int stripBottom = 3 * FB_HEIGHT / 4;
     const int stripWidth  = stripRight - stripLeft;

@@ -16,6 +16,7 @@ layout(push_constant) uniform PC {
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) in vec4 inShadowCoord;
 layout(location = 2) in vec3 inWorldPos;
+layout(location = 3) in vec3 inNormal;
 
 layout(location = 0) out vec4 outColor;
 
@@ -39,11 +40,25 @@ void main() {
         // Pre-multiplied alpha assumed in atlas (bitmap mode)
     }
 
-    // Apply same lighting model as surface.frag: ambient + spotlight with shadow.
-    // This ensures UI text is readable even in shadow areas (ambient contribution)
-    // and receives full lighting where illuminated by the spotlight.
-    float shadow = sampleShadowPCF(inShadowCoord, shadowMap);
-    vec3 lit = clamp(ambientColor.rgb + shadow * lightColor.rgb * lightIntensity, 0.0, 1.0);
+    // Lighting calculation matching surface.frag and room.frag
+    vec3 N = normalize(inNormal);
+    vec3 toLight = lightPos.xyz - inWorldPos;
+    vec3 L = normalize(toLight);
+
+    // NdotL for diffuse
+    float NdotL = max(dot(N, L), 0.0);
+
+    // Spotlight cone attenuation.
+    float spotFactor = spotlightFactor(L, lightDir, lightColor);
+
+    // Shadow sampling with slope-scaled 3-arg version
+    float shadow = sampleShadowPCF(inShadowCoord, N, L, shadowMap);
+
+    // Ambient is always visible; diffuse uses shadow and spotFactor
+    vec3 ambient = ambientColor.rgb;
+    vec3 diffuse = shadow * lightColor.rgb * lightIntensity * spotFactor * NdotL;
+
+    vec3 lit = clamp(ambient + diffuse, 0.0, 1.0);
 
     // Output text with pre-multiplied blending: RGB channels modulated by static white and lighting, alpha preserved
     outColor = vec4(texColor.rgb * textColor * lit, texColor.a);

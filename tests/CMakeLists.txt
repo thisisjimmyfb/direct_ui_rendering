@@ -89,6 +89,8 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 #   test_depth_bias.cpp      — Depth bias effectiveness in direct mode (Tests 13-17)
 #   test_spotlight_cone.cpp  — Spotlight cone angle attenuation (Tests 18-22)
 #   test_static_floor_ceiling.cpp — Floor and ceiling remain static (no ripple effect)
+#   test_shadow_acne_walls.cpp    — Shadow acne banding artifacts on walls (Tests ShadowAcneWall_*)
+#   test_surface_face_lighting.cpp — Surface NdotL and spotlight cone per-face lighting (Tests SurfaceFaceLighting_*)
 # ---------------------------------------------------------------------------
 add_executable(tests_render
     test_containment.cpp
@@ -105,6 +107,8 @@ add_executable(tests_render
     test_static_floor_ceiling.cpp
     test_wall_normal_mapping.cpp
     test_ambient_shadows.cpp
+    test_shadow_acne_walls.cpp
+    test_surface_face_lighting.cpp
 )
 
 add_dependencies(tests_render test_shaders)

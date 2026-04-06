@@ -26,4 +26,5 @@ struct SurfaceUBO {
     glm::vec4 clipPlanes[4];
     float     depthBias;
     float     _pad[3];
+    glm::vec4 surfaceNormal; // xyz = world-space outward normal, w = 0
 };

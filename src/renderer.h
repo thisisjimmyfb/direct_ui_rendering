@@ -14,7 +14,8 @@
 struct QuadVertex {
     glm::vec3 pos;
     glm::vec2 uv;
-    int       faceIndex;  // Cube face index (0-5) for quad geometry
+    glm::vec3 normal;      // Outward face normal
+    int       faceIndex;   // Cube face index (0-5) for quad geometry
 };
 
 // ---------------------------------------------------------------------------
@@ -275,4 +276,6 @@ private:
 
     bool m_headless{false};
     std::string m_shaderDir;  // resolved at init() time from shaderDir arg or SHADER_DIR
+    float       m_maxAnisotropy{1.0f};       // maxSamplerAnisotropy from physical device
+    bool        m_anisotropyEnabled{false};  // true if samplerAnisotropy feature was enabled
 };

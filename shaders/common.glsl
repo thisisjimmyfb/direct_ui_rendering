@@ -1,6 +1,15 @@
 // Common GLSL functions shared across multiple shaders
 // Include this file in other shaders using: #include "common.glsl"
 
+// Spotlight cone attenuation: smooth transition from outer to inner cone angle.
+// Returns 1.0 inside the inner cone, 0.0 outside the outer cone.
+// L: normalised light vector (from surface to light), lightDir4.xyz: spotlight axis,
+// lightDir4.w: cos(outerConeAngle), lightColor4.w: cos(innerConeAngle).
+float spotlightFactor(vec3 L, vec4 lightDir4, vec4 lightColor4) {
+    float cosAngle = dot(-L, normalize(lightDir4.xyz));
+    return smoothstep(lightDir4.w, lightColor4.w, cosAngle);
+}
+
 // 2x2 PCF shadow sampling with slope-scaled depth bias.
 // Parameters:
 //   shadowCoord: shadow coordinates from vertex shader

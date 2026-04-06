@@ -211,9 +211,9 @@ The same quad list is rendered with the composite matrix `M_total` (Section 4.5)
 |----------|--------------|-----------------|-------|
 | `pipe_shadow` | `shadow.vert` | (none) | Depth-only, room geometry from light POV |
 | `pipe_room` | `room.vert` | `room.frag` | PBR with Cook-Torrance BRDF + PCF shadow; metallic/roughness materials; procedural normal mapping on walls; ambient lighting always applied (not attenuated by spotlight cone), ensuring shadows are not pitch black |
-| `pipe_ui_direct` | `ui_direct.vert` | `ui_direct.frag` | M_total transform, clip distances, SDF + PCF shadow; ambient lighting applied |
+| `pipe_ui_direct` | `ui_direct.vert` | `ui_direct.frag` | M_total transform, clip distances, SDF + PCF shadow; full NdotL + spotlight cone diffuse lighting using per-face `surfaceNormal` from `SurfaceUBO` |
 | `pipe_ui_rt` | `ui_ortho.vert` | `ui.frag` | Orthographic, for RT pass |
-| `pipe_surface` | `quad.vert` | `surface.frag` / `composite.frag` | Base quad per cube face; `surface.frag` in direct mode, `composite.frag` in traditional mode; both apply ambient lighting in shadows |
+| `pipe_surface` | `quad.vert` | `surface.frag` / `composite.frag` | Base quad per cube face; `surface.frag` in direct mode applies NdotL + spotlight cone + slope-scaled PCF shadow; `composite.frag` in traditional mode |
 | `pipe_metrics` | `ui_ortho.vert` | `ui.frag` | Reuses UI pipeline for HUD |
 
 ### 6.3 Descriptor Sets
@@ -222,7 +222,7 @@ The same quad list is rendered with the composite matrix `M_total` (Section 4.5)
 |-----|---------|---------|---------|
 | 0 | 0 | `SceneUBO` — view, proj, light params (spotlight position/direction), shadow map matrix | Per frame |
 | 0 | 1 | Shadow map sampler (`sampler2DShadow`) | Static |
-| 1 | 0 | `SurfaceUBO` — M_total, M_world, clip planes, depth bias | Per frame (one per cube face: 6 sets) |
+| 1 | 0 | `SurfaceUBO` — M_total, M_world, clip planes, depth bias, surfaceNormal | Per frame (one per cube face: 6 sets) |
 | 2 | 0 | UI atlas sampler | Static |
 | 2 | 1 | Offscreen RT sampler (traditional mode) | On toggle |
 
@@ -256,10 +256,11 @@ struct SurfaceUBO {
     vec4 clipPlanes[4];   // world-space clip planes
     float depthBias;
     float _pad[3];
+    vec4 surfaceNormal;   // xyz = world-space outward normal, w = 0
 };
 ```
 
-**6 SurfaceUBOs are allocated** — one for each cube face (indices 0-5 corresponding to +X, -X, +Y, -Y, +Z, -Z). Each face's UBO contains the per-face `M_total` transform and clip planes computed from that face's world-space corners.
+**6 SurfaceUBOs are allocated** — one for each cube face (indices 0-5 corresponding to +X, -X, +Y, -Y, +Z, -Z). Each face's UBO contains the per-face `M_total` transform, clip planes computed from that face's world-space corners, and the outward world-space face normal used by `ui_direct.frag` for NdotL lighting of text. The normal is derived from the cross product of face edge vectors and corrected to point outward from the cube centre.
 
 ### 6.6 Synchronization
 

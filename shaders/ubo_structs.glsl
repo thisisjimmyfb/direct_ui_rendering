@@ -21,4 +21,5 @@ layout(set = 1, binding = 0) uniform SurfaceUBO {
     vec4 clipPlanes[4];   // world-space clip planes
     float depthBias;
     float _pad[3];
+    vec4 surfaceNormal;   // xyz = world-space outward normal, w = 0
 };

@@ -237,6 +237,13 @@ void App::drawFrame()
     // Scale the canvas dimensions by the quad scale factors so that fonts stay
     // the same physical world-space size when the quad is resized.
     {
+        // Compute cube centre for outward-normal correction (same logic as updateCubeSurface).
+        glm::vec3 cubeCenter(0.0f);
+        for (int fi = 0; fi < 6; ++fi)
+            for (int ci = 0; ci < 4; ++ci)
+                cubeCenter += m_cubeCorners[fi][ci];
+        cubeCenter /= 24.0f;
+
         std::array<SurfaceUBO, 6> faceUBOs{};
         for (int fi = 0; fi < 6; ++fi) {
             const auto& fc = m_cubeCorners[fi];
@@ -248,6 +255,11 @@ void App::drawFrame()
             faceUBOs[fi].worldMatrix = t.M_world;
             for (int k = 0; k < 4; ++k) faceUBOs[fi].clipPlanes[k] = cp[k];
             faceUBOs[fi].depthBias   = m_depthBias;
+            // Column 2 of M_world = cross-product normal; flip if inward (same as updateCubeSurface).
+            glm::vec3 n = glm::normalize(glm::vec3(t.M_world[2]));
+            glm::vec3 faceCentroid = (fc[0] + fc[1] + fc[2] + fc[3]) * 0.25f;
+            if (glm::dot(n, faceCentroid - cubeCenter) < 0.0f) n = -n;
+            faceUBOs[fi].surfaceNormal = glm::vec4(n, 0.0f);
         }
         m_renderer.updateFaceSurfaceUBOs(faceUBOs);
     }
