@@ -76,12 +76,101 @@ float sampleShadowPCF(vec4 shadowCoord, vec3 N, vec3 L) {
     return shadow * 0.25;
 }
 
+// Procedural hash function for noise generation (Weyl sequence-based)
+float hash(vec3 p) {
+    return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+}
+
+// Perlin-like noise using hash function
+float noisePerlin(vec3 p) {
+    vec3 pi = floor(p);
+    vec3 pf = fract(p);
+
+    // Smooth interpolation curve
+    vec3 u = pf * pf * (3.0 - 2.0 * pf);
+
+    // Hash the 8 corners
+    float n000 = hash(pi + vec3(0.0, 0.0, 0.0));
+    float n100 = hash(pi + vec3(1.0, 0.0, 0.0));
+    float n010 = hash(pi + vec3(0.0, 1.0, 0.0));
+    float n110 = hash(pi + vec3(1.0, 1.0, 0.0));
+    float n001 = hash(pi + vec3(0.0, 0.0, 1.0));
+    float n101 = hash(pi + vec3(1.0, 0.0, 1.0));
+    float n011 = hash(pi + vec3(0.0, 1.0, 1.0));
+    float n111 = hash(pi + vec3(1.0, 1.0, 1.0));
+
+    // Trilinear interpolation
+    float nx0 = mix(n000, n100, u.x);
+    float nx1 = mix(n010, n110, u.x);
+    float nxy0 = mix(nx0, nx1, u.y);
+
+    float nx0z = mix(n001, n101, u.x);
+    float nx1z = mix(n011, n111, u.x);
+    float nxy1 = mix(nx0z, nx1z, u.y);
+
+    return mix(nxy0, nxy1, u.z);
+}
+
+// Generate roughness variation based on world position (simulating a roughness map)
+float getRoughnessVariation(vec3 worldPos, float baseRoughness) {
+    // Multi-octave Perlin-like noise for natural variation
+    float variation = 0.0;
+    float amplitude = 0.3;  // First octave strength
+    float frequency = 1.0;
+    float maxAmplitude = 0.0;
+
+    // 3 octaves of noise for natural looking variation
+    for (int i = 0; i < 3; i++) {
+        variation += noisePerlin(worldPos * frequency * 0.5) * amplitude;
+        maxAmplitude += amplitude;
+        amplitude *= 0.5;
+        frequency *= 2.0;
+    }
+
+    // Normalize and scale to roughness range
+    variation /= maxAmplitude;
+
+    // Add variation: -0.2 to +0.2 range
+    float variationAmount = (variation - 0.5) * 0.4;
+
+    // Clamp final roughness to valid range [0, 1]
+    return clamp(baseRoughness + variationAmount, 0.0, 1.0);
+}
+
+// Simulate subtle normal map effects by perturbing the surface normal
+// This creates the appearance of microscopic depth variance
+vec3 perturbNormal(vec3 N, vec3 worldPos, float strength) {
+    // Generate subtle perturbation vectors from noise
+    float noiseX = noisePerlin(worldPos * 2.0 + vec3(10.0, 0.0, 0.0));
+    float noiseY = noisePerlin(worldPos * 2.0 + vec3(0.0, 10.0, 0.0));
+    float noiseZ = noisePerlin(worldPos * 2.0 + vec3(0.0, 0.0, 10.0));
+
+    // Create small perturbation vectors
+    vec3 perturbation = normalize(vec3(
+        (noiseX - 0.5) * 2.0,
+        (noiseY - 0.5) * 2.0,
+        (noiseZ - 0.5) * 2.0
+    )) * strength;
+
+    // Blend original normal with perturbation
+    vec3 perturbedN = normalize(N + perturbation);
+    return mix(N, perturbedN, strength);
+}
+
 void main() {
     vec3 N = normalize(inNormal);
 
+    // Apply subtle normal perturbation to simulate normal map effects
+    // Strength varies with roughness: rougher surfaces get more pronounced normal variation
+    float normalPerturbationStrength = 0.08 * inMaterial.y;  // Base perturbation scaled by roughness
+    N = perturbNormal(N, inWorldPos, normalPerturbationStrength);
+
     // Get material properties from vertex shader
     float metallic = inMaterial.x;
-    float roughness = inMaterial.y;
+    float baseRoughness = inMaterial.y;
+
+    // Apply roughness variation based on world position (normal map simulation)
+    float roughness = getRoughnessVariation(inWorldPos, baseRoughness);
 
     // Per-fragment light vector for the spotlight.
     vec3 toLight = lightPos.xyz - inWorldPos;
