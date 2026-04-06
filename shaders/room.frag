@@ -186,8 +186,10 @@ void main() {
     // Ambient term (environmental lighting approximation)
     vec3 ambient = ambientColor.rgb * inColor.rgb * (1.0 - metallic * 0.9);
 
-    // Combine all components
-    vec3 result = (ambient + diffuse + specular) * spotFactor;
+    // Combine all components: ambient is always visible (not multiplied by spotFactor),
+    // while diffuse and specular are only visible where the spotlight shines.
+    // This ensures shadows are illuminated by ambient light, not pitch black.
+    vec3 result = ambient + (diffuse + specular) * spotFactor;
 
     outColor = vec4(result, 1.0);
 }

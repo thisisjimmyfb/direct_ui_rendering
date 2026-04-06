@@ -104,6 +104,7 @@ add_executable(tests_render
     test_metallic_materials.cpp
     test_static_floor_ceiling.cpp
     test_wall_normal_mapping.cpp
+    test_ambient_shadows.cpp
 )
 
 add_dependencies(tests_render test_shaders)

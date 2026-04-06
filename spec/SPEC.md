@@ -69,6 +69,7 @@ A simple looping animation is sufficient — e.g., a gentle rotation or oscillat
 - One spotlight with position `(0, 2.8, 0.5)`, direction pointing toward `(0, -1.3, -3.5)`.
 - Spotlight cone angles: inner `35°`, outer `50°`.
 - Light color: warm white `(1.0, 0.95, 0.85)`; ambient: `(0.08, 0.08, 0.12)`.
+  - **Ambient behavior**: Ambient lighting is applied uniformly everywhere, independent of the spotlight cone. This ensures shadowed areas are illuminated by ambient light and are not pitch black. Only diffuse and specular components are attenuated by the spotlight cone.
 - Shadow map rendered in a dedicated depth-only pre-pass to a `VK_FORMAT_D32_SFLOAT` image (1024×1024).
 - Main pass samples the shadow map with a `sampler2DShadow` and basic PCF (2×2 tap) for soft edges.
 - The UI surface cube faces and room geometry both receive shadow.
@@ -226,10 +227,10 @@ The same quad list is rendered with the composite matrix `M_total` (Section 4.5)
 | Pipeline | Vertex shader | Fragment shader | Notes |
 |----------|--------------|-----------------|-------|
 | `pipe_shadow` | `shadow.vert` | (none) | Depth-only, room geometry from light POV |
-| `pipe_room` | `room.vert` | `room.frag` | PBR with Cook-Torrance BRDF + PCF shadow; metallic/roughness materials; procedural normal mapping on walls; ripple-based normal perturbation on floor |
-| `pipe_ui_direct` | `ui_direct.vert` | `ui_direct.frag` | M_total transform, clip distances, SDF + PCF shadow |
+| `pipe_room` | `room.vert` | `room.frag` | PBR with Cook-Torrance BRDF + PCF shadow; metallic/roughness materials; procedural normal mapping on walls; ambient lighting always applied (not attenuated by spotlight cone), ensuring shadows are not pitch black |
+| `pipe_ui_direct` | `ui_direct.vert` | `ui_direct.frag` | M_total transform, clip distances, SDF + PCF shadow; ambient lighting applied |
 | `pipe_ui_rt` | `ui_ortho.vert` | `ui.frag` | Orthographic, for RT pass |
-| `pipe_surface` | `quad.vert` | `surface.frag` / `composite.frag` | Base quad per cube face; `surface.frag` in direct mode, `composite.frag` in traditional mode |
+| `pipe_surface` | `quad.vert` | `surface.frag` / `composite.frag` | Base quad per cube face; `surface.frag` in direct mode, `composite.frag` in traditional mode; both apply ambient lighting in shadows |
 | `pipe_metrics` | `ui_ortho.vert` | `ui.frag` | Reuses UI pipeline for HUD |
 
 ### 6.3 Descriptor Sets
