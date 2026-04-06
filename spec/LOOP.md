@@ -2,7 +2,9 @@
 Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks), but don't implement it yet. If the task affects the core execution of the demo, then please create tests that will fail without implementing the task. After tests are created, work on the implementation. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit and do not write progress or summary in this file.
 
 ## Pending Tasks
-
+- Investigate UI font's lighting differences between direct and traditional mode rendering.
+- Investigate shadow aliasing on the right wall in the room.
+- Refactor shared test helper `makeSpotlightSceneUBO` out of `containment_fixture.h` into a standalone header so it can be reused by both `tests_render` (UI_TEST_COLOR shaders) and `tests_sdf` (production shaders) without duplication.
 
 ## Iterate
 - Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct.

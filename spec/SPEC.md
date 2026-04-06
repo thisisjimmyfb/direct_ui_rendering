@@ -64,7 +64,7 @@ A simple looping animation is sufficient — e.g., a gentle rotation or oscillat
 
 ### 3.1 Mode Toggle
 
-Press `Space` to toggle between modes at runtime. The current mode is displayed in the metrics overlay (see Section 8). The toggle takes effect at the start of the next frame.
+Press `Space` to toggle between modes at runtime. The current mode is displayed in the metrics overlay (see Section 8). The toggle takes effect at the start of the next frame. Both modes should result in identical visual output for all visual effects.
 
 | Mode | Key | Description |
 |------|-----|-------------|
@@ -213,7 +213,7 @@ The same quad list is rendered with the composite matrix `M_total` (Section 4.5)
 | `pipe_room` | `room.vert` | `room.frag` | PBR with Cook-Torrance BRDF + PCF shadow; metallic/roughness materials; procedural normal mapping on walls; ambient lighting always applied (not attenuated by spotlight cone), ensuring shadows are not pitch black |
 | `pipe_ui_direct` | `ui_direct.vert` | `ui_direct.frag` | M_total transform, clip distances, SDF + PCF shadow; full NdotL + spotlight cone diffuse lighting using per-face `surfaceNormal` from `SurfaceUBO` |
 | `pipe_ui_rt` | `ui_ortho.vert` | `ui.frag` | Orthographic, for RT pass |
-| `pipe_surface` | `quad.vert` | `surface.frag` / `composite.frag` | Base quad per cube face; `surface.frag` in direct mode applies NdotL + spotlight cone + slope-scaled PCF shadow; `composite.frag` in traditional mode |
+| `pipe_surface` | `quad.vert` | `surface.frag` / `composite.frag` | Base quad per cube face; `surface.frag` in direct mode applies NdotL + spotlight cone + slope-scaled PCF shadow; `composite.frag` in traditional mode applies identical world lighting (NdotL + spotlight cone + slope-scaled PCF shadow) and composites the offscreen RT on top via premul-alpha blend |
 | `pipe_metrics` | `ui_ortho.vert` | `ui.frag` | Reuses UI pipeline for HUD |
 
 ### 6.3 Descriptor Sets
