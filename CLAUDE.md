@@ -56,6 +56,8 @@ direct_ui_rendering/
 │   ├── ui_direct.frag                # Direct-mode UI fragment: SDF smoothstep, lighting model (ambient + spotlight), PCF shadow
 │   ├── ui_direct.vert                # Direct-mode UI vertex: M_total transform, clip distances, shadow coordinates
 │   └── ui_ortho.vert                 # Orthographic UI vertex shader (RT pass + metrics overlay)
+├── tests/shaders/
+│   └── ui_direct_static.frag         # Test shader variant: static white UI text (no color animation)
 ├── tests/
 │   ├── CMakeLists.txt                # Test target configuration (tests_unit, tests_render, tests_sdf)
 │   ├── containment_fixture.h         # Shared ContainmentTest fixture + helpers for render tests
