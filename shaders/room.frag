@@ -181,7 +181,7 @@ void main() {
     // 3. Combine into Cook-Torrance BRDF
     // Fresnel term F is already computed above
     // Specular = (D * G * F) / (4 * NdotV * NdotL)
-    vec3 specular = (D * G * F) * shadow * spotFactor * lightIntensity;
+    vec3 specular = (D * G * F) * shadow * spotFactor;
 
     // Ambient term (environmental lighting approximation)
     vec3 ambient = ambientColor.rgb * inColor.rgb * (1.0 - metallic * 0.9);

@@ -2,30 +2,18 @@
 #include "scene.h"
 #include "renderer.h"
 #include "containment_fixture.h"
+#include "test_pixel_helpers.h"
 
 #include <algorithm>
 #include <cmath>
+
+using namespace TestPixelHelpers;
 
 // ---------------------------------------------------------------------------
 // Metallic Material Tests — Verify material variety with metallic surfaces
 // ---------------------------------------------------------------------------
 
 class MetallicMaterialTest : public ContainmentTest {
-protected:
-    static glm::vec4 unpackPixel(const uint8_t* pixelData) {
-        return glm::vec4(
-            pixelData[0] / 255.0f,
-            pixelData[1] / 255.0f,
-            pixelData[2] / 255.0f,
-            pixelData[3] / 255.0f
-        );
-    }
-
-    static const uint8_t* samplePixel(const std::vector<uint8_t>& pixels,
-                                       uint32_t x, uint32_t y,
-                                       uint32_t width) {
-        return pixels.data() + (y * width + x) * 4;
-    }
 };
 
 // Test 1: Verify that material definitions include metallic surfaces

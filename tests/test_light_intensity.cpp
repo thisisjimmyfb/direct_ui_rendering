@@ -1,22 +1,11 @@
 #include <gtest/gtest.h>
 #include "app.h"
+#include "test_app_helper.h"
 #include <glm/glm.hpp>
 #include <cmath>
 
 // Pi constant for tests (avoiding M_PI which is not portable)
 constexpr float PI_F = 3.14159265358979323846f;
-
-// Test helper to access App private members
-class AppTestHelper {
-public:
-    static float getTime(const App& app) {
-        return app.m_time;
-    }
-
-    static void setTime(App& app, float time) {
-        app.m_time = time;
-    }
-};
 
 // ---------------------------------------------------------------------------
 // LightIntensityPulsingTest — Test time-based light intensity animation
