@@ -7,9 +7,17 @@
 //   N: surface normal (for bias calculation)
 //   L: light direction (for bias calculation)
 //   shadowMap: sampler2DShadow for shadow lookups
+//
+// The depth bias prevents shadow acne (self-shadowing artifacts) on surfaces that are
+// nearly perpendicular to the light direction. Slope-scaled bias adapts to surface angle:
+// - Surfaces facing the light (N·L ≈ 1) get minimal bias (0.002)
+// - Surfaces perpendicular to light (N·L ≈ 0) get maximum bias (0.008)
+// This prevents acne on walls while minimizing false shadows on lit surfaces.
 float sampleShadowPCF(vec4 shadowCoord, vec3 N, vec3 L, sampler2DShadow shadowMap) {
     vec3 proj = shadowCoord.xyz / shadowCoord.w;
-    float bias = max(0.005 * (1.0 - dot(N, L)), 0.001);
+    // Slope-scaled bias: stronger scaling to prevent acne on steep surfaces
+    float cosTheta = dot(N, L);
+    float bias = max(0.008 * (1.0 - cosTheta), 0.002);
     proj.z -= bias;
     float shadow = 0.0;
     vec2 texelSize = vec2(1.0 / 1024.0);

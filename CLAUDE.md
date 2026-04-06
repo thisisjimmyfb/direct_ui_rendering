@@ -45,7 +45,7 @@ direct_ui_rendering/
 │   ├── ui_surface.cpp                # UI surface transform calculations (100 lines)
 │   └── vk_utils.h                    # Thin Vulkan helpers: image barriers, buffer upload utilities (102 lines)
 ├── shaders/
-│   ├── common.glsl                   # Shared GLSL functions: sampleShadowPCF, hash, noisePerlin (included by room.vert, room.frag, ui_direct.frag)
+│   ├── common.glsl                   # Shared GLSL functions: sampleShadowPCF (with depth bias), hash, noisePerlin (included by room.frag, ui_direct.frag, composite.frag, surface.frag)
 │   ├── composite.frag                # Traditional mode: blend UI render target onto teal quad
 │   ├── quad.vert                     # Vertex shader for surface/composite quad geometry
 │   ├── room.vert                     # PBR room geometry vertex shader (transforms, material properties)
@@ -80,6 +80,7 @@ direct_ui_rendering/
 │   ├── test_scale_render.cpp         # tests_render: non-uniform scale clip plane tracking and font-size invariance (2 tests)
 │   ├── test_scene.cpp                # tests_unit: SceneInit, WorldCorners (animation continuity, extreme aspect ratios), WorldCubeCorners, SceneAnimation, LightFrustum, UISurface (63 tests)
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
+│   ├── test_shadow_acne_walls.cpp    # tests_render: shadow acne artifact detection on wall surfaces (3 tests)
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI cube shadow casting (3 tests)
 │   ├── test_spotlight_cone.cpp       # tests_render: spotlight cone angle attenuation (5 tests)
 │   ├── test_static_floor_ceiling.cpp # tests_render: verify floor and ceiling remain static (no ripple effect) (3 tests)

@@ -1,5 +1,7 @@
 #version 450
 
+#include "common.glsl"
+
 layout(set = 0, binding = 0) uniform SceneUBO {
     mat4 view;
     mat4 proj;
@@ -19,21 +21,6 @@ layout(location = 1) in vec4 inShadowCoord;
 
 layout(location = 0) out vec4 outColor;
 
-// 2x2 PCF with centered {-0.5, 0.5} kernel for symmetric penumbra.
-// Matches room.frag shadow quality with consistent kernel across all shadow sampling.
-float sampleShadowPCF(vec4 shadowCoord) {
-    vec3 proj = shadowCoord.xyz / shadowCoord.w;
-    float shadow = 0.0;
-    vec2 texelSize = vec2(1.0 / 1024.0);
-    for (float x = -0.5; x <= 0.5; x += 1.0) {
-        for (float y = -0.5; y <= 0.5; y += 1.0) {
-            shadow += texture(shadowMap,
-                vec3(proj.xy + vec2(x, y) * texelSize, proj.z));
-        }
-    }
-    return shadow * 0.25;
-}
-
 void main() {
     vec4 uiColor = texture(uiRT, inTexCoord);
 
@@ -43,7 +30,7 @@ void main() {
     // by the isMagenta() check in test_containment.cpp.
     outColor = uiColor;
 #else
-    float shadow  = sampleShadowPCF(inShadowCoord);
+    float shadow  = sampleShadowPCF(inShadowCoord, shadowMap);
     vec3  lit     = clamp(ambientColor.rgb + shadow * lightColor.rgb * lightIntensity, 0.0, 1.0);
 
     // Teal base color; premul-alpha blend the UI texture on top.
