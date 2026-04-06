@@ -48,8 +48,8 @@ direct_ui_rendering/
 │   ├── common.glsl                   # Shared GLSL functions: sampleShadowPCF, hash, noisePerlin (included by room.vert, room.frag, ui_direct.frag)
 │   ├── composite.frag                # Traditional mode: blend UI render target onto teal quad
 │   ├── quad.vert                     # Vertex shader for surface/composite quad geometry
-│   ├── room.vert                     # PBR room geometry vertex shader (transforms, material properties, floor ripple displacement)
-│   ├── room.frag                     # PBR (Cook-Torrance BRDF) with metallic/roughness properties + PCF shadow; Fresnel-Schlick approximation; GGX distribution; procedural roughness variation (normal map simulation); wall normal mapping; ripple-based normal perturbation on floor
+│   ├── room.vert                     # PBR room geometry vertex shader (transforms, material properties)
+│   ├── room.frag                     # PBR (Cook-Torrance BRDF) with metallic/roughness properties + PCF shadow; Fresnel-Schlick approximation; GGX distribution; procedural roughness variation (normal map simulation); wall normal mapping
 │   ├── shadow.vert                   # Depth-only shadow pass vertex shader
 │   ├── surface.frag                  # Opaque teal quad fragment shader (direct mode base layer)
 │   ├── ui.frag                       # UI atlas sampling with SDF smoothstep (white text) or bitmap mode
@@ -67,7 +67,6 @@ direct_ui_rendering/
 │   ├── test_command_line.cpp         # tests_unit: CommandLineTest --timeout parameter parsing (10 tests)
 │   ├── test_containment.cpp          # tests_render: UI pixel containment in direct and traditional modes (4 tests)
 │   ├── test_depth_bias.cpp           # tests_render: depth bias effectiveness in direct mode (5 tests)
-│   ├── test_floor_ripple.cpp         # tests_render: floor ripple pattern animation and visual effects (4 tests)
 │   ├── test_hud.cpp                  # tests_unit: MetricsTest HUDTessellation — vertex counts, positions, spacing
 │   ├── test_light_intensity.cpp      # tests_unit: LightIntensityPulsing time-based light animation validation (12 tests)
 │   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), FontSizeInvariance, Parallelogram
@@ -82,6 +81,7 @@ direct_ui_rendering/
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI cube shadow casting (3 tests)
 │   ├── test_spotlight_cone.cpp       # tests_render: spotlight cone angle attenuation (5 tests)
+│   ├── test_static_floor_ceiling.cpp # tests_render: verify floor and ceiling remain static (no ripple effect) (3 tests)
 │   ├── test_ui_cube_shadow.cpp       # tests_render: animated UI cube shadow consistency, extreme rotation stability (2 tests)
 │   ├── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
 │   └── test_wall_normal_mapping.cpp  # tests_render: wall normal mapping effects, parallax mapping, roughness-dependent shading (6 tests)
