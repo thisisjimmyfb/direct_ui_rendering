@@ -102,8 +102,8 @@ protected:
         // UI vertex buffer: one full-canvas quad.
         {
             uiVtxCount = 6;
-            const float W = static_cast<float>(Renderer::W_UI);
-            const float H = static_cast<float>(Renderer::H_UI);
+            const float W = static_cast<float>(W_UI);
+            const float H = static_cast<float>(H_UI);
             UIVertex verts[6] = {
                 {{0, 0}, {0, 0}}, {{W, 0}, {1, 0}}, {{W, H}, {1, 1}},
                 {{0, 0}, {0, 0}}, {{W, H}, {1, 1}}, {{0, H}, {0, 1}},
@@ -158,8 +158,8 @@ protected:
         glm::vec3 P01{-0.5f, -0.5f, 0.0f};
 
         auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                                   static_cast<float>(Renderer::W_UI),
-                                                   static_cast<float>(Renderer::H_UI),
+                                                   static_cast<float>(W_UI),
+                                                   static_cast<float>(H_UI),
                                                    proj * view);
         auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
@@ -200,8 +200,8 @@ protected:
         renderer.recordShadowPass(cmd);
 
         if (!directMode) {
-            glm::mat4 uiOrtho = glm::ortho(0.0f, static_cast<float>(Renderer::W_UI),
-                                           static_cast<float>(Renderer::H_UI), 0.0f,
+            glm::mat4 uiOrtho = glm::ortho(0.0f, static_cast<float>(W_UI),
+                                           static_cast<float>(H_UI), 0.0f,
                                            -1.0f, 1.0f);
             renderer.recordUIRTPass(cmd, uiVtxBuf, uiVtxCount, uiOrtho);
         }

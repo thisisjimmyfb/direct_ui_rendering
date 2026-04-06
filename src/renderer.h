@@ -8,6 +8,7 @@
 #include <array>
 #include <cstdint>
 #include "shader_uniforms.h"
+#include "ui_system.h"
 
 // Vertex layout for the composite surface quad (world-space pos + UV + face index).
 struct QuadVertex {
@@ -143,9 +144,7 @@ public:
     VkDescriptorSetLayout getSetLayout1() const { return m_setLayout1; }
     VkDescriptorSetLayout getSetLayout2() const { return m_setLayout2; }
 
-    // Canvas / rendering constants
-    static constexpr uint32_t W_UI             = 512;
-    static constexpr uint32_t H_UI             = 128;
+    // Rendering constants
     static constexpr uint32_t SHADOW_MAP_SIZE  = 1024;
     static constexpr float    DEPTH_BIAS_DEFAULT = 0.0001f;
 

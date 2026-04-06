@@ -31,8 +31,8 @@ TEST_F(ContainmentTest, DirectMode_MagentaPixels_InsideSurfaceQuad)
     renderer.updateSceneUBO(sceneUBO);
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     SurfaceUBO surfaceUBO{};
@@ -83,8 +83,8 @@ TEST_F(ContainmentTest, TraditionalMode_MagentaPixels_InsideSurfaceQuad)
     renderer.updateSceneUBO(sceneUBO);
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     SurfaceUBO surfaceUBO{};
@@ -97,8 +97,8 @@ TEST_F(ContainmentTest, TraditionalMode_MagentaPixels_InsideSurfaceQuad)
     // Position the surface quad so the compositor draws the UI at the correct location.
     renderer.updateSurfaceQuad(P00, P10, P01, P11);
 
-    glm::mat4 uiOrtho = glm::ortho(0.0f, static_cast<float>(Renderer::W_UI),
-                                   static_cast<float>(Renderer::H_UI), 0.0f,
+    glm::mat4 uiOrtho = glm::ortho(0.0f, static_cast<float>(W_UI),
+                                   static_cast<float>(H_UI), 0.0f,
                                    -1.0f, 1.0f);
 
     auto pixels = renderAndReadback(/*directMode=*/false, uiOrtho);
@@ -154,8 +154,8 @@ TEST_F(ContainmentTest, ExtremeAngle_DirectMode_MagentaPixels_InsideSurfaceQuad)
     renderer.updateSceneUBO(sceneUBO);
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     SurfaceUBO surfaceUBO{};
@@ -224,8 +224,8 @@ TEST_F(ContainmentTest, DirectMode_AnimationFrames_MagentaContained)
         scene.worldCorners(t, P00, P10, P01, P11);
 
         auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                                   static_cast<float>(Renderer::W_UI),
-                                                   static_cast<float>(Renderer::H_UI), vp);
+                                                   static_cast<float>(W_UI),
+                                                   static_cast<float>(H_UI), vp);
         auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
         SurfaceUBO surfaceUBO{};

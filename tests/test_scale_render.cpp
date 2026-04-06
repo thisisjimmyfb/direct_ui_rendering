@@ -49,8 +49,8 @@ TEST_F(ContainmentTest, NonUniformScale_DirectMode_ClipPlanesTrackReshapedSurfac
     // This causes H_UI * scaleH content to map exactly to the reshaped surface
     // height-wise, while W_UI * scaleW is the logical canvas width.
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI) * scaleW,
-                                               static_cast<float>(Renderer::H_UI) * scaleH,
+                                               static_cast<float>(W_UI) * scaleW,
+                                               static_cast<float>(H_UI) * scaleH,
                                                vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
@@ -122,8 +122,8 @@ TEST_F(ContainmentTest, FontSizeInvariance_DirectVsTraditional_ScaledQuad)
 
     // Both modes use the unscaled canvas (W_UI × H_UI).
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     SurfaceUBO surfaceUBO{};
@@ -138,8 +138,8 @@ TEST_F(ContainmentTest, FontSizeInvariance_DirectVsTraditional_ScaledQuad)
 
     // Sub-canvas vertex buffer: a rect covering the LEFT HALF of UI space.
     // x in [0, W_UI/2], y in [0, H_UI] — two triangles, 6 vertices.
-    const float halfW = static_cast<float>(Renderer::W_UI) * 0.5f;
-    const float H     = static_cast<float>(Renderer::H_UI);
+    const float halfW = static_cast<float>(W_UI) * 0.5f;
+    const float H     = static_cast<float>(H_UI);
     UIVertex subVerts[UI_VTX_COUNT] = {
         {{0,     0}, {0.0f, 0.0f}}, {{halfW, 0}, {0.5f, 0.0f}}, {{halfW, H}, {0.5f, 1.0f}},
         {{0,     0}, {0.0f, 0.0f}}, {{halfW, H}, {0.5f, 1.0f}}, {{0,     H}, {0.0f, 1.0f}},
@@ -169,8 +169,8 @@ TEST_F(ContainmentTest, FontSizeInvariance_DirectVsTraditional_ScaledQuad)
     uiVtxAlloc = subVtxAlloc;
 
     // Ortho matrix for traditional mode: full unscaled canvas.
-    glm::mat4 uiOrtho = glm::ortho(0.0f, static_cast<float>(Renderer::W_UI),
-                                   static_cast<float>(Renderer::H_UI), 0.0f,
+    glm::mat4 uiOrtho = glm::ortho(0.0f, static_cast<float>(W_UI),
+                                   static_cast<float>(H_UI), 0.0f,
                                    -1.0f, 1.0f);
 
     auto pixelsDirect = renderAndReadback(/*directMode=*/true);

@@ -163,8 +163,8 @@ protected:
 
         // Full-canvas UI quad (two triangles).
         {
-            const float W = static_cast<float>(Renderer::W_UI);
-            const float H = static_cast<float>(Renderer::H_UI);
+            const float W = static_cast<float>(W_UI);
+            const float H = static_cast<float>(H_UI);
             UIVertex verts[UI_VTX_COUNT] = {
                 {{0, 0}, {0, 0}}, {{W, 0}, {1, 0}}, {{W, H}, {1, 1}},
                 {{0, 0}, {0, 0}}, {{W, H}, {1, 1}}, {{0, H}, {0, 1}},
@@ -205,8 +205,8 @@ protected:
         renderer.updateSceneUBO(sceneUBO);
 
         auto transforms = computeSurfaceTransforms(m_P00, m_P10, m_P01,
-                                                   static_cast<float>(Renderer::W_UI),
-                                                   static_cast<float>(Renderer::H_UI),
+                                                   static_cast<float>(W_UI),
+                                                   static_cast<float>(H_UI),
                                                    proj * view);
         auto clipPlanes = computeClipPlanes(m_P00, m_P10, m_P01);
 
@@ -356,8 +356,8 @@ protected:
         // UI RT pass: renders UI geometry into the offscreen RT with sdfThreshold applied.
         // The UI RT render pass's subpass dependency (dstSubpass=VK_SUBPASS_EXTERNAL) ensures
         // COLOR_ATTACHMENT_WRITE is visible before FRAGMENT_SHADER reads — no explicit barrier needed.
-        glm::mat4 ortho = glm::ortho(0.0f, static_cast<float>(Renderer::W_UI),
-                                     0.0f, static_cast<float>(Renderer::H_UI),
+        glm::mat4 ortho = glm::ortho(0.0f, static_cast<float>(W_UI),
+                                     0.0f, static_cast<float>(H_UI),
                                      -1.0f, 1.0f);
         renderer.recordUIRTPass(cmd, uiVtxBuf, UI_VTX_COUNT, ortho, sdfThreshold);
 
@@ -565,8 +565,8 @@ protected:
 
         // Full-canvas UI quad.
         {
-            const float W = static_cast<float>(Renderer::W_UI);
-            const float H = static_cast<float>(Renderer::H_UI);
+            const float W = static_cast<float>(W_UI);
+            const float H = static_cast<float>(H_UI);
             UIVertex verts[UI_VTX_COUNT] = {
                 {{0, 0}, {0, 0}}, {{W, 0}, {1, 0}}, {{W, H}, {1, 1}},
                 {{0, 0}, {0, 0}}, {{W, H}, {1, 1}}, {{0, H}, {0, 1}},
@@ -607,8 +607,8 @@ protected:
         renderer.updateSceneUBO(sceneUBO);
 
         auto transforms = computeSurfaceTransforms(m_P00, m_P10, m_P01,
-                                                   static_cast<float>(Renderer::W_UI),
-                                                   static_cast<float>(Renderer::H_UI),
+                                                   static_cast<float>(W_UI),
+                                                   static_cast<float>(H_UI),
                                                    proj * view);
         auto clipPlanes = computeClipPlanes(m_P00, m_P10, m_P01);
 
@@ -749,8 +749,8 @@ protected:
 
         renderer.recordShadowPass(cmd);
 
-        glm::mat4 ortho = glm::ortho(0.0f, static_cast<float>(Renderer::W_UI),
-                                     0.0f, static_cast<float>(Renderer::H_UI),
+        glm::mat4 ortho = glm::ortho(0.0f, static_cast<float>(W_UI),
+                                     0.0f, static_cast<float>(H_UI),
                                      -1.0f, 1.0f);
         renderer.recordUIRTPass(cmd, uiVtxBuf, UI_VTX_COUNT, ortho, sdfThreshold);
 
@@ -1253,8 +1253,8 @@ protected:
 
         // Create a full-canvas UI quad that will render the "H" glyph
         {
-            const float W = static_cast<float>(Renderer::W_UI);
-            const float H = static_cast<float>(Renderer::H_UI);
+            const float W = static_cast<float>(W_UI);
+            const float H = static_cast<float>(H_UI);
             UIVertex verts[UI_VTX_COUNT] = {
                 {{0, 0}, {0, 0}}, {{W, 0}, {1, 0}}, {{W, H}, {1, 1}},
                 {{0, 0}, {0, 0}}, {{W, H}, {1, 1}}, {{0, H}, {0, 1}},
@@ -1299,8 +1299,8 @@ protected:
         renderer.updateSceneUBO(sceneUBO);
 
         auto transforms = computeSurfaceTransforms(m_P00, m_P10, m_P01,
-                                                   static_cast<float>(Renderer::W_UI),
-                                                   static_cast<float>(Renderer::H_UI),
+                                                   static_cast<float>(W_UI),
+                                                   static_cast<float>(H_UI),
                                                    proj * view);
         auto clipPlanes = computeClipPlanes(m_P00, m_P10, m_P01);
 

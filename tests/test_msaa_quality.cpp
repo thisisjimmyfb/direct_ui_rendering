@@ -142,8 +142,8 @@ TEST_F(MSAAQualityTest, DirectMode_EdgesSmootherThanTraditional)
     renderer.updateSceneUBO(sceneUBO);
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     SurfaceUBO surfaceUBO{};
@@ -209,8 +209,8 @@ TEST_F(MSAAQualityTest, DirectMode_SmoothnessDifferentialIsConsistent)
     renderer.updateSceneUBO(sceneUBO);
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     SurfaceUBO surfaceUBO{};

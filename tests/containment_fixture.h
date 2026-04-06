@@ -189,8 +189,8 @@ protected:
 
         // Full-canvas UI quad (two triangles).
         {
-            const float W = static_cast<float>(Renderer::W_UI);
-            const float H = static_cast<float>(Renderer::H_UI);
+            const float W = static_cast<float>(W_UI);
+            const float H = static_cast<float>(H_UI);
             UIVertex verts[UI_VTX_COUNT] = {
                 {{0, 0}, {0, 0}}, {{W, 0}, {1, 0}}, {{W, H}, {1, 1}},
                 {{0, 0}, {0, 0}}, {{W, H}, {1, 1}}, {{0, H}, {0, 1}},

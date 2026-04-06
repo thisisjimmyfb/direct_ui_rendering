@@ -57,8 +57,8 @@ TEST_F(DepthBiasTest, DepthBias_NonZero_ProducesStableOutput)
     renderer.updateSceneUBO(sceneUBO);
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     // Render with default depth bias
@@ -131,8 +131,8 @@ TEST_F(DepthBiasTest, DepthBias_ObliqueSurface_WithSmallBias_StableRendering)
     renderer.updateSceneUBO(sceneUBO);
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     // Render with a small but non-zero depth bias
@@ -179,8 +179,8 @@ TEST_F(DepthBiasTest, DepthBias_LargeBias_StillRendersCorrectly)
     renderer.updateSceneUBO(sceneUBO);
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     // Use a larger bias (but still reasonable)
@@ -227,8 +227,8 @@ TEST_F(DepthBiasTest, DepthBias_Sweep_OutputConsistent)
     renderer.updateSceneUBO(sceneUBO);
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                               static_cast<float>(Renderer::W_UI),
-                                               static_cast<float>(Renderer::H_UI), vp);
+                                               static_cast<float>(W_UI),
+                                               static_cast<float>(H_UI), vp);
     auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
     // Test multiple bias values
@@ -302,8 +302,8 @@ TEST_F(DepthBiasTest, DepthBias_AnimatedSurface_MaintainsOrder)
         scene.worldCorners(t, P00, P10, P01, P11);
 
         auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                                   static_cast<float>(Renderer::W_UI),
-                                                   static_cast<float>(Renderer::H_UI), vp);
+                                                   static_cast<float>(W_UI),
+                                                   static_cast<float>(H_UI), vp);
         auto clipPlanes = computeClipPlanes(P00, P10, P01);
 
         SurfaceUBO surfaceUBO{};
