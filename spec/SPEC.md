@@ -226,7 +226,7 @@ The same quad list is rendered with the composite matrix `M_total` (Section 4.5)
 | Pipeline | Vertex shader | Fragment shader | Notes |
 |----------|--------------|-----------------|-------|
 | `pipe_shadow` | `shadow.vert` | (none) | Depth-only, room geometry from light POV |
-| `pipe_room` | `room.vert` | `room.frag` | PBR with Cook-Torrance BRDF + PCF shadow |
+| `pipe_room` | `room.vert` | `room.frag` | PBR with Cook-Torrance BRDF + PCF shadow; metallic/roughness materials; procedural normal mapping on walls; ripple-based normal perturbation on floor |
 | `pipe_ui_direct` | `ui_direct.vert` | `ui_direct.frag` | M_total transform, clip distances, SDF + PCF shadow |
 | `pipe_ui_rt` | `ui_ortho.vert` | `ui.frag` | Orthographic, for RT pass |
 | `pipe_surface` | `quad.vert` | `surface.frag` / `composite.frag` | Base quad per cube face; `surface.frag` in direct mode, `composite.frag` in traditional mode |
