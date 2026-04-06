@@ -102,18 +102,20 @@ bool Renderer::createPipelines()
     opaqueBlendState.attachmentCount = 1;
     opaqueBlendState.pAttachments    = &opaqueBlend;
 
-    // Vertex input: room geometry (Vertex: pos:vec3, normal:vec3, uv:vec2 = 32 bytes).
+    // Vertex input: room geometry (Vertex: pos:vec3, normal:vec3, uv:vec2, material:vec2, color:vec3 = 40 bytes).
     VkVertexInputBindingDescription roomBinding{0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX};
-    VkVertexInputAttributeDescription roomAttrs[3]{
+    VkVertexInputAttributeDescription roomAttrs[5]{
         {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)},
         {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal)},
         {2, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, uv)},
+        {4, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, material)},
+        {5, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color)},
     };
     VkPipelineVertexInputStateCreateInfo roomVertexInput{
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
     roomVertexInput.vertexBindingDescriptionCount   = 1;
     roomVertexInput.pVertexBindingDescriptions      = &roomBinding;
-    roomVertexInput.vertexAttributeDescriptionCount = 3;
+    roomVertexInput.vertexAttributeDescriptionCount = 5;
     roomVertexInput.pVertexAttributeDescriptions    = roomAttrs;
 
     // Vertex input: UI (UIVertex: pos:vec2, uv:vec2 = 16 bytes).

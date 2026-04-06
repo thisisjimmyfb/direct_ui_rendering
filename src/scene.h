@@ -5,11 +5,22 @@
 #include <array>
 #include <cstdint>
 
-// Vertex layout for room geometry (position, normal, UV).
+// PBR material properties for physically based rendering.
+// metallic: 0 = dielectric (non-metal), 1 = conductor (metal)
+// roughness: 0 = perfectly smooth, 1 = completely rough
+struct Material {
+    float metallic;
+    float roughness;
+    float _pad[2];  // padding for alignment
+};
+
+// Vertex layout for room geometry (position, normal, UV, material, color).
 struct Vertex {
     glm::vec3 pos;
     glm::vec3 normal;
     glm::vec2 uv;
+    Material  material;
+    glm::vec3 color;
 };
 
 // Hardcoded room mesh — floor, ceiling, 4 walls compiled into the binary.
@@ -76,11 +87,21 @@ struct SpotLight {
     float outerConeAngle{glm::radians(50.0f)};
 };
 
+// Material definitions for different room surfaces.
+struct MaterialDefinition {
+    Material material;
+    const char* name;
+};
+
 // Scene owns room mesh data, UI surface corner definitions, and light setup.
 class Scene {
 public:
     // Build room mesh and configure defaults.
     void init();
+
+    // Get material definitions for all room surfaces.
+    static const MaterialDefinition* surfaceMaterials();
+    static int surfaceMaterialCount();
 
     // Compute animation matrix for the UI surface at time t (seconds).
     glm::mat4 animationMatrix(float t) const;

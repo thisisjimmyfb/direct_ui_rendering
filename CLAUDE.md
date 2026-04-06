@@ -76,5 +76,6 @@ direct_ui_rendering/
 │   ├── test_sdf.cpp                  # tests_sdf: SDF threshold/render tests with production shaders
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI cube shadow casting (3 tests)
 │   ├── test_spotlight_cone.cpp       # tests_render: spotlight cone angle attenuation (5 tests)
+│   ├── test_ui_cube_shadow.cpp       # tests_render: animated UI cube shadow consistency, extreme rotation stability (2 tests)
 │   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
 ```

@@ -79,18 +79,20 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 # ---------------------------------------------------------------------------
 # tests_render — headless Vulkan render tests
 # Sources split by theme:
-#   test_containment.cpp   — UI pixel containment (Tests 1-4: direct/trad/angle/animation)
-#   test_shadow_render.cpp — Back wall shadow and PCF symmetry (Tests 5-6)
-#   test_scale_render.cpp  — Non-uniform scale and font-size invariance (Tests 7-8)
-#   test_perf.cpp          — performance regression tests with skip-if-unset guards
-#   test_renderer.cpp      — Renderer initialization, pipelines, descriptor binding tests
-#   test_msaa_quality.cpp  — MSAA edge smoothness comparison (Tests 9-10)
-#   test_depth_bias.cpp    — Depth bias effectiveness in direct mode (Tests 11-15)
-#   test_spotlight_cone.cpp— Spotlight cone angle attenuation (Tests 16-20)
+#   test_containment.cpp     — UI pixel containment (Tests 1-4: direct/trad/angle/animation)
+#   test_shadow_render.cpp   — Back wall shadow and PCF symmetry (Tests 5-6)
+#   test_ui_cube_shadow.cpp  — Animated cube shadow consistency and stability (Tests 7-8)
+#   test_scale_render.cpp    — Non-uniform scale and font-size invariance (Tests 9-10)
+#   test_perf.cpp            — performance regression tests with skip-if-unset guards
+#   test_renderer.cpp        — Renderer initialization, pipelines, descriptor binding tests
+#   test_msaa_quality.cpp    — MSAA edge smoothness comparison (Tests 11-12)
+#   test_depth_bias.cpp      — Depth bias effectiveness in direct mode (Tests 13-17)
+#   test_spotlight_cone.cpp  — Spotlight cone angle attenuation (Tests 18-22)
 # ---------------------------------------------------------------------------
 add_executable(tests_render
     test_containment.cpp
     test_shadow_render.cpp
+    test_ui_cube_shadow.cpp
     test_scale_render.cpp
     test_perf.cpp
     test_renderer.cpp

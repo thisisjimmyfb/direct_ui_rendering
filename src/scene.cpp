@@ -8,17 +8,33 @@ namespace {
 // corners: bottom-left, bottom-right, top-right, top-left (in world space)
 void addQuad(std::vector<Vertex>& verts, std::vector<uint32_t>& idxs,
              glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d,
-             glm::vec3 normal)
+             glm::vec3 normal, const Material& mat, const glm::vec3& color)
 {
     uint32_t base = static_cast<uint32_t>(verts.size());
-    verts.push_back({a, normal, {0.0f, 0.0f}});
-    verts.push_back({b, normal, {1.0f, 0.0f}});
-    verts.push_back({c, normal, {1.0f, 1.0f}});
-    verts.push_back({d, normal, {0.0f, 1.0f}});
+    verts.push_back({a, normal, {0.0f, 0.0f}, mat, color});
+    verts.push_back({b, normal, {1.0f, 0.0f}, mat, color});
+    verts.push_back({c, normal, {1.0f, 1.0f}, mat, color});
+    verts.push_back({d, normal, {0.0f, 1.0f}, mat, color});
 
     // Two triangles: (0,1,2) and (0,2,3)
     idxs.insert(idxs.end(), {base+0, base+1, base+2, base+0, base+2, base+3});
 }
+
+// Material definitions for different room surfaces
+const MaterialDefinition g_surfaceMaterials[] = {
+    // Floor - matte concrete
+    {{0.0f, 0.8f}, "Floor"},
+    // Ceiling - painted drywall
+    {{0.0f, 0.9f}, "Ceiling"},
+    // Back wall - smooth painted wall
+    {{0.0f, 0.7f}, "BackWall"},
+    // Front wall - textured wallpaper
+    {{0.0f, 0.85f}, "FrontWall"},
+    // Left wall - semi-gloss paint
+    {{0.0f, 0.6f}, "LeftWall"},
+    // Right wall - glossy painted wall
+    {{0.0f, 0.5f}, "RightWall"}
+};
 
 } // anonymous namespace
 
@@ -36,35 +52,47 @@ void Scene::init()
     constexpr float H = 3.0f;   // full height
     constexpr float D = 3.0f;   // half-depth
 
-    // Floor   (Y = 0, normal up)
+    // Floor   (Y = 0, normal up) - matte concrete
+    Material floorMat{0.0f, 0.8f};
+    glm::vec3 floorColor(0.6f, 0.6f, 0.65f);
     addQuad(v, i,
         {-W, 0,  D}, { W, 0,  D}, { W, 0, -D}, {-W, 0, -D},
-        {0, 1, 0});
+        {0, 1, 0}, floorMat, floorColor);
 
-    // Ceiling (Y = H, normal down)
+    // Ceiling (Y = H, normal down) - painted drywall
+    Material ceilingMat{0.0f, 0.9f};
+    glm::vec3 ceilingColor(0.85f, 0.82f, 0.75f);
     addQuad(v, i,
         {-W, H, -D}, { W, H, -D}, { W, H,  D}, {-W, H,  D},
-        {0, -1, 0});
+        {0, -1, 0}, ceilingMat, ceilingColor);
 
-    // Back wall  (Z = -D, normal forward)
+    // Back wall  (Z = -D, normal forward) - smooth painted wall
+    Material backWallMat{0.0f, 0.7f};
+    glm::vec3 backWallColor(0.45f, 0.75f, 0.9f);
     addQuad(v, i,
         {-W, 0, -D}, { W, 0, -D}, { W, H, -D}, {-W, H, -D},
-        {0, 0, 1});
+        {0, 0, 1}, backWallMat, backWallColor);
 
-    // Front wall (Z = +D, normal backward) — optional, camera looks from here
+    // Front wall (Z = +D, normal backward) - textured wallpaper
+    Material frontWallMat{0.0f, 0.85f};
+    glm::vec3 frontWallColor(1.0f, 0.65f, 0.45f);
     addQuad(v, i,
         { W, 0,  D}, {-W, 0,  D}, {-W, H,  D}, { W, H,  D},
-        {0, 0, -1});
+        {0, 0, -1}, frontWallMat, frontWallColor);
 
-    // Left wall  (X = -W, normal right)
+    // Left wall  (X = -W, normal right) - semi-gloss paint
+    Material leftWallMat{0.0f, 0.6f};
+    glm::vec3 leftWallColor(0.5f, 0.8f, 0.55f);
     addQuad(v, i,
         {-W, 0,  D}, {-W, 0, -D}, {-W, H, -D}, {-W, H,  D},
-        {1, 0, 0});
+        {1, 0, 0}, leftWallMat, leftWallColor);
 
-    // Right wall (X = +W, normal left)
+    // Right wall (X = +W, normal left) - glossy painted wall
+    Material rightWallMat{0.0f, 0.5f};
+    glm::vec3 rightWallColor(0.75f, 0.6f, 0.8f);
     addQuad(v, i,
         { W, 0, -D}, { W, 0,  D}, { W, H,  D}, { W, H, -D},
-        {-1, 0, 0});
+        {-1, 0, 0}, rightWallMat, rightWallColor);
 }
 
 // ---------------------------------------------------------------------------
@@ -212,4 +240,14 @@ glm::vec3 Scene::spotlightColor(float t) const
 
     // Ensure color values stay in valid range
     return glm::clamp(color, 0.3f, 1.0f);  // Keep some minimum brightness
+}
+
+const MaterialDefinition* Scene::surfaceMaterials()
+{
+    return g_surfaceMaterials;
+}
+
+int Scene::surfaceMaterialCount()
+{
+    return sizeof(g_surfaceMaterials) / sizeof(g_surfaceMaterials[0]);
 }

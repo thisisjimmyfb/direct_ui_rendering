@@ -1,5 +1,7 @@
 #version 450
 
+#define PI 3.14159265359
+
 layout(set = 0, binding = 0) uniform SceneUBO {
     mat4 view;
     mat4 proj;
@@ -17,8 +19,46 @@ layout(location = 0) in vec3 inWorldPos;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec4 inShadowCoord;
 layout(location = 3) in vec2 inUV;
+layout(location = 4) in vec2 inMaterial;  // metallic (x), roughness (y)
+layout(location = 5) in vec3 inColor;     // surface color
 
 layout(location = 0) out vec4 outColor;
+
+// -----------------------------------------------------------------------------
+// PBR Helper Functions
+// -----------------------------------------------------------------------------
+
+// Smith geometry function (Schlick-GGX)
+float smithGGXCorrelation(float NdotV, float roughness) {
+    float a2 = roughness * roughness;
+    float k = (a2 + 1.0) / 2.0;
+    float nom = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+    return nom / denom;
+}
+
+// Distribution function (GGX/Trowbridge-Reitz)
+float distributionGGX(vec3 N, vec3 H, float roughness) {
+    float a2 = roughness * roughness;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / denom;
+}
+
+// Fresnel-Schlick approximation
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+// Fresnel-Schlick with energy conservation
+vec3 fresnelSchlick2(float cosTheta, vec3 F0) {
+    return F0 * (1.0 - cosTheta) + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
 
 // 2x2 PCF with slope-scaled depth bias.
 float sampleShadowPCF(vec4 shadowCoord, vec3 N, vec3 L) {
@@ -39,131 +79,70 @@ float sampleShadowPCF(vec4 shadowCoord, vec3 N, vec3 L) {
 void main() {
     vec3 N = normalize(inNormal);
 
+    // Get material properties from vertex shader
+    float metallic = inMaterial.x;
+    float roughness = inMaterial.y;
+
     // Per-fragment light vector for the spotlight.
     vec3 toLight = lightPos.xyz - inWorldPos;
-    vec3 L       = normalize(toLight);
+    vec3 L = normalize(toLight);
+
+    // View direction (camera at origin for simplicity)
+    vec3 V = normalize(-inWorldPos);
+
+    // Half vector for BRDF
+    vec3 H = normalize(L + V);
 
     // Spotlight cone attenuation: smoothstep from outer to inner cone angle.
-    float cosAngle   = dot(-L, normalize(lightDir.xyz));
-    float outerCos   = lightDir.w;   // cos(outerConeAngle)
-    float innerCos   = lightColor.w; // cos(innerConeAngle)
+    float cosAngle = dot(-L, normalize(lightDir.xyz));
+    float outerCos = lightDir.w;   // cos(outerConeAngle)
+    float innerCos = lightColor.w; // cos(innerConeAngle)
     float spotFactor = smoothstep(outerCos, innerCos, cosAngle);
 
-    // Blinn-Phong diffuse
-    float diff   = max(dot(N, L), 0.0);
+    // Shadow sampling
     float shadow = sampleShadowPCF(inShadowCoord, N, L);
 
-    // Fresnel effect: enhance brightness at grazing angles
-    vec3 V = normalize(-inWorldPos);  // View direction (approximate, camera at origin)
-    float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);  // Viewing-angle-dependent effect
-    float fresnelIntensity = 0.15 * fresnel;  // Subtle contribution
+    // PBR Fresnel term: F0 is base reflectivity at normal incidence
+    // Dielectrics (non-metals): F0 = 0.04
+    // Metals: F0 = albedo color (from surface color)
+    vec3 F0 = mix(vec3(0.04), inColor.rgb, metallic);
 
-    vec3 ambient = ambientColor.rgb;
-    vec3 diffuse = diff * shadow * spotFactor * lightColor.rgb * lightIntensity;
+    // Fresnel-Schlick approximation
+    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
-    // Apply Fresnel to ambient for subtle glancing-angle brightening
-    vec3 fresnelAmbient = ambient * (1.0 + fresnelIntensity);
+    // PBR Diffuse term (Lambertian with energy conservation)
+    vec3 kD = vec3(1.0) - F;  // Energy conservation: kD = 1 - F
+    kD *= 1.0 - metallic;     // Metals have no diffuse component
+    float NdotL = max(dot(N, L), 0.0);
+    vec3 diffuse = kD * inColor.rgb * NdotL * shadow * spotFactor * lightIntensity;
 
-    // Determine surface color and material properties based on wall/surface
-    vec3 surfaceColor = vec3(0.75);  // Default grey
-    float shininess = 8.0;           // Default shininess
-    vec3 specularColor = vec3(1.0);  // Default specular highlight color
+    // PBR Specular term (Cook-Torrance BRDF)
+    // 1. Distribution (GGX/Trowbridge-Reitz)
+    float NdotH = max(dot(N, H), 0.0);
+    float roughnessSq = roughness * roughness;
+    float a2 = roughnessSq * roughnessSq;
+    float nom = roughnessSq;
+    float denom = (NdotH * (roughnessSq - 1.0) + 1.0);
+    denom = PI * denom * denom;
+    float D = nom / denom;
 
-    // Floor grid pattern (Y ≈ 0, the floor level)
-    if (abs(inWorldPos.y) < 0.05) {
-        float gridSize = 0.5;  // Grid cell size in world units
-        vec2 gridCoord = floor(inWorldPos.xz / gridSize);
-        float gridPattern = mod(gridCoord.x + gridCoord.y, 2.0);
+    // 2. Geometry (Smith GGX)
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL2 = NdotL;
+    float V2 = smithGGXCorrelation(NdotV, roughness);
+    float L2 = smithGGXCorrelation(NdotL2, roughness);
+    float G = V2 * L2;
 
-        // Mix between two colors based on grid pattern
-        vec3 gridColor1 = vec3(0.75);  // Light grey
-        vec3 gridColor2 = vec3(0.65);  // Slightly darker grey
-        surfaceColor = mix(gridColor1, gridColor2, gridPattern);
+    // 3. Combine into Cook-Torrance BRDF
+    // Fresnel term F is already computed above
+    // Specular = (D * G * F) / (4 * NdotV * NdotL)
+    vec3 specular = (D * G * F) * shadow * spotFactor * lightIntensity;
 
-        // Add very subtle grout lines for floor tiles
-        vec2 gridFrac = fract(inWorldPos.xz / gridSize);
-        float groutWidth = 0.05;
-        if (gridFrac.x < groutWidth || gridFrac.x > (1.0 - groutWidth) ||
-            gridFrac.y < groutWidth || gridFrac.y > (1.0 - groutWidth)) {
-            surfaceColor *= 0.95;  // Very subtle darkening
-        }
+    // Ambient term (environmental lighting approximation)
+    vec3 ambient = ambientColor.rgb * inColor.rgb * (1.0 - metallic * 0.9);
 
-        shininess = 4.0;  // Matte floor
-        specularColor = vec3(0.5);
-    }
-    // Ceiling (Y ≥ 3.0) - matches geometry boundary exactly to prevent gaps
-    else if (inWorldPos.y >= 3.0) {
-        surfaceColor = vec3(0.85, 0.82, 0.75);  // Warm beige/tan
+    // Combine all components
+    vec3 result = (ambient + diffuse + specular) * spotFactor;
 
-        // Add very subtle ceiling panels
-        float panelSize = 1.0;
-        vec2 panelCoord = floor((inWorldPos.xz + vec2(2.0)) / panelSize);
-        float panelPattern = mod(panelCoord.x + panelCoord.y, 2.0);
-        surfaceColor = mix(surfaceColor, surfaceColor * 0.98, panelPattern * 0.15);
-
-        shininess = 6.0;
-        specularColor = vec3(0.6);
-    }
-    // Back wall (Z ≤ -3.0) - matches geometry boundary exactly to prevent gaps
-    else if (inWorldPos.z <= -3.0) {
-        surfaceColor = vec3(0.45, 0.75, 0.9);  // Cool cyan/blue
-
-        // Add very subtle vertical wall panels
-        float panelHeight = 0.8;
-        float panelWidth = 0.6;
-        vec2 panelCoord = floor(inWorldPos.xy / vec2(panelWidth, panelHeight));
-        float panelPattern = mod(panelCoord.x + panelCoord.y, 2.0);
-        surfaceColor = mix(surfaceColor, surfaceColor * 0.98, panelPattern * 0.12);
-
-        shininess = 12.0;  // Slightly glossy
-        specularColor = vec3(0.8, 0.9, 1.0);  // Cyan-tinted specular
-    }
-    // Front wall (Z ≥ 3.0) - matches geometry boundary exactly to prevent gaps
-    else if (inWorldPos.z >= 3.0) {
-        surfaceColor = vec3(1.0, 0.65, 0.45);  // Warm coral/orange
-
-        // Add very subtle horizontal wall stripes
-        float stripeHeight = 0.4;
-        float stripe = mod(inWorldPos.y, stripeHeight * 2.0);
-        if (stripe > stripeHeight) {
-            surfaceColor *= 0.97;
-        }
-
-        shininess = 10.0;
-        specularColor = vec3(1.0, 0.8, 0.7);  // Warm specular
-    }
-    // Left wall (X ≤ -2.0) - matches geometry boundary exactly to prevent gaps
-    else if (inWorldPos.x <= -2.0) {
-        surfaceColor = vec3(0.5, 0.8, 0.55);  // Soft green
-
-        // Add very subtle diagonal pattern
-        float diagonalFreq = 3.0;
-        float diagonal = sin((inWorldPos.y + inWorldPos.z) * diagonalFreq) * 0.5 + 0.5;
-        surfaceColor = mix(surfaceColor, surfaceColor * 0.98, diagonal * 0.12);
-
-        shininess = 8.0;
-        specularColor = vec3(0.7, 0.9, 0.7);  // Green-tinted specular
-    }
-    // Right wall (X ≥ 2.0) - matches geometry boundary exactly to prevent gaps
-    else if (inWorldPos.x >= 2.0) {
-        surfaceColor = vec3(0.75, 0.6, 0.8);  // Soft purple
-
-        // Add very subtle wave pattern
-        float waveFreq = 4.0;
-        float wave = sin(inWorldPos.y * waveFreq + inWorldPos.z * 1.5) * 0.5 + 0.5;
-        surfaceColor = mix(surfaceColor, surfaceColor * 0.98, wave * 0.14);
-
-        shininess = 14.0;  // More glossy purple
-        specularColor = vec3(0.9, 0.8, 1.0);  // Purple-tinted specular
-    }
-
-    // Blinn-Phong specular highlights (subtle)
-    vec3 H = normalize(L + V);        // Half vector
-    float spec = pow(max(dot(N, H), 0.0), shininess);
-    vec3 specular = spec * shadow * spotFactor * specularColor * lightColor.rgb * lightIntensity * 0.15;  // Reduce intensity
-
-    // Add Fresnel rim lighting for enhanced silhouettes at grazing angles
-    vec3 fresnelRim = fresnelIntensity * spotFactor * lightColor.rgb * lightIntensity * 0.08;
-
-    outColor = vec4((fresnelAmbient + diffuse) * surfaceColor + specular + fresnelRim, 1.0);
+    outColor = vec4(result, 1.0);
 }

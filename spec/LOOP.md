@@ -2,26 +2,14 @@
 Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks), but don't implement it yet. If the task affects the core execution of the demo, then please create tests that will fail without implementing the task. After tests are created, work on the implementation. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Do not commit and do not write progress or summary in this file.
 
 ## Pending Tasks
-- Improve demo visuals: Add moving shadow effects or additional dynamic lighting variations
-- Implement UI text color variants for visual variety in demo scene (beyond current time-phase based color)
-- Implement dynamic shadow intensity variation for more dramatic lighting changes
-- Add subtle spotlight flicker or intensity variation to create more dynamic lighting
+- Implement Physically Based Rendering to the scene.
 - Add metallic or reflective surface material properties to showcase material variety
-- Add subtle bloom or glow effect around bright spotlight area
 - Create ripple or wave patterns on floors to enhance visual interest
 - Add subtle parallax mapping or normal map effects to room walls
-- Implement UV-based texture animation on walls (scrolling patterns)
 - Add depth variance or roughness variation to materials (normal map simulation)
-- Create animated wave patterns on floor geometry for visual interest
-- Add rotating/scrolling geometry patterns for visual dynamism
-- Implement screen-space ambient occlusion (SSAO) for depth perception
-- Add edge detection post-process for cell-shading effect
-- Implement time-varying specular highlights with dynamic material properties
-- Add per-face color variations to UI cube for visual interest
-- Implement animated fog/atmosphere effects based on distance
-- Add screen-space reflections on UI surfaces
 
 ## Iterate
+- Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct.
 - Run tests by running /scripts/test.sh. If there are any test failures, please investigate and fix the failure if the fix is small. If the fix will be big, please identify tasks to address the problem, and then append the task to the ['Pending Tasks'](#Pending-Tasks).
 - Check Vulkan errors by running /scripts/build.sh and execute /build/Debug/direct_ui_rendering.exe with a 10 second timeout, read the output and fix all Vulkan Validation Layer errors.
 - Investigate the pending changes and look for opportunities to refactor to either move common code into a common file or break up files into multiple smaller files if the file contains too many unrelated concepts. Do not break up files if doing so fragments logics that should naturally be co-located.

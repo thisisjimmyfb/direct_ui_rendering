@@ -19,13 +19,14 @@ layout(location = 1) in vec4 inShadowCoord;
 
 layout(location = 0) out vec4 outColor;
 
-// 2x2 PCF tap — matches room.frag shadow quality.
+// 2x2 PCF with centered {-0.5, 0.5} kernel for symmetric penumbra.
+// Matches room.frag shadow quality with consistent kernel across all shadow sampling.
 float sampleShadowPCF(vec4 shadowCoord) {
     vec3 proj = shadowCoord.xyz / shadowCoord.w;
     float shadow = 0.0;
     vec2 texelSize = vec2(1.0 / 1024.0);
-    for (int x = 0; x <= 1; ++x) {
-        for (int y = 0; y <= 1; ++y) {
+    for (float x = -0.5; x <= 0.5; x += 1.0) {
+        for (float y = -0.5; y <= 0.5; y += 1.0) {
             shadow += texture(shadowMap,
                 vec3(proj.xy + vec2(x, y) * texelSize, proj.z));
         }
