@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <cmath>
 #include "containment_fixture.h"
 
 // ---------------------------------------------------------------------------
@@ -29,17 +28,7 @@ TEST_F(ContainmentTest, NonUniformScale_DirectMode_ClipPlanesTrackReshapedSurfac
     proj[1][1] *= -1.0f;
     glm::mat4 vp = proj * view;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view          = view;
-    sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
-    renderer.updateSceneUBO(sceneUBO);
+    renderer.updateSceneUBO(makeSpotlightSceneUBO(scene, view, proj));
 
     // Get world corners with non-uniform scale applied.
     glm::vec3 P00, P10, P01, P11;
@@ -104,17 +93,7 @@ TEST_F(ContainmentTest, FontSizeInvariance_DirectVsTraditional_ScaledQuad)
     proj[1][1] *= -1.0f;
     glm::mat4 vp = proj * view;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view          = view;
-    sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
-    renderer.updateSceneUBO(sceneUBO);
+    renderer.updateSceneUBO(makeSpotlightSceneUBO(scene, view, proj));
 
     // Surface corners with scaleW=0.5 at t=0.
     glm::vec3 P00, P10, P01, P11;

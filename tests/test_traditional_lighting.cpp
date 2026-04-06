@@ -13,24 +13,7 @@
 #include <cmath>
 #include <array>
 
-// Build a SceneUBO with correct spotlight parameters from the given Scene.
-static SceneUBO makeSpotlightSceneUBO_TL(const Scene& scene,
-                                          const glm::mat4& view,
-                                          const glm::mat4& proj)
-{
-    SceneUBO ubo{};
-    ubo.view           = view;
-    ubo.proj           = proj;
-    ubo.lightViewProj  = scene.lightViewProj(0.0f);
-    ubo.lightPos       = glm::vec4(scene.light().position, 1.0f);
-    ubo.lightDir       = glm::vec4(scene.light().direction,
-                                   std::cos(scene.light().outerConeAngle));
-    ubo.lightColor     = glm::vec4(scene.light().color,
-                                   std::cos(scene.light().innerConeAngle));
-    ubo.ambientColor   = glm::vec4(scene.light().ambient, 1.0f);
-    ubo.lightIntensity = 1.0f;
-    return ubo;
-}
+#include "scene_ubo_helper.h"
 
 // ---------------------------------------------------------------------------
 // TraditionalLightingTest — validates that composite.frag (traditional mode)
@@ -308,7 +291,7 @@ protected:
         const std::array<std::array<glm::vec3, 4>, 6>& faceCorners,
         const glm::mat4& view, const glm::mat4& proj)
     {
-        SceneUBO sceneUBO = makeSpotlightSceneUBO_TL(scene, view, proj);
+        SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
         renderer.updateSceneUBO(sceneUBO);
 
         renderer.updateCubeSurface(faceCorners);

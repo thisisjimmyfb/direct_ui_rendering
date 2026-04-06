@@ -33,18 +33,7 @@ TEST_F(ContainmentTest, BackWall_NotSelfShadowed)
     proj[1][1] *= -1.0f;
     glm::mat4 vp = proj * view;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view          = view;
-    sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
-    sceneUBO.lightIntensity = 1.0f;  // Default intensity (no pulsing in tests)
-    renderer.updateSceneUBO(sceneUBO);
+    renderer.updateSceneUBO(makeSpotlightSceneUBO(scene, view, proj));
 
     auto pixels = renderAndReadback(/*directMode=*/true);
 

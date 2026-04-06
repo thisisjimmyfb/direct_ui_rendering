@@ -3,8 +3,9 @@ Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_r
 
 ## Pending Tasks
 - Investigate UI font's lighting differences between direct and traditional mode rendering.
-- Investigate shadow aliasing on the right wall in the room.
-- Refactor shared test helper `makeSpotlightSceneUBO` out of `containment_fixture.h` into a standalone header so it can be reused by both `tests_render` (UI_TEST_COLOR shaders) and `tests_sdf` (production shaders) without duplication.
+- Investigate shadow aliasing on the right wall in the room. Confirm the use of anisotropic comparison sampler is supported.
+- Strengthen PCF shadow symmetry test (`PCFSymmetry_LeftRightShadowBalance`) and cube shadow tests in `test_shadow_render.cpp` and `test_ui_cube_shadow.cpp` to use `lightIntensity=1.0f` so they exercise actual shadow mapping under directional lighting rather than ambient-only rendering. Currently these tests zero-initialize `lightIntensity`, leaving no directional light and making shadow tests trivially pass.
+- Migrate remaining manual SpotlightSceneUBO constructions in `test_sdf.cpp` (lines ~195, ~597, ~1289) to use `makeSpotlightSceneUBO` from `scene_ubo_helper.h` where applicable, and verify `makeAmbientOnlyUBO` is the only intentional deviation.
 
 ## Iterate
 - Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct.

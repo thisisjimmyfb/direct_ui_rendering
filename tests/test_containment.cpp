@@ -18,17 +18,7 @@ TEST_F(ContainmentTest, DirectMode_MagentaPixels_InsideSurfaceQuad)
     proj[1][1] *= -1.0f;
     glm::mat4 vp = proj * view;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view          = view;
-    sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
-    renderer.updateSceneUBO(sceneUBO);
+    renderer.updateSceneUBO(makeSpotlightSceneUBO(scene, view, proj));
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
                                                static_cast<float>(W_UI),
@@ -70,17 +60,7 @@ TEST_F(ContainmentTest, TraditionalMode_MagentaPixels_InsideSurfaceQuad)
     proj[1][1] *= -1.0f;
     glm::mat4 vp = proj * view;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view          = view;
-    sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
-    renderer.updateSceneUBO(sceneUBO);
+    renderer.updateSceneUBO(makeSpotlightSceneUBO(scene, view, proj));
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
                                                static_cast<float>(W_UI),
@@ -141,17 +121,7 @@ TEST_F(ContainmentTest, ExtremeAngle_DirectMode_MagentaPixels_InsideSurfaceQuad)
     proj[1][1] *= -1.0f;
     glm::mat4 vp = proj * view;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view          = view;
-    sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
-    renderer.updateSceneUBO(sceneUBO);
+    renderer.updateSceneUBO(makeSpotlightSceneUBO(scene, view, proj));
 
     auto transforms = computeSurfaceTransforms(P00, P10, P01,
                                                static_cast<float>(W_UI),
@@ -205,17 +175,7 @@ TEST_F(ContainmentTest, DirectMode_AnimationFrames_MagentaContained)
     proj[1][1] *= -1.0f;
     glm::mat4 vp = proj * view;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view          = view;
-    sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient,   1.0f);
-    renderer.updateSceneUBO(sceneUBO);
+    renderer.updateSceneUBO(makeSpotlightSceneUBO(scene, view, proj));
 
     for (float t : {0.0f, 1.0f, 2.0f}) {
         SCOPED_TRACE("t=" + std::to_string(t));
