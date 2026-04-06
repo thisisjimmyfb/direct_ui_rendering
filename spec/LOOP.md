@@ -3,6 +3,14 @@ Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_r
 
 ## Pending Tasks
 
+- Enable anisotropic filtering on the shadow comparison sampler (`renderer_resources.cpp:255–266`): set `anisotropyEnable = VK_TRUE` and `maxAnisotropy` clamped to `VkPhysicalDeviceLimits::maxSamplerAnisotropy` (query via `vkGetPhysicalDeviceProperties`). The Vulkan spec has no VUID forbidding `anisotropyEnable` alongside `compareEnable`; drivers that honour it will adapt the PCF footprint to the texel-projection aspect ratio on oblique surfaces, directly attacking the barcode pattern. Drivers that ignore it incur no cost.
+
+- Add a `glm::vec3 normal` field to `QuadVertex` (renderer.h) and emit it in `quad.vert` (shaders/quad.vert) as a new output location.
+- Update `Renderer::updateCubeSurface` (renderer_resources.cpp) to compute and store the outward face normal for each of the 6 cube faces (same cross-product logic already used in `updateUIShadowCube`).
+- Update `surface.frag` to receive the normal, compute NdotL and a spotlight cone factor (matching the approach in shaders/room.frag:128–132), and switch to the slope-scaled 3-arg `sampleShadowPCF`.
+- Update `ui_direct.frag` similarly so that lit and shadowed text is consistent with the surface underneath.
+
+
 ## Iterate
 - Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct.
 - Run tests by running /scripts/test.sh. If there are any test failures, please investigate and fix the failure if the fix is small. If the fix will be big, please identify tasks to address the problem, and then append the task to the ['Pending Tasks'](#Pending-Tasks).

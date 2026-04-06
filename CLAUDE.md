@@ -34,10 +34,10 @@ direct_ui_rendering/
 │   ├── renderer.h                    # Renderer class declaration: Vulkan device, pipelines, render passes
 │   ├── renderer.cpp                  # Thin coordinator: includes the four renderer modules (6 lines)
 │   ├── renderer_init.cpp             # Device, instance, swapchain, render pass setup (475 lines)
-│   ├── renderer_pipelines.cpp        # Pipeline creation: createPipelines() (473 lines)
-│   ├── renderer_renderpasses.cpp     # Render pass definitions: createRenderPasses() (224 lines)
+│   ├── renderer_pipelines.cpp        # Pipeline creation: createPipelines() (474 lines)
+│   ├── renderer_renderpasses.cpp     # Render pass definitions: createRenderPasses() (225 lines)
 │   ├── renderer_recording.cpp        # Per-frame command buffer recording and draw calls (238 lines)
-│   ├── renderer_resources.cpp        # Buffer/image allocation, descriptor set updates, VMA wrappers (860 lines)
+│   ├── renderer_resources.cpp        # Buffer/image allocation, descriptor set updates, VMA wrappers (861 lines)
 │   ├── scene.h                       # Scene class: room geometry, light, animation matrix, UISurface (6 faces)
 │   ├── scene.cpp                     # Scene implementation with oscillating animation (254 lines)
 │   ├── ui_system.h                   # UISystem class: atlas, glyph quads, vertex buffer, SDF constants

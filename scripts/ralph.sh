@@ -24,7 +24,7 @@ LOOP="$ROOT/spec/LOOP.md"
 AUTO=false
 SKIP_PERMISSIONS=true
 LLM_MODE="auto"
-MODEL="claude-haiku-4-5"
+MODEL="claude-sonnet-4-6"
 OFFLINE_LLM_URL="http://localhost:8088"
 
 # ── argument parsing ──────────────────────────────────────────────────────────

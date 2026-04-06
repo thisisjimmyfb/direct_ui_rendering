@@ -1,22 +1,5 @@
 # Direct UI Rendering — Specification
 
-## Table of Contents
-
-1. [Goals](#1-goals)
-2. [Demo Scene](#2-demo-scene)
-3. [Rendering Modes](#3-rendering-modes)
-4. [Transform Mathematics](#4-transform-mathematics)
-5. [Simple UI System](#5-simple-ui-system)
-6. [Vulkan Architecture](#6-vulkan-architecture)
-7. [Shaders](#7-shaders)
-8. [Metrics Overlay](#8-metrics-overlay)
-9. [MSAA](#9-msaa)
-10. [Testing](#10-testing)
-11. [Build and Dependencies](#11-build-and-dependencies)
-12. [Command-Line Parameters](#12-command-line-parameters)
-
----
-
 ## 1. Goals
 
 Build a standalone native Vulkan application that demonstrates two approaches to rendering UI onto a surface in a 3D scene:
@@ -99,7 +82,7 @@ Press `Space` to toggle between modes at runtime. The current mode is displayed 
 1. Render room geometry with lighting and shadow.
 2. Render the 6 cube faces with the offscreen RT bound as a texture. Each face's fragment shader samples the RT and alpha-blends the result.
 
-**Pass 3 — Metrics Overlay Pass:** (see Section 8)
+**Pass 3 — Metrics Overlay Pass:** (see Section 7)
 
 ### 3.3 Direct Mode — Main Scene Pass Only
 
@@ -109,7 +92,7 @@ Press `Space` to toggle between modes at runtime. The current mode is displayed 
 1. Render room geometry with lighting and shadow.
 2. Render UI elements directly as world-space geometry for all 6 cube faces using per-face `M_total` (see Section 4). No separate UI pass. No offscreen RT.
 
-**Metrics Overlay Pass:** (see Section 8)
+**Metrics Overlay Pass:** (see Section 7)
 
 The offscreen RT is not allocated when the app starts in direct mode; if the user toggles to traditional mode the RT is allocated on demand and persists until the app exits.
 
@@ -284,66 +267,9 @@ struct SurfaceUBO {
 - UI RT pass → main scene pass: image memory barrier on color attachment (`COLOR_ATTACHMENT_WRITE` → `SHADER_READ`).
 - Standard semaphore-based swapchain acquire/present.
 
-### 6.7 Memory Allocation
-
-Use [VMA (Vulkan Memory Allocator)](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) for all buffer and image allocations. Track total allocated bytes to report in the metrics overlay (Section 8).
-
 ---
 
-## 7. Shaders
-
-All shaders target SPIR-V via `glslc`. Shader source files live in `shaders/`.
-
-### 7.1 `ui_direct.vert` — Direct Mode UI Vertex
-
-```glsl
-#version 450
-
-layout(set = 1, binding = 0) uniform SurfaceUBO {
-    mat4 totalMatrix;
-    mat4 worldMatrix;
-    vec4 clipPlanes[4];
-    float depthBias;
-};
-
-layout(location = 0) in vec2 inUIPos;
-layout(location = 1) in vec2 inUITexCoord;
-layout(location = 0) out vec2 outTexCoord;
-layout(location = 1) out vec4 outShadowCoord;
-layout(location = 2) out vec3 outWorldPos;
-
-out gl_PerVertex {
-    vec4  gl_Position;
-    float gl_ClipDistance[4];
-};
-
-void main() {
-    vec4 uiVert  = vec4(inUIPos, 0.0, 1.0);
-    vec4 worldPos = worldMatrix * uiVert;
-
-    gl_ClipDistance[0] = dot(clipPlanes[0], worldPos);
-    gl_ClipDistance[1] = dot(clipPlanes[1], worldPos);
-    gl_ClipDistance[2] = dot(clipPlanes[2], worldPos);
-    gl_ClipDistance[3] = dot(clipPlanes[3], worldPos);
-
-    gl_Position    = totalMatrix * uiVert;
-    gl_Position.z -= depthBias * gl_Position.w;
-
-    outTexCoord = inUITexCoord;
-    outShadowCoord = vec4(worldPos, 1.0);
-    outWorldPos = worldPos.xyz;
-}
-```
-
-Outputs world-space position and shadow coordinates for the fragment shader to sample spotlight attenuation and PCF shadows.
-
----
-
-## 8. Metrics Overlay
-
-A HUD rendered in the final pass on top of the swapchain image. Drawn using `pipe_metrics` (the orthographic UI pipeline, set 2 bound to the glyph atlas).
-
-### 8.1 Displayed Fields
+## 7. Metrics Overlay
 
 | Field | Source | Example |
 |-------|--------|---------|
@@ -361,7 +287,7 @@ A HUD rendered in the final pass on top of the swapchain image. Drawn using `pip
 
 ---
 
-## 9. MSAA
+## 8. MSAA
 
 - Sample count: **4x** (`VK_SAMPLE_COUNT_4_BIT`). Configurable at compile time via `#define MSAA_SAMPLES`.
 - Applied to the main scene pass color and depth attachments.
@@ -371,9 +297,9 @@ A HUD rendered in the final pass on top of the swapchain image. Drawn using `pip
 
 ---
 
-## 10. Testing
+## 9. Testing Architecture
 
-### 10.1 Overview
+### 9.1 Overview
 
 Testing is split into two GoogleTest targets:
 
@@ -385,7 +311,7 @@ Testing is split into two GoogleTest targets:
 
 Both targets link against the same app library (`direct_ui_rendering_lib`) and call the same functions the app uses. No math or rendering logic is duplicated.
 
-### 10.2 Headless Renderer Design Constraint
+### 9.2 Headless Renderer Design Constraint
 
 The `Renderer` class must cleanly separate the **device/pipeline layer** from the **swapchain/presentation layer**:
 
@@ -397,17 +323,7 @@ This constraint also applies to `UISurface` and `Scene` — neither may hold a d
 
 ---
 
-## 11. Build and Dependencies
-
-### 11.1 Language and Standard
-
-C++20. No exceptions required; RAII for Vulkan handle lifetimes via thin wrappers or direct `vkDestroy*` in destructors.
-
-### 11.2 Build System
-
-CMake 3.25+. A single `CMakeLists.txt` at the repo root. Shader compilation integrated via `add_custom_command` invoking `glslc`.
-
-### 11.3 Dependencies
+## 10 Dependencies
 
 | Library | Version | Purpose |
 |---------|---------|---------|
@@ -417,59 +333,11 @@ CMake 3.25+. A single `CMakeLists.txt` at the repo root. Shader compilation inte
 | `stb_image` | latest | PNG atlas loading |
 | `glm` | 0.9.9+ | Math (matrices, vectors) |
 
-All dependencies fetched via CMake `FetchContent` or expected on the system PATH (Vulkan SDK).
-
-### 11.4 Validation Layers
-
-GoogleTest is added as a `FetchContent` dependency. Both test targets link against `direct_ui_rendering_lib`, which is the app compiled as a static library with `main.cpp` excluded.
-
-### 11.5 Validation Layers
-
-Enabled in Debug builds: `VK_LAYER_KHRONOS_validation`. Disabled in Release.
-
 ---
 
-## 12. Command-Line Parameters
-
-The application accepts the following command-line parameters at startup:
-
-### 12.1 `--timeout <seconds>`
-
-Execute the application for a specified duration and then automatically exit. This is useful for automated testing, benchmarking, or CI/CD pipelines.
+## 11. Command-Line Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `--timeout` | integer | No | `0` | Maximum runtime in seconds. Value must be positive; zero or negative values disable the timeout. |
 
-**Examples:**
-
-```bash
-# Run for 30 seconds, then exit automatically
-./direct_ui_rendering --timeout 30
-
-# Run for 1 hour (3600 seconds)
-./direct_ui_rendering --timeout 3600
-
-# No timeout (default behavior)
-./direct_ui_rendering
-```
-
-**Behavior:**
-- When `--timeout 0` or a negative value is provided, the timeout is disabled (same as not providing the parameter).
-- The application prints a message when the timeout expires: `Timeout reached: <seconds> seconds. Exiting.`
-- The timeout is checked once per frame in the main loop.
-- If the timeout expires, the application sets the window close flag and exits cleanly after the current frame completes.
-
----
-
-## Appendix: Key Constants
-
-| Constant | Value | Notes |
-|----------|-------|-------|
-| `W_ui` | 512 | UI canvas width (pixels) |
-| `H_ui` | 128 | UI canvas height (pixels) |
-| `SHADOW_MAP_SIZE` | 1024 | Shadow map resolution |
-| `MSAA_SAMPLES` | 4 | Main pass sample count |
-| `DEPTH_BIAS_DEFAULT` | 0.0001 | Initial NDC z-bias for direct mode |
-| `ATLAS_SIZE` | 512 | Glyph atlas texture size (pixels) |
-| `GLYPH_CELL` | 32 | Fixed glyph cell size (pixels) |
