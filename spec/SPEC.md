@@ -41,7 +41,7 @@ A static indoor room constructed from hardcoded geometry (vertex/index data comp
 - One spotlight that casts shadows via a shadow map.
 - A 6-face cube (the "UI surface") parented to a transform that animates over time.
 
-All geometry uses a simple Phong or Blinn-Phong shading model. No mesh loading from disk is required.
+All geometry uses physically-based rendering (PBR) with Cook-Torrance BRDF. Each surface has material properties (metallic, roughness) for realistic shading. No mesh loading from disk is required.
 
 ### 2.2 UI Surface — 6-Face Cube
 
@@ -226,7 +226,7 @@ The same quad list is rendered with the composite matrix `M_total` (Section 4.5)
 | Pipeline | Vertex shader | Fragment shader | Notes |
 |----------|--------------|-----------------|-------|
 | `pipe_shadow` | `shadow.vert` | (none) | Depth-only, room geometry from light POV |
-| `pipe_room` | `room.vert` | `room.frag` | Blinn-Phong + shadow map |
+| `pipe_room` | `room.vert` | `room.frag` | PBR with Cook-Torrance BRDF + PCF shadow |
 | `pipe_ui_direct` | `ui_direct.vert` | `ui_direct.frag` | M_total transform, clip distances, SDF + PCF shadow |
 | `pipe_ui_rt` | `ui_ortho.vert` | `ui.frag` | Orthographic, for RT pass |
 | `pipe_surface` | `quad.vert` | `surface.frag` / `composite.frag` | Base quad per cube face; `surface.frag` in direct mode, `composite.frag` in traditional mode |

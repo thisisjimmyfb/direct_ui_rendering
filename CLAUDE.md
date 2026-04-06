@@ -47,8 +47,8 @@ direct_ui_rendering/
 ├── shaders/
 │   ├── composite.frag                # Traditional mode: blend UI render target onto teal quad
 │   ├── quad.vert                     # Vertex shader for surface/composite quad geometry
-│   ├── room.vert                     # Blinn-Phong room geometry vertex shader
-│   ├── room.frag                     # Blinn-Phong with specular highlights + PCF shadow fragment shader; per-wall coloring and material properties; Fresnel effect for grazing angles; subtle surface patterns
+│   ├── room.vert                     # PBR room geometry vertex shader (transforms, material properties)
+│   ├── room.frag                     # PBR (Cook-Torrance BRDF) with metallic/roughness properties + PCF shadow; Fresnel-Schlick approximation; GGX distribution; material variety
 │   ├── shadow.vert                   # Depth-only shadow pass vertex shader
 │   ├── surface.frag                  # Opaque teal quad fragment shader (direct mode base layer)
 │   ├── ui.frag                       # UI atlas sampling with SDF smoothstep (white text) or bitmap mode
@@ -69,6 +69,7 @@ direct_ui_rendering/
 │   ├── test_matrix_math.cpp          # tests_unit: TransformMath (M_us, M_sw, M_total), FontSizeInvariance, Parallelogram
 │   ├── test_metrics.cpp              # tests_unit: frame timing ring buffer and GPU memory tracking
 │   ├── test_msaa_quality.cpp         # tests_render: MSAA edge smoothness comparison (direct vs traditional modes) (2 tests)
+│   ├── test_pbr.cpp                  # tests_render: PBR material properties, roughness variation, rendering validation (10 tests)
 │   ├── test_perf.cpp                 # tests_render: performance regression tests
 │   ├── test_renderer.cpp             # tests_render: Renderer initialization, headless RT, UBO updates, geometry updates, render passes, pipelines, descriptor binding (30 tests)
 │   ├── test_scale_render.cpp         # tests_render: non-uniform scale clip plane tracking and font-size invariance (2 tests)

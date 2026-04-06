@@ -21,19 +21,20 @@ void addQuad(std::vector<Vertex>& verts, std::vector<uint32_t>& idxs,
 }
 
 // Material definitions for different room surfaces
+// Demonstrates PBR with various roughness levels (all dielectric for stability)
 const MaterialDefinition g_surfaceMaterials[] = {
-    // Floor - matte concrete
-    {{0.0f, 0.8f}, "Floor"},
-    // Ceiling - painted drywall
+    // Floor - polished concrete (dielectric, moderate roughness)
+    {{0.0f, 0.7f}, "Floor"},
+    // Ceiling - painted drywall (dielectric, high roughness)
     {{0.0f, 0.9f}, "Ceiling"},
-    // Back wall - smooth painted wall
-    {{0.0f, 0.7f}, "BackWall"},
-    // Front wall - textured wallpaper
+    // Back wall - smooth painted wall (dielectric, smooth)
+    {{0.0f, 0.6f}, "BackWall"},
+    // Front wall - textured wallpaper (dielectric, high roughness)
     {{0.0f, 0.85f}, "FrontWall"},
-    // Left wall - semi-gloss paint
-    {{0.0f, 0.6f}, "LeftWall"},
-    // Right wall - glossy painted wall
-    {{0.0f, 0.5f}, "RightWall"}
+    // Left wall - semi-gloss paint (dielectric, low roughness)
+    {{0.0f, 0.4f}, "LeftWall"},
+    // Right wall - glossy painted wall (dielectric, very low roughness)
+    {{0.0f, 0.25f}, "RightWall"}
 };
 
 } // anonymous namespace
@@ -52,43 +53,43 @@ void Scene::init()
     constexpr float H = 3.0f;   // full height
     constexpr float D = 3.0f;   // half-depth
 
-    // Floor   (Y = 0, normal up) - matte concrete
-    Material floorMat{0.0f, 0.8f};
+    // Floor   (Y = 0, normal up) - polished concrete (dielectric, moderate roughness)
+    Material floorMat{0.0f, 0.7f};
     glm::vec3 floorColor(0.6f, 0.6f, 0.65f);
     addQuad(v, i,
         {-W, 0,  D}, { W, 0,  D}, { W, 0, -D}, {-W, 0, -D},
         {0, 1, 0}, floorMat, floorColor);
 
-    // Ceiling (Y = H, normal down) - painted drywall
+    // Ceiling (Y = H, normal down) - painted drywall (dielectric, high roughness)
     Material ceilingMat{0.0f, 0.9f};
     glm::vec3 ceilingColor(0.85f, 0.82f, 0.75f);
     addQuad(v, i,
         {-W, H, -D}, { W, H, -D}, { W, H,  D}, {-W, H,  D},
         {0, -1, 0}, ceilingMat, ceilingColor);
 
-    // Back wall  (Z = -D, normal forward) - smooth painted wall
-    Material backWallMat{0.0f, 0.7f};
+    // Back wall  (Z = -D, normal forward) - smooth painted wall (dielectric, smooth)
+    Material backWallMat{0.0f, 0.6f};
     glm::vec3 backWallColor(0.45f, 0.75f, 0.9f);
     addQuad(v, i,
         {-W, 0, -D}, { W, 0, -D}, { W, H, -D}, {-W, H, -D},
         {0, 0, 1}, backWallMat, backWallColor);
 
-    // Front wall (Z = +D, normal backward) - textured wallpaper
+    // Front wall (Z = +D, normal backward) - textured wallpaper (dielectric, high roughness)
     Material frontWallMat{0.0f, 0.85f};
     glm::vec3 frontWallColor(1.0f, 0.65f, 0.45f);
     addQuad(v, i,
         { W, 0,  D}, {-W, 0,  D}, {-W, H,  D}, { W, H,  D},
         {0, 0, -1}, frontWallMat, frontWallColor);
 
-    // Left wall  (X = -W, normal right) - semi-gloss paint
-    Material leftWallMat{0.0f, 0.6f};
+    // Left wall  (X = -W, normal right) - semi-gloss paint (dielectric, low roughness)
+    Material leftWallMat{0.0f, 0.4f};
     glm::vec3 leftWallColor(0.5f, 0.8f, 0.55f);
     addQuad(v, i,
         {-W, 0,  D}, {-W, 0, -D}, {-W, H, -D}, {-W, H,  D},
         {1, 0, 0}, leftWallMat, leftWallColor);
 
-    // Right wall (X = +W, normal left) - glossy painted wall
-    Material rightWallMat{0.0f, 0.5f};
+    // Right wall (X = +W, normal left) - glossy painted wall (dielectric, very low roughness)
+    Material rightWallMat{0.0f, 0.25f};
     glm::vec3 rightWallColor(0.75f, 0.6f, 0.8f);
     addQuad(v, i,
         { W, 0, -D}, { W, 0,  D}, { W, H,  D}, { W, H, -D},

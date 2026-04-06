@@ -99,6 +99,7 @@ add_executable(tests_render
     test_msaa_quality.cpp
     test_depth_bias.cpp
     test_spotlight_cone.cpp
+    test_pbr.cpp
 )
 
 add_dependencies(tests_render test_shaders)
