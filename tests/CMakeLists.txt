@@ -103,6 +103,7 @@ add_executable(tests_render
     test_pbr.cpp
     test_metallic_materials.cpp
     test_floor_ripple.cpp
+    test_wall_normal_mapping.cpp
 )
 
 add_dependencies(tests_render test_shaders)

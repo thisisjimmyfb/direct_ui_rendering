@@ -1,0 +1,790 @@
+Internal ctest changing into directory: C:/Github/direct_ui_rendering/build
+Test project C:/Github/direct_ui_rendering/build
+        Start   1: TransformMath.M_us_MapsOriginToOrigin
+  1/392 Test   #1: TransformMath.M_us_MapsOriginToOrigin ................................................   Passed    0.01 sec
+        Start   2: TransformMath.M_us_MapsCanvasCornerToOne
+  2/392 Test   #2: TransformMath.M_us_MapsCanvasCornerToOne .............................................   Passed    0.01 sec
+        Start   3: TransformMath.M_sw_MapsOriginToP00
+  3/392 Test   #3: TransformMath.M_sw_MapsOriginToP00 ...................................................   Passed    0.01 sec
+        Start   4: TransformMath.M_sw_MapsOneOneToP11
+  4/392 Test   #4: TransformMath.M_sw_MapsOneOneToP11 ...................................................   Passed    0.01 sec
+        Start   5: TransformMath.M_sw_SurfaceWithZComponent_AllFourCorners
+  5/392 Test   #5: TransformMath.M_sw_SurfaceWithZComponent_AllFourCorners ..............................   Passed    0.01 sec
+        Start   6: TransformMath.M_sw_3DParallelogram_AllFourCorners
+  6/392 Test   #6: TransformMath.M_sw_3DParallelogram_AllFourCorners ....................................   Passed    0.01 sec
+        Start   7: TransformMath.M_total_MapsUICornerToWorldCorner_IdentityVP
+  7/392 Test   #7: TransformMath.M_total_MapsUICornerToWorldCorner_IdentityVP ...........................   Passed    0.01 sec
+        Start   8: TransformMath.M_total_MapsUICorners_PerspectiveVP
+  8/392 Test   #8: TransformMath.M_total_MapsUICorners_PerspectiveVP ....................................   Passed    0.01 sec
+        Start   9: TransformMath.M_total_Parallelogram3D_PerspectiveVP_AllFourCorners
+  9/392 Test   #9: TransformMath.M_total_Parallelogram3D_PerspectiveVP_AllFourCorners ...................   Passed    0.01 sec
+        Start  10: TransformMath.M_total_NonUniformSurface_CornersAndCenter
+ 10/392 Test  #10: TransformMath.M_total_NonUniformSurface_CornersAndCenter .............................   Passed    0.01 sec
+        Start  11: TransformMath.FontSizeInvariance_ProportionalScalePreservesWorldPos
+ 11/392 Test  #11: TransformMath.FontSizeInvariance_ProportionalScalePreservesWorldPos ..................   Passed    0.01 sec
+        Start  12: TransformMath.FontSizeInvariance_NonUniformScalePreservesWorldPos
+ 12/392 Test  #12: TransformMath.FontSizeInvariance_NonUniformScalePreservesWorldPos ....................   Passed    0.01 sec
+        Start  13: TransformMath.FontSizeInvariance_Parallelogram_ProportionalScalePreservesWorldPos
+ 13/392 Test  #13: TransformMath.FontSizeInvariance_Parallelogram_ProportionalScalePreservesWorldPos ....   Passed    0.02 sec
+        Start  14: TransformMath.M_sw_Parallelogram_AllFourCorners
+ 14/392 Test  #14: TransformMath.M_sw_Parallelogram_AllFourCorners ......................................   Passed    0.01 sec
+        Start  15: TransformMath.M_sw_Parallelogram_InteriorPoint
+ 15/392 Test  #15: TransformMath.M_sw_Parallelogram_InteriorPoint .......................................   Passed    0.01 sec
+        Start  16: TransformMath.SurfaceTransforms_MWorldEqualsMswTimesMus
+ 16/392 Test  #16: TransformMath.SurfaceTransforms_MWorldEqualsMswTimesMus ..............................   Passed    0.01 sec
+        Start  17: TransformMath.SurfaceTransforms_MTotalEqualsViewProjTimesMswTimesMus
+ 17/392 Test  #17: TransformMath.SurfaceTransforms_MTotalEqualsViewProjTimesMswTimesMus .................   Passed    0.01 sec
+        Start  18: TransformMath.M_us_ZeroWidth_W_uiEqualsZero_InfInColumn0
+ 18/392 Test  #18: TransformMath.M_us_ZeroWidth_W_uiEqualsZero_InfInColumn0 .............................   Passed    0.01 sec
+        Start  19: TransformMath.M_us_ZeroHeight_H_uiEqualsZero_InfInColumn1
+ 19/392 Test  #19: TransformMath.M_us_ZeroHeight_H_uiEqualsZero_InfInColumn1 ............................   Passed    0.01 sec
+        Start  20: TransformMath.M_us_BothZero_BothDiagonalEntriesInf
+ 20/392 Test  #20: TransformMath.M_us_BothZero_BothDiagonalEntriesInf ...................................   Passed    0.01 sec
+        Start  21: TransformMath.M_sw_ZeroEdgeU_P10EqualsP00_ZeroColumn0
+ 21/392 Test  #21: TransformMath.M_sw_ZeroEdgeU_P10EqualsP00_ZeroColumn0 ................................   Passed    0.01 sec
+        Start  22: TransformMath.M_sw_ZeroEdgeV_P01EqualsP00_ZeroColumn1
+ 22/392 Test  #22: TransformMath.M_sw_ZeroEdgeV_P01EqualsP00_ZeroColumn1 ................................   Passed    0.01 sec
+        Start  23: TransformMath.M_sw_BothEdgesZero_AllCornersSame_ZeroMatrixExceptTranslation
+ 23/392 Test  #23: TransformMath.M_sw_BothEdgesZero_AllCornersSame_ZeroMatrixExceptTranslation ..........   Passed    0.01 sec
+        Start  24: TransformMath.ClipPlanes_CollinearCorners_ZeroNormal
+ 24/392 Test  #24: TransformMath.ClipPlanes_CollinearCorners_ZeroNormal .................................   Passed    0.01 sec
+        Start  25: TransformMath.ClipPlanes_NonCollinear_ValidNormals
+ 25/392 Test  #25: TransformMath.ClipPlanes_NonCollinear_ValidNormals ...................................   Passed    0.01 sec
+        Start  26: ClipPlaneTest.InsidePoint_AllPlanesNonNegative
+ 26/392 Test  #26: ClipPlaneTest.InsidePoint_AllPlanesNonNegative .......................................   Passed    0.01 sec
+        Start  27: ClipPlaneTest.OutsideLeft_AtLeastOnePlaneNegative
+ 27/392 Test  #27: ClipPlaneTest.OutsideLeft_AtLeastOnePlaneNegative ....................................   Passed    0.01 sec
+        Start  28: ClipPlaneTest.OutsideRight_AtLeastOnePlaneNegative
+ 28/392 Test  #28: ClipPlaneTest.OutsideRight_AtLeastOnePlaneNegative ...................................   Passed    0.01 sec
+        Start  29: ClipPlaneTest.OutsideTop_AtLeastOnePlaneNegative
+ 29/392 Test  #29: ClipPlaneTest.OutsideTop_AtLeastOnePlaneNegative .....................................   Passed    0.01 sec
+        Start  30: ClipPlaneTest.OutsideBottom_AtLeastOnePlaneNegative
+ 30/392 Test  #30: ClipPlaneTest.OutsideBottom_AtLeastOnePlaneNegative ..................................   Passed    0.01 sec
+        Start  31: ClipPlaneTest.BoundaryLeftEdge_LeftPlaneNearZero
+ 31/392 Test  #31: ClipPlaneTest.BoundaryLeftEdge_LeftPlaneNearZero .....................................   Passed    0.01 sec
+        Start  32: ClipPlaneTest.BoundaryTopEdge_TopPlaneNearZero
+ 32/392 Test  #32: ClipPlaneTest.BoundaryTopEdge_TopPlaneNearZero .......................................   Passed    0.01 sec
+        Start  33: ClipPlaneTest.BoundaryRightEdge_RightPlaneNearZero
+ 33/392 Test  #33: ClipPlaneTest.BoundaryRightEdge_RightPlaneNearZero ...................................   Passed    0.01 sec
+        Start  34: ClipPlaneTest.BoundaryBottomEdge_BottomPlaneNearZero
+ 34/392 Test  #34: ClipPlaneTest.BoundaryBottomEdge_BottomPlaneNearZero .................................   Passed    0.01 sec
+        Start  35: ClipPlaneTest.AllFourEdgeMidpoints_ZeroForOwnPlane
+ 35/392 Test  #35: ClipPlaneTest.AllFourEdgeMidpoints_ZeroForOwnPlane ...................................   Passed    0.01 sec
+        Start  36: ClipPlaneTiltedTest.CenterPoint_AllPlanesNonNegative
+ 36/392 Test  #36: ClipPlaneTiltedTest.CenterPoint_AllPlanesNonNegative .................................   Passed    0.01 sec
+        Start  37: ClipPlaneTiltedTest.PointBeyondRightEdge_AtLeastOnePlaneNegative
+ 37/392 Test  #37: ClipPlaneTiltedTest.PointBeyondRightEdge_AtLeastOnePlaneNegative .....................   Passed    0.01 sec
+        Start  38: ClipPlaneTiltedTest.PointBelowSurface_AtLeastOnePlaneNegative
+ 38/392 Test  #38: ClipPlaneTiltedTest.PointBelowSurface_AtLeastOnePlaneNegative ........................   Passed    0.01 sec
+        Start  39: ClipPlaneTiltedTest.TopCorner_OnTopAndLeftPlanes
+ 39/392 Test  #39: ClipPlaneTiltedTest.TopCorner_OnTopAndLeftPlanes .....................................   Passed    0.01 sec
+        Start  40: ClipPlane3DTest.SurfaceCenter_AllPlanesNonNegative
+ 40/392 Test  #40: ClipPlane3DTest.SurfaceCenter_AllPlanesNonNegative ...................................   Passed    0.01 sec
+        Start  41: ClipPlane3DTest.LeftEdgeMidpoint_LeftPlaneNearZero
+ 41/392 Test  #41: ClipPlane3DTest.LeftEdgeMidpoint_LeftPlaneNearZero ...................................   Passed    0.01 sec
+        Start  42: ClipPlane3DTest.RightEdgeMidpoint_RightPlaneNearZero
+ 42/392 Test  #42: ClipPlane3DTest.RightEdgeMidpoint_RightPlaneNearZero .................................   Passed    0.01 sec
+        Start  43: ClipPlane3DTest.TopEdgeMidpoint_TopPlaneNearZero
+ 43/392 Test  #43: ClipPlane3DTest.TopEdgeMidpoint_TopPlaneNearZero .....................................   Passed    0.01 sec
+        Start  44: ClipPlane3DTest.BottomEdgeMidpoint_BottomPlaneNearZero
+ 44/392 Test  #44: ClipPlane3DTest.BottomEdgeMidpoint_BottomPlaneNearZero ...............................   Passed    0.01 sec
+        Start  45: ClipPlane3DTest.OutsideLeft_LeftPlaneNegative
+ 45/392 Test  #45: ClipPlane3DTest.OutsideLeft_LeftPlaneNegative ........................................   Passed    0.01 sec
+        Start  46: ClipPlane3DTest.OutsideRight_RightPlaneNegative
+ 46/392 Test  #46: ClipPlane3DTest.OutsideRight_RightPlaneNegative ......................................   Passed    0.01 sec
+        Start  47: ClipPlane3DTest.OutsideTop_TopPlaneNegative
+ 47/392 Test  #47: ClipPlane3DTest.OutsideTop_TopPlaneNegative ..........................................   Passed    0.01 sec
+        Start  48: ClipPlane3DTest.OutsideBottom_BottomPlaneNegative
+ 48/392 Test  #48: ClipPlane3DTest.OutsideBottom_BottomPlaneNegative ....................................   Passed    0.01 sec
+        Start  49: ClipPlane3DTest.OffDepth_CenterAtDifferentZ_StillInside
+ 49/392 Test  #49: ClipPlane3DTest.OffDepth_CenterAtDifferentZ_StillInside ..............................   Passed    0.01 sec
+        Start  50: ClipPlane3DTest.PlaneNormals_PerpendicularToSurfaceNormal
+ 50/392 Test  #50: ClipPlane3DTest.PlaneNormals_PerpendicularToSurfaceNormal ............................   Passed    0.01 sec
+        Start  51: ClipPlaneSymmetry.LeftRight_AreAntiParallelNormals
+ 51/392 Test  #51: ClipPlaneSymmetry.LeftRight_AreAntiParallelNormals ...................................   Passed    0.01 sec
+        Start  52: ClipPlaneSymmetry.TopBottom_AreAntiParallelNormals
+ 52/392 Test  #52: ClipPlaneSymmetry.TopBottom_AreAntiParallelNormals ...................................   Passed    0.01 sec
+        Start  53: ClipPlaneYRotatedTest.SurfaceCenter_AllPlanesNonNegative
+ 53/392 Test  #53: ClipPlaneYRotatedTest.SurfaceCenter_AllPlanesNonNegative .............................   Passed    0.01 sec
+        Start  54: ClipPlaneYRotatedTest.LeftEdgeMidpoint_LeftPlaneNearZero
+ 54/392 Test  #54: ClipPlaneYRotatedTest.LeftEdgeMidpoint_LeftPlaneNearZero .............................   Passed    0.01 sec
+        Start  55: ClipPlaneYRotatedTest.RightEdgeMidpoint_RightPlaneNearZero
+ 55/392 Test  #55: ClipPlaneYRotatedTest.RightEdgeMidpoint_RightPlaneNearZero ...........................   Passed    0.01 sec
+        Start  56: ClipPlaneYRotatedTest.TopEdgeMidpoint_TopPlaneNearZero
+ 56/392 Test  #56: ClipPlaneYRotatedTest.TopEdgeMidpoint_TopPlaneNearZero ...............................   Passed    0.01 sec
+        Start  57: ClipPlaneYRotatedTest.BottomEdgeMidpoint_BottomPlaneNearZero
+ 57/392 Test  #57: ClipPlaneYRotatedTest.BottomEdgeMidpoint_BottomPlaneNearZero .........................   Passed    0.01 sec
+        Start  58: ClipPlaneYRotatedTest.OutsideLeft_LeftPlaneNegative
+ 58/392 Test  #58: ClipPlaneYRotatedTest.OutsideLeft_LeftPlaneNegative ..................................   Passed    0.01 sec
+        Start  59: ClipPlaneYRotatedTest.OutsideRight_RightPlaneNegative
+ 59/392 Test  #59: ClipPlaneYRotatedTest.OutsideRight_RightPlaneNegative ................................   Passed    0.01 sec
+        Start  60: ClipPlaneYRotatedTest.OutsideTop_TopPlaneNegative
+ 60/392 Test  #60: ClipPlaneYRotatedTest.OutsideTop_TopPlaneNegative ....................................   Passed    0.01 sec
+        Start  61: ClipPlaneYRotatedTest.OutsideBottom_BottomPlaneNegative
+ 61/392 Test  #61: ClipPlaneYRotatedTest.OutsideBottom_BottomPlaneNegative ..............................   Passed    0.01 sec
+        Start  62: ClipPlaneYRotatedTest.PlaneNormals_PerpendicularToSurfaceNormal
+ 62/392 Test  #62: ClipPlaneYRotatedTest.PlaneNormals_PerpendicularToSurfaceNormal ......................   Passed    0.01 sec
+        Start  63: ClipPlaneYRotatedTest.AllFourCorners_OnTwoPlanesBoundary
+ 63/392 Test  #63: ClipPlaneYRotatedTest.AllFourCorners_OnTwoPlanesBoundary .............................   Passed    0.01 sec
+        Start  64: ClipPlaneParallelogramTest.Prerequisite_EdgesAreNonOrthogonal
+ 64/392 Test  #64: ClipPlaneParallelogramTest.Prerequisite_EdgesAreNonOrthogonal ........................   Passed    0.01 sec
+        Start  65: ClipPlaneParallelogramTest.ParallelogramCenter_AllPlanesNonNegative
+ 65/392 Test  #65: ClipPlaneParallelogramTest.ParallelogramCenter_AllPlanesNonNegative ..................   Passed    0.01 sec
+        Start  66: ClipPlaneParallelogramTest.AllFourCorners_OnTwoPlanesBoundary
+ 66/392 Test  #66: ClipPlaneParallelogramTest.AllFourCorners_OnTwoPlanesBoundary ........................   Passed    0.01 sec
+        Start  67: ClipPlaneParallelogramTest.OutsideViaSkewedLeftEdge_LeftPlaneNegative
+ 67/392 Test  #67: ClipPlaneParallelogramTest.OutsideViaSkewedLeftEdge_LeftPlaneNegative ................   Passed    0.01 sec
+        Start  68: ClipPlaneParallelogramTest.InsideViaSkewedLeftEdge_LeftPlanePositive
+ 68/392 Test  #68: ClipPlaneParallelogramTest.InsideViaSkewedLeftEdge_LeftPlanePositive .................   Passed    0.01 sec
+        Start  69: ClipPlaneParallelogramTest.OutsideFarRight_RightPlaneNegative
+ 69/392 Test  #69: ClipPlaneParallelogramTest.OutsideFarRight_RightPlaneNegative ........................   Passed    0.01 sec
+        Start  70: ClipPlaneParallelogramTest.OutsideTop_TopPlaneNegative
+ 70/392 Test  #70: ClipPlaneParallelogramTest.OutsideTop_TopPlaneNegative ...............................   Passed    0.01 sec
+        Start  71: ClipPlaneParallelogramTest.OutsideBottom_BottomPlaneNegative
+ 71/392 Test  #71: ClipPlaneParallelogramTest.OutsideBottom_BottomPlaneNegative .........................   Passed    0.01 sec
+        Start  72: ClipPlaneParallelogramTest.PlaneNormals_PerpendicularToSurfaceNormal
+ 72/392 Test  #72: ClipPlaneParallelogramTest.PlaneNormals_PerpendicularToSurfaceNormal .................   Passed    0.01 sec
+        Start  73: ClipPlaneParallelogramTest.LeftRight_AreAntiParallelNormals
+ 73/392 Test  #73: ClipPlaneParallelogramTest.LeftRight_AreAntiParallelNormals ..........................   Passed    0.01 sec
+        Start  74: ClipPlaneParallelogramTest.TopBottom_AreAntiParallelNormals
+ 74/392 Test  #74: ClipPlaneParallelogramTest.TopBottom_AreAntiParallelNormals ..........................   Passed    0.01 sec
+        Start  75: ClipPlane3DParallelogramTest.Prerequisite_EdgesAreNonOrthogonal
+ 75/392 Test  #75: ClipPlane3DParallelogramTest.Prerequisite_EdgesAreNonOrthogonal ......................   Passed    0.01 sec
+        Start  76: ClipPlane3DParallelogramTest.SurfaceCenter_AllPlanesNonNegative
+ 76/392 Test  #76: ClipPlane3DParallelogramTest.SurfaceCenter_AllPlanesNonNegative ......................   Passed    0.01 sec
+        Start  77: ClipPlane3DParallelogramTest.AllFourCorners_OnTwoPlanesBoundary
+ 77/392 Test  #77: ClipPlane3DParallelogramTest.AllFourCorners_OnTwoPlanesBoundary ......................   Passed    0.01 sec
+        Start  78: ClipPlane3DParallelogramTest.EdgeMidpoints_ZeroForOwnPlane
+ 78/392 Test  #78: ClipPlane3DParallelogramTest.EdgeMidpoints_ZeroForOwnPlane ...........................   Passed    0.01 sec
+        Start  79: ClipPlane3DParallelogramTest.OutsideLeft_LeftPlaneNegative
+ 79/392 Test  #79: ClipPlane3DParallelogramTest.OutsideLeft_LeftPlaneNegative ...........................   Passed    0.01 sec
+        Start  80: ClipPlane3DParallelogramTest.OutsideRight_RightPlaneNegative
+ 80/392 Test  #80: ClipPlane3DParallelogramTest.OutsideRight_RightPlaneNegative .........................   Passed    0.01 sec
+        Start  81: ClipPlane3DParallelogramTest.OutsideTop_TopPlaneNegative
+ 81/392 Test  #81: ClipPlane3DParallelogramTest.OutsideTop_TopPlaneNegative .............................   Passed    0.01 sec
+        Start  82: ClipPlane3DParallelogramTest.OutsideBottom_BottomPlaneNegative
+ 82/392 Test  #82: ClipPlane3DParallelogramTest.OutsideBottom_BottomPlaneNegative .......................   Passed    0.01 sec
+        Start  83: ClipPlane3DParallelogramTest.PlaneNormals_PerpendicularToSurfaceNormal
+ 83/392 Test  #83: ClipPlane3DParallelogramTest.PlaneNormals_PerpendicularToSurfaceNormal ...............   Passed    0.01 sec
+        Start  84: ClipPlane3DParallelogramTest.LeftRight_AreAntiParallelNormals
+ 84/392 Test  #84: ClipPlane3DParallelogramTest.LeftRight_AreAntiParallelNormals ........................   Passed    0.01 sec
+        Start  85: ClipPlane3DParallelogramTest.TopBottom_AreAntiParallelNormals
+ 85/392 Test  #85: ClipPlane3DParallelogramTest.TopBottom_AreAntiParallelNormals ........................   Passed    0.01 sec
+        Start  86: LightFrustumTest.BackWallCornersInsideNDC
+ 86/392 Test  #86: LightFrustumTest.BackWallCornersInsideNDC ............................................   Passed    0.01 sec
+        Start  87: LightFrustumTest.BackWallCornersNDCZInVulkanDepthRange
+ 87/392 Test  #87: LightFrustumTest.BackWallCornersNDCZInVulkanDepthRange ...............................   Passed    0.01 sec
+        Start  88: LightFrustumTest.PerspectiveProjectionUsed_ClipWVariesByDepth
+ 88/392 Test  #88: LightFrustumTest.PerspectiveProjectionUsed_ClipWVariesByDepth ........................   Passed    0.01 sec
+        Start  89: LightFrustumTest.NdcZDepthOrderingPreserved_UIQuadCloserThanBackWall
+ 89/392 Test  #89: LightFrustumTest.NdcZDepthOrderingPreserved_UIQuadCloserThanBackWall .................   Passed    0.01 sec
+        Start  90: LightFrustumTest.SpotlightPosition_InsideRoomBounds
+ 90/392 Test  #90: LightFrustumTest.SpotlightPosition_InsideRoomBounds ..................................   Passed    0.01 sec
+        Start  91: LightFrustumTest.ZMonotonicity_CloserPointHasSmallerNdcZ
+ 91/392 Test  #91: LightFrustumTest.ZMonotonicity_CloserPointHasSmallerNdcZ .............................   Passed    0.01 sec
+        Start  92: LightFrustumTest.LightDirection_IsUnitVector
+ 92/392 Test  #92: LightFrustumTest.LightDirection_IsUnitVector .........................................   Passed    0.01 sec
+        Start  93: LightFrustumTest.LightDirection_NotParallelToLookAtUpVector
+ 93/392 Test  #93: LightFrustumTest.LightDirection_NotParallelToLookAtUpVector ..........................   Passed    0.01 sec
+        Start  94: LightFrustumTest.LightColor_AllChannelsPositive
+ 94/392 Test  #94: LightFrustumTest.LightColor_AllChannelsPositive ......................................   Passed    0.01 sec
+        Start  95: LightFrustumTest.AmbientColor_AllChannelsPositive
+ 95/392 Test  #95: LightFrustumTest.AmbientColor_AllChannelsPositive ....................................   Passed    0.01 sec
+        Start  96: LightFrustumTest.SpotlightConeAngles_InnerSmallerThanOuter
+ 96/392 Test  #96: LightFrustumTest.SpotlightConeAngles_InnerSmallerThanOuter ...........................   Passed    0.01 sec
+        Start  97: LightFrustumTest.SpotlightDirection_AimsTowardBackWall
+ 97/392 Test  #97: LightFrustumTest.SpotlightDirection_AimsTowardBackWall ...............................   Passed    0.01 sec
+        Start  98: LightFrustumTest.UIQuadCenter_InsideSpotlightOuterCone_AtT0
+ 98/392 Test  #98: LightFrustumTest.UIQuadCenter_InsideSpotlightOuterCone_AtT0 ..........................   Passed    0.01 sec
+        Start  99: SceneInitTest.VertexBufferNonEmpty
+ 99/392 Test  #99: SceneInitTest.VertexBufferNonEmpty ...................................................   Passed    0.01 sec
+        Start 100: SceneInitTest.IndexBufferNonEmpty
+100/392 Test #100: SceneInitTest.IndexBufferNonEmpty ....................................................   Passed    0.01 sec
+        Start 101: SceneInitTest.AllNormalsUnitLength
+101/392 Test #101: SceneInitTest.AllNormalsUnitLength ...................................................   Passed    0.01 sec
+        Start 102: SceneInitTest.AllIndicesInBounds
+102/392 Test #102: SceneInitTest.AllIndicesInBounds .....................................................   Passed    0.01 sec
+        Start 103: SceneInitTest.TriangleCountEquals12
+103/392 Test #103: SceneInitTest.TriangleCountEquals12 ..................................................   Passed    0.01 sec
+        Start 104: WorldCornersTest.ParallelogramIdentity
+104/392 Test #104: WorldCornersTest.ParallelogramIdentity ...............................................   Passed    0.01 sec
+        Start 105: WorldCornersTest.CornersMatchAnimationMatrixAtT0
+105/392 Test #105: WorldCornersTest.CornersMatchAnimationMatrixAtT0 .....................................   Passed    0.01 sec
+        Start 106: WorldCornersTest.PlanarityPreservedAtMultipleTimes
+106/392 Test #106: WorldCornersTest.PlanarityPreservedAtMultipleTimes ...................................   Passed    0.01 sec
+        Start 107: WorldCornersTest.Scale1_MatchesDefaultUnscaled
+107/392 Test #107: WorldCornersTest.Scale1_MatchesDefaultUnscaled .......................................   Passed    0.01 sec
+        Start 108: WorldCornersTest.Scale2_CornersAreDoubledRelativeToCenter
+108/392 Test #108: WorldCornersTest.Scale2_CornersAreDoubledRelativeToCenter ............................   Passed    0.01 sec
+        Start 109: WorldCornersTest.ScaleHalf_EdgeLengthIsHalved
+109/392 Test #109: WorldCornersTest.ScaleHalf_EdgeLengthIsHalved ........................................   Passed    0.01 sec
+        Start 110: WorldCornersTest.ScalePreservesParallelogramIdentity
+110/392 Test #110: WorldCornersTest.ScalePreservesParallelogramIdentity .................................   Passed    0.01 sec
+        Start 111: WorldCornersTest.NonUniformScale_WidthDoubled_HeightUnchanged
+111/392 Test #111: WorldCornersTest.NonUniformScale_WidthDoubled_HeightUnchanged ........................   Passed    0.01 sec
+        Start 112: WorldCornersTest.NonUniformScale_HeightDoubled_WidthUnchanged
+112/392 Test #112: WorldCornersTest.NonUniformScale_HeightDoubled_WidthUnchanged ........................   Passed    0.01 sec
+        Start 113: WorldCornersTest.NonUniformScale_PreservesParallelogramIdentity
+113/392 Test #113: WorldCornersTest.NonUniformScale_PreservesParallelogramIdentity ......................   Passed    0.01 sec
+        Start 114: WorldCornersTest.NonUniformScale_CenterStaysFixed
+114/392 Test #114: WorldCornersTest.NonUniformScale_CenterStaysFixed ....................................   Passed    0.01 sec
+        Start 115: WorldCornersTest.NonUniformScale_ExtremeAspectRatio_10to1
+115/392 Test #115: WorldCornersTest.NonUniformScale_ExtremeAspectRatio_10to1 ............................   Passed    0.01 sec
+        Start 116: WorldCornersTest.NonUniformScale_ExtremeAspectRatio_1to10
+116/392 Test #116: WorldCornersTest.NonUniformScale_ExtremeAspectRatio_1to10 ............................   Passed    0.01 sec
+        Start 117: WorldCornersTest.NonUniformScale_VerySmallScale
+117/392 Test #117: WorldCornersTest.NonUniformScale_VerySmallScale ......................................   Passed    0.01 sec
+        Start 118: WorldCornersTest.NonUniformScale_VeryLargeScale
+118/392 Test #118: WorldCornersTest.NonUniformScale_VeryLargeScale ......................................   Passed    0.01 sec
+        Start 119: SceneAnimationTest.AtT0_RotationSubmatrixIsIdentity
+119/392 Test #119: SceneAnimationTest.AtT0_RotationSubmatrixIsIdentity ..................................   Passed    0.01 sec
+        Start 120: SceneAnimationTest.AtT0_TranslationMatchesBaseOffset
+120/392 Test #120: SceneAnimationTest.AtT0_TranslationMatchesBaseOffset .................................   Passed    0.01 sec
+        Start 121: SceneAnimationTest.NonTrivialAngle_RotationSubmatrixMatchesGlmRotate
+121/392 Test #121: SceneAnimationTest.NonTrivialAngle_RotationSubmatrixMatchesGlmRotate .................   Passed    0.01 sec
+        Start 122: SceneAnimationTest.NormalWiggle_AtPeak_RotationMatchesCombinedYAndZ
+122/392 Test #122: SceneAnimationTest.NormalWiggle_AtPeak_RotationMatchesCombinedYAndZ ..................   Passed    0.01 sec
+        Start 123: SceneAnimationTest.NormalWiggle_ZeroAt_T0_And_T2Pi
+123/392 Test #123: SceneAnimationTest.NormalWiggle_ZeroAt_T0_And_T2Pi ...................................   Passed    0.01 sec
+        Start 124: SceneAnimationTest.AtSinPi_LateralXNearZero_YFollowsFormula
+124/392 Test #124: SceneAnimationTest.AtSinPi_LateralXNearZero_YFollowsFormula ..........................   Passed    0.01 sec
+        Start 125: SceneAnimationTest.AtSinPiOver2_LateralXIsMax_YFollowsFormula
+125/392 Test #125: SceneAnimationTest.AtSinPiOver2_LateralXIsMax_YFollowsFormula ........................   Passed    0.01 sec
+        Start 126: SceneAnimationTest.AtSin3PiOver2_LateralXIsNegativeMax_YFollowsFormula
+126/392 Test #126: SceneAnimationTest.AtSin3PiOver2_LateralXIsNegativeMax_YFollowsFormula ...............   Passed    0.01 sec
+        Start 127: SceneAnimationTest.ZTranslation_AlwaysFixedAt_Neg2_5
+127/392 Test #127: SceneAnimationTest.ZTranslation_AlwaysFixedAt_Neg2_5 .................................   Passed    0.01 sec
+        Start 128: SceneAnimationTest.YTranslation_AlwaysInExpectedRange
+128/392 Test #128: SceneAnimationTest.YTranslation_AlwaysInExpectedRange ................................   Passed    0.01 sec
+        Start 129: SceneAnimationTest.XTranslation_AlwaysInExpectedRange
+129/392 Test #129: SceneAnimationTest.XTranslation_AlwaysInExpectedRange ................................   Passed    0.01 sec
+        Start 130: SceneAnimationTest.NormalWiggle_AtNegativePeak_RotationMatchesCombinedYAndZNeg
+130/392 Test #130: SceneAnimationTest.NormalWiggle_AtNegativePeak_RotationMatchesCombinedYAndZNeg .......   Passed    0.01 sec
+        Start 131: SceneAnimationTest.NegativeT_MatrixIsFinite
+131/392 Test #131: SceneAnimationTest.NegativeT_MatrixIsFinite ..........................................   Passed    0.01 sec
+        Start 132: SceneAnimationTest.NegativeT_RotationMatchesFormula
+132/392 Test #132: SceneAnimationTest.NegativeT_RotationMatchesFormula ..................................   Passed    0.01 sec
+        Start 133: SceneAnimationTest.NegativeT_TranslationMatchesFormula
+133/392 Test #133: SceneAnimationTest.NegativeT_TranslationMatchesFormula ...............................   Passed    0.01 sec
+        Start 134: WorldCornersDegenerateTest.ScaleWZero_EdgeVectorsCollapseToZeroX
+134/392 Test #134: WorldCornersDegenerateTest.ScaleWZero_EdgeVectorsCollapseToZeroX .....................   Passed    0.01 sec
+        Start 135: WorldCornersDegenerateTest.ScaleHZero_EdgeVectorsCollapseToZeroY
+135/392 Test #135: WorldCornersDegenerateTest.ScaleHZero_EdgeVectorsCollapseToZeroY .....................   Passed    0.01 sec
+        Start 136: WorldCornersDegenerateTest.ScaleWZeroAndScaleHZero_AllCornersCollapseToCenter
+136/392 Test #136: WorldCornersDegenerateTest.ScaleWZeroAndScaleHZero_AllCornersCollapseToCenter ........   Passed    0.01 sec
+        Start 137: WorldCornersDegenerateTest.ScaleWZero_ParallelogramIdentityStillHolds
+137/392 Test #137: WorldCornersDegenerateTest.ScaleWZero_ParallelogramIdentityStillHolds ................   Passed    0.01 sec
+        Start 138: WorldCubeCornersTest.AllFacesTransformCorrectly
+138/392 Test #138: WorldCubeCornersTest.AllFacesTransformCorrectly ......................................   Passed    0.01 sec
+        Start 139: WorldCubeCornersTest.FrontFaceMatchesWorldCorners
+139/392 Test #139: WorldCubeCornersTest.FrontFaceMatchesWorldCorners ....................................   Passed    0.01 sec
+        Start 140: WorldCubeCornersTest.AllFacesPreserveParallelogramIdentity
+140/392 Test #140: WorldCubeCornersTest.AllFacesPreserveParallelogramIdentity ...........................   Passed    0.01 sec
+        Start 141: WorldCubeCornersTest.AllFacesRemainPlanar
+141/392 Test #141: WorldCubeCornersTest.AllFacesRemainPlanar ............................................   Passed    0.01 sec
+        Start 142: WorldCubeCornersTest.CubeFacesHaveCorrectLocalDimensions
+142/392 Test #142: WorldCubeCornersTest.CubeFacesHaveCorrectLocalDimensions .............................   Passed    0.01 sec
+        Start 143: WorldCubeCornersTest.NonUniformScaleAppliesCorrectly
+143/392 Test #143: WorldCubeCornersTest.NonUniformScaleAppliesCorrectly .................................   Passed    0.01 sec
+        Start 144: WorldCubeCornersTest.AllCornersFiniteAtVariousTimes
+144/392 Test #144: WorldCubeCornersTest.AllCornersFiniteAtVariousTimes ..................................   Passed    0.01 sec
+        Start 145: AnimationContinuityTest.MatrixContinuityAcrossSmallTimeIntervals
+145/392 Test #145: AnimationContinuityTest.MatrixContinuityAcrossSmallTimeIntervals .....................   Passed    0.01 sec
+        Start 146: AnimationContinuityTest.CornerPositionsContinuousAcrossTime
+146/392 Test #146: AnimationContinuityTest.CornerPositionsContinuousAcrossTime ..........................   Passed    0.01 sec
+        Start 147: AnimationContinuityTest.NoKinksInTranslation
+147/392 Test #147: AnimationContinuityTest.NoKinksInTranslation .........................................   Passed    0.01 sec
+        Start 148: AnimationContinuityTest.RotationSmoothAcrossFullPeriod
+148/392 Test #148: AnimationContinuityTest.RotationSmoothAcrossFullPeriod ...............................   Passed    0.01 sec
+        Start 149: RoomGeometryTest.CeilingEdgesAlignWithWallTopEdges
+149/392 Test #149: RoomGeometryTest.CeilingEdgesAlignWithWallTopEdges ...................................   Passed    0.01 sec
+        Start 150: RoomGeometryTest.WallTopEdgeVerticesMatchCeiling
+150/392 Test #150: RoomGeometryTest.WallTopEdgeVerticesMatchCeiling .....................................   Passed    0.01 sec
+        Start 151: RoomGeometryTest.CeilingWallCornerExactMatch
+151/392 Test #151: RoomGeometryTest.CeilingWallCornerExactMatch .........................................   Passed    0.01 sec
+        Start 152: RoomGeometryTest.CeilingWallSharedEdgeLength
+152/392 Test #152: RoomGeometryTest.CeilingWallSharedEdgeLength .........................................   Passed    0.01 sec
+        Start 153: AnimatedSpotlightBoundsTest.AnimatedSpotlightStaysInRoomBounds
+153/392 Test #153: AnimatedSpotlightBoundsTest.AnimatedSpotlightStaysInRoomBounds .......................   Passed    0.01 sec
+        Start 154: SDFConstants.SdfThresholdReturnsZeroWhenNotSDF
+154/392 Test #154: SDFConstants.SdfThresholdReturnsZeroWhenNotSDF .......................................   Passed    0.01 sec
+        Start 155: UISystemUVTable.PrintableASCII_UVsInUnitSquare
+155/392 Test #155: UISystemUVTable.PrintableASCII_UVsInUnitSquare .......................................   Passed    0.01 sec
+        Start 156: UISystemUVTable.FirstAndLastPrintable_CorrectCells
+156/392 Test #156: UISystemUVTable.FirstAndLastPrintable_CorrectCells ...................................   Passed    0.01 sec
+        Start 157: UISystemUVTable.GlyphTableBuilt_StateTransition
+157/392 Test #157: UISystemUVTable.GlyphTableBuilt_StateTransition ......................................   Passed    0.01 sec
+        Start 158: UISystemUVTable.OutOfRangeChar_ClampedToSpaceGlyph
+158/392 Test #158: UISystemUVTable.OutOfRangeChar_ClampedToSpaceGlyph ...................................   Passed    0.01 sec
+        Start 159: UISystemUVTable.RebuildGlyphTable_ConsistentAfterMultipleCalls
+159/392 Test #159: UISystemUVTable.RebuildGlyphTable_ConsistentAfterMultipleCalls .......................   Passed    0.01 sec
+        Start 160: UISystemUVTable.AllCharacterIndexSpacing_NoDuplicatesOrGaps
+160/392 Test #160: UISystemUVTable.AllCharacterIndexSpacing_NoDuplicatesOrGaps ..........................   Passed    0.01 sec
+        Start 161: TessellateStringTest.EmptyString_ZeroVertices
+161/392 Test #161: TessellateStringTest.EmptyString_ZeroVertices ........................................   Passed    0.01 sec
+        Start 162: TessellateStringTest.NChars_Produces6NVertices
+162/392 Test #162: TessellateStringTest.NChars_Produces6NVertices .......................................   Passed    0.01 sec
+        Start 163: TessellateStringTest.QuadCornerPositions_AdvanceByGlyphCell
+163/392 Test #163: TessellateStringTest.QuadCornerPositions_AdvanceByGlyphCell ..........................   Passed    0.01 sec
+        Start 164: TessellateStringTest.AppendsToExistingVector
+164/392 Test #164: TessellateStringTest.AppendsToExistingVector .........................................   Passed    0.01 sec
+        Start 165: TessellateStringTest.UVsMatchUvForChar
+165/392 Test #165: TessellateStringTest.UVsMatchUvForChar ...............................................   Passed    0.01 sec
+        Start 166: TessellateStringTest.NonPrintableChars_FallBackToSpaceGlyphUVs
+166/392 Test #166: TessellateStringTest.NonPrintableChars_FallBackToSpaceGlyphUVs .......................   Passed    0.01 sec
+        Start 167: TessellateStringTest.NonPrintable_In_MixedString_PositionsAdvanceByGlyphCell
+167/392 Test #167: TessellateStringTest.NonPrintable_In_MixedString_PositionsAdvanceByGlyphCell .........   Passed    0.01 sec
+        Start 168: TessellateStringTest.RepeatedCharsSameGlyph_AllVerticesIdenticalUVs
+168/392 Test #168: TessellateStringTest.RepeatedCharsSameGlyph_AllVerticesIdenticalUVs ..................   Passed    0.01 sec
+        Start 169: TessellateStringTest.AllNonPrintableRun_CursorAdvancesEvenly
+169/392 Test #169: TessellateStringTest.AllNonPrintableRun_CursorAdvancesEvenly .........................   Passed    0.01 sec
+        Start 170: TessellateStringDegenerateTest.LongString1000Chars_NoOverflow
+170/392 Test #170: TessellateStringDegenerateTest.LongString1000Chars_NoOverflow ........................   Passed    0.01 sec
+        Start 171: TessellateStringDegenerateTest.LongString5000Chars_VerifyNoWraparound
+171/392 Test #171: TessellateStringDegenerateTest.LongString5000Chars_VerifyNoWraparound ................   Passed    0.01 sec
+        Start 172: UISurfaceTest.LocalCorners_CorrectDimensions
+172/392 Test #172: UISurfaceTest.LocalCorners_CorrectDimensions .........................................   Passed    0.01 sec
+        Start 173: MetricsTest.FrameTimingRollingAverage_WrapsCorrectly
+173/392 Test #173: MetricsTest.FrameTimingRollingAverage_WrapsCorrectly .................................   Passed    0.03 sec
+        Start 174: MetricsTest.UpdateGPUMem_NullAllocator_SetsZero
+174/392 Test #174: MetricsTest.UpdateGPUMem_NullAllocator_SetsZero ......................................   Passed    0.01 sec
+        Start 175: MetricsTest.AverageFrameMs_ExactlyZeroWhenNoFrames
+175/392 Test #175: MetricsTest.AverageFrameMs_ExactlyZeroWhenNoFrames ...................................   Passed    0.01 sec
+        Start 176: MetricsTest.AverageFrameMs_SingleFrame_ReturnsPositiveValue
+176/392 Test #176: MetricsTest.AverageFrameMs_SingleFrame_ReturnsPositiveValue ..........................   Passed    0.03 sec
+        Start 177: MetricsTest.AverageFrameMs_PartialFill_UsesRecordedCountNotHistorySize
+177/392 Test #177: MetricsTest.AverageFrameMs_PartialFill_UsesRecordedCountNotHistorySize ...............   Passed    0.02 sec
+        Start 178: MetricsTest.HUDTessellation_VertexCountMatchesLineCount
+178/392 Test #178: MetricsTest.HUDTessellation_VertexCountMatchesLineCount ..............................   Passed    0.01 sec
+        Start 179: MetricsTest.HUDTessellation_TraditionalMode_VertexCount
+179/392 Test #179: MetricsTest.HUDTessellation_TraditionalMode_VertexCount ..............................   Passed    0.01 sec
+        Start 180: MetricsTest.HUDTessellation_WithInputModeStr_AddsExtraLine
+180/392 Test #180: MetricsTest.HUDTessellation_WithInputModeStr_AddsExtraLine ...........................   Passed    0.01 sec
+        Start 181: MetricsTest.HUDTessellation_AppendsToExistingVector
+181/392 Test #181: MetricsTest.HUDTessellation_AppendsToExistingVector ..................................   Passed    0.01 sec
+        Start 182: MetricsTest.HUDTessellation_PreExistingVertexValues_NotModified
+182/392 Test #182: MetricsTest.HUDTessellation_PreExistingVertexValues_NotModified ......................   Passed    0.01 sec
+        Start 183: MetricsTest.HUDTessellation_ReturnsZeroForEmptyUISystem
+183/392 Test #183: MetricsTest.HUDTessellation_ReturnsZeroForEmptyUISystem ..............................   Passed    0.01 sec
+        Start 184: MetricsTest.HUDTessellation_AppendedVertexPositions_InHUDRegion
+184/392 Test #184: MetricsTest.HUDTessellation_AppendedVertexPositions_InHUDRegion ......................   Passed    0.01 sec
+        Start 185: MetricsTest.HUDTessellation_AppendedVertexUVs_InUnitSquare
+185/392 Test #185: MetricsTest.HUDTessellation_AppendedVertexUVs_InUnitSquare ...........................   Passed    0.01 sec
+        Start 186: MetricsTest.HUDTessellation_LineHeightSpacing_VerticalSeparation
+186/392 Test #186: MetricsTest.HUDTessellation_LineHeightSpacing_VerticalSeparation .....................   Passed    0.01 sec
+        Start 187: MetricsTest.HUDTessellation_LineHeightSpacing_WithInputModeStr_FifthLineSeparation
+187/392 Test #187: MetricsTest.HUDTessellation_LineHeightSpacing_WithInputModeStr_FifthLineSeparation ...   Passed    0.01 sec
+        Start 188: MetricsTest.HUDTessellation_WithInputModeStr_AllLinesYSpacing
+188/392 Test #188: MetricsTest.HUDTessellation_WithInputModeStr_AllLinesYSpacing ........................   Passed    0.01 sec
+        Start 189: MetricsTest.HUDTessellation_WithInputModeStr_AllLinesXPositions
+189/392 Test #189: MetricsTest.HUDTessellation_WithInputModeStr_AllLinesXPositions ......................   Passed    0.01 sec
+        Start 190: MetricsTest.HUDTessellation_EightLines_AllLinesYSpacing
+190/392 Test #190: MetricsTest.HUDTessellation_EightLines_AllLinesYSpacing ..............................   Passed    0.01 sec
+        Start 191: MetricsTest.HUDTessellation_EightLines_AllLinesXPositions
+191/392 Test #191: MetricsTest.HUDTessellation_EightLines_AllLinesXPositions ............................   Passed    0.01 sec
+        Start 192: MetricsTest.HUDTessellation_TraditionalMode_AllLinesYSpacing
+192/392 Test #192: MetricsTest.HUDTessellation_TraditionalMode_AllLinesYSpacing .........................   Passed    0.01 sec
+        Start 193: MetricsTest.HUDTessellation_TraditionalMode_AllLinesXPositions
+193/392 Test #193: MetricsTest.HUDTessellation_TraditionalMode_AllLinesXPositions .......................   Passed    0.01 sec
+        Start 194: MetricsTest.HUDTessellation_TraditionalMode_WithInputModeStr_AllLinesXPositions
+194/392 Test #194: MetricsTest.HUDTessellation_TraditionalMode_WithInputModeStr_AllLinesXPositions ......   Passed    0.01 sec
+        Start 195: MetricsTest.HUDTessellation_TraditionalMode_WithInputModeStr_AllLinesYSpacing
+195/392 Test #195: MetricsTest.HUDTessellation_TraditionalMode_WithInputModeStr_AllLinesYSpacing ........   Passed    0.01 sec
+        Start 196: MetricsTest.HUDTessellation_EmptyInputModeStr_LinesXPositions
+196/392 Test #196: MetricsTest.HUDTessellation_EmptyInputModeStr_LinesXPositions ........................   Passed    0.01 sec
+        Start 197: MetricsTest.HUDTessellation_TraditionalMode_EmptyInputModeStr_FiveLinesYSpacing
+197/392 Test #197: MetricsTest.HUDTessellation_TraditionalMode_EmptyInputModeStr_FiveLinesYSpacing ......   Passed    0.01 sec
+        Start 198: MetricsTest.HUDTessellation_TraditionalMode_EmptyInputModeStr_LinesXPositions
+198/392 Test #198: MetricsTest.HUDTessellation_TraditionalMode_EmptyInputModeStr_LinesXPositions ........   Passed    0.01 sec
+        Start 199: MetricsTest.HUDTessellation_EmptyInputModeStr_MatchesNullptrBaseline
+199/392 Test #199: MetricsTest.HUDTessellation_EmptyInputModeStr_MatchesNullptrBaseline .................   Passed    0.01 sec
+        Start 200: MetricsTest.HUDTessellation_NonStandardMSAA_VertexCountReflectsLongerString
+200/392 Test #200: MetricsTest.HUDTessellation_NonStandardMSAA_VertexCountReflectsLongerString ..........   Passed    0.01 sec
+        Start 201: MetricsTest.HUDTessellation_SingleDigitMSAA_SameVertexCount
+201/392 Test #201: MetricsTest.HUDTessellation_SingleDigitMSAA_SameVertexCount ..........................   Passed    0.01 sec
+        Start 202: MetricsTest.HUDTessellation_LargeMSAASampleCount_NoBufferOverflow
+202/392 Test #202: MetricsTest.HUDTessellation_LargeMSAASampleCount_NoBufferOverflow ....................   Passed    0.01 sec
+        Start 203: MetricsTest.HUDTessellation_EmptyInputModeStr_FiveLinesYSpacing
+203/392 Test #203: MetricsTest.HUDTessellation_EmptyInputModeStr_FiveLinesYSpacing ......................   Passed    0.01 sec
+        Start 204: MetricsTest.HUDTessellation_FrameTimeLine_ReflectsNonZeroAverage
+204/392 Test #204: MetricsTest.HUDTessellation_FrameTimeLine_ReflectsNonZeroAverage .....................   Passed    0.05 sec
+        Start 205: AppInputHandlerTest.ModeToggle_SpaceKey_SetsToggleFlag
+205/392 Test #205: AppInputHandlerTest.ModeToggle_SpaceKey_SetsToggleFlag ...............................   Passed    0.04 sec
+        Start 206: AppInputHandlerTest.ModeToggle_SpaceKey_ReleasedDoesNothing
+206/392 Test #206: AppInputHandlerTest.ModeToggle_SpaceKey_ReleasedDoesNothing ..........................   Passed    0.03 sec
+        Start 207: AppInputHandlerTest.ModeToggle_OtherKeyDoesNotToggle
+207/392 Test #207: AppInputHandlerTest.ModeToggle_OtherKeyDoesNotToggle .................................   Passed    0.03 sec
+        Start 208: AppInputHandlerTest.DepthBias_PlusKeyIncreases
+208/392 Test #208: AppInputHandlerTest.DepthBias_PlusKeyIncreases .......................................   Passed    0.03 sec
+        Start 209: AppInputHandlerTest.DepthBias_MinusKeyDecreases
+209/392 Test #209: AppInputHandlerTest.DepthBias_MinusKeyDecreases ......................................   Passed    0.03 sec
+        Start 210: AppInputHandlerTest.DepthBias_KPAddIncreases
+210/392 Test #210: AppInputHandlerTest.DepthBias_KPAddIncreases .........................................   Passed    0.03 sec
+        Start 211: AppInputHandlerTest.DepthBias_KPSubtractDecreases
+211/392 Test #211: AppInputHandlerTest.DepthBias_KPSubtractDecreases ....................................   Passed    0.03 sec
+        Start 212: AppInputHandlerTest.DepthBias_IgnoredInTerminalMode
+212/392 Test #212: AppInputHandlerTest.DepthBias_IgnoredInTerminalMode ..................................   Passed    0.03 sec
+        Start 213: AppInputHandlerTest.InputModeToggle_TabInCameraMode_SwitchesToTerminal
+213/392 Test #213: AppInputHandlerTest.InputModeToggle_TabInCameraMode_SwitchesToTerminal ...............   Passed    0.03 sec
+        Start 214: AppInputHandlerTest.InputModeToggle_TabInTerminalMode_SwitchesToCamera
+214/392 Test #214: AppInputHandlerTest.InputModeToggle_TabInTerminalMode_SwitchesToCamera ...............   Passed    0.03 sec
+        Start 215: AppInputHandlerTest.InputModeToggle_TabReleaseDoesNothing
+215/392 Test #215: AppInputHandlerTest.InputModeToggle_TabReleaseDoesNothing ............................   Passed    0.03 sec
+        Start 216: AppInputHandlerTest.TerminalInput_CharacterAccumulation
+216/392 Test #216: AppInputHandlerTest.TerminalInput_CharacterAccumulation ..............................   Passed    0.03 sec
+        Start 217: AppInputHandlerTest.TerminalInput_OnlyPrintableASCII
+217/392 Test #217: AppInputHandlerTest.TerminalInput_OnlyPrintableASCII .................................   Passed    0.03 sec
+        Start 218: AppInputHandlerTest.TerminalInput_IgnoredInCameraMode
+218/392 Test #218: AppInputHandlerTest.TerminalInput_IgnoredInCameraMode ................................   Passed    0.03 sec
+        Start 219: AppInputHandlerTest.TerminalInput_MaximumLength_255Characters
+219/392 Test #219: AppInputHandlerTest.TerminalInput_MaximumLength_255Characters ........................   Passed    0.03 sec
+        Start 220: AppInputHandlerTest.TerminalInput_BackspaceRemovesLastCharacter
+220/392 Test #220: AppInputHandlerTest.TerminalInput_BackspaceRemovesLastCharacter ......................   Passed    0.03 sec
+        Start 221: AppInputHandlerTest.TerminalInput_BackspaceOnEmptyTextDoesNothing
+221/392 Test #221: AppInputHandlerTest.TerminalInput_BackspaceOnEmptyTextDoesNothing ....................   Passed    0.04 sec
+        Start 222: AppInputHandlerTest.TerminalInput_BackspaceMultipleTimes
+222/392 Test #222: AppInputHandlerTest.TerminalInput_BackspaceMultipleTimes .............................   Passed    0.03 sec
+        Start 223: AppInputHandlerTest.TerminalInput_BackspaceIgnoredInCameraMode
+223/392 Test #223: AppInputHandlerTest.TerminalInput_BackspaceIgnoredInCameraMode .......................   Passed    0.03 sec
+        Start 224: AppInputHandlerTest.TerminalInput_EscapeReturnsToCamera
+224/392 Test #224: AppInputHandlerTest.TerminalInput_EscapeReturnsToCamera ..............................   Passed    0.04 sec
+        Start 225: AppInputHandlerTest.TerminalInput_EscapeInCameraModeDoesNothing
+225/392 Test #225: AppInputHandlerTest.TerminalInput_EscapeInCameraModeDoesNothing ......................   Passed    0.03 sec
+        Start 226: AppInputHandlerTest.TerminalInput_CharacterAndBackspaceSequence
+226/392 Test #226: AppInputHandlerTest.TerminalInput_CharacterAndBackspaceSequence ......................   Passed    0.04 sec
+        Start 227: AppInputHandlerTest.ComplexSequence_ModeToggleAndDepthBias
+227/392 Test #227: AppInputHandlerTest.ComplexSequence_ModeToggleAndDepthBias ...........................   Passed    0.03 sec
+        Start 228: AppInputHandlerTest.ComplexSequence_TerminalInputWithModeToggle
+228/392 Test #228: AppInputHandlerTest.ComplexSequence_TerminalInputWithModeToggle ......................   Passed    0.03 sec
+        Start 229: AppInputHandlerTest.ComplexSequence_DepthBiasMultipleAdjustments
+229/392 Test #229: AppInputHandlerTest.ComplexSequence_DepthBiasMultipleAdjustments .....................   Passed    0.03 sec
+        Start 230: AppInputHandlerTest.EdgeCase_RepeatActionsIgnoredForTab
+230/392 Test #230: AppInputHandlerTest.EdgeCase_RepeatActionsIgnoredForTab ..............................   Passed    0.03 sec
+        Start 231: AppInputHandlerTest.EdgeCase_TerminalModeIgnoresNonTerminalKeys
+231/392 Test #231: AppInputHandlerTest.EdgeCase_TerminalModeIgnoresNonTerminalKeys ......................   Passed    0.03 sec
+        Start 232: AppInputHandlerTest.MouseButton_RightClickTogglesCapture
+232/392 Test #232: AppInputHandlerTest.MouseButton_RightClickTogglesCapture .............................   Passed    0.03 sec
+        Start 233: AppInputHandlerTest.MouseButton_RightClickAgainTogglesCaptureOff
+233/392 Test #233: AppInputHandlerTest.MouseButton_RightClickAgainTogglesCaptureOff .....................   Passed    0.03 sec
+        Start 234: AppInputHandlerTest.MouseButton_RightClickReleasedDoesNothing
+234/392 Test #234: AppInputHandlerTest.MouseButton_RightClickReleasedDoesNothing ........................   Passed    0.03 sec
+        Start 235: AppInputHandlerTest.MouseButton_OtherButtonIgnored
+235/392 Test #235: AppInputHandlerTest.MouseButton_OtherButtonIgnored ...................................   Passed    0.03 sec
+        Start 236: AppInputHandlerTest.MouseMove_IgnoredWhenCaptureDisabled
+236/392 Test #236: AppInputHandlerTest.MouseMove_IgnoredWhenCaptureDisabled .............................   Passed    0.03 sec
+        Start 237: AppInputHandlerTest.MouseMove_FirstMoveInitializesState
+237/392 Test #237: AppInputHandlerTest.MouseMove_FirstMoveInitializesState ..............................   Passed    0.04 sec
+        Start 238: AppInputHandlerTest.MouseMove_CameraRotationWithDelta
+238/392 Test #238: AppInputHandlerTest.MouseMove_CameraRotationWithDelta ................................   Passed    0.03 sec
+        Start 239: AppInputHandlerTest.MouseMove_PitchClamped
+239/392 Test #239: AppInputHandlerTest.MouseMove_PitchClamped ...........................................   Passed    0.03 sec
+        Start 240: AppInputHandlerTest.QuadWidth_RightBracketIncreases
+240/392 Test #240: AppInputHandlerTest.QuadWidth_RightBracketIncreases ..................................   Passed    0.03 sec
+        Start 241: AppInputHandlerTest.QuadWidth_LeftBracketDecreases
+241/392 Test #241: AppInputHandlerTest.QuadWidth_LeftBracketDecreases ...................................   Passed    0.03 sec
+        Start 242: AppInputHandlerTest.QuadWidth_ClampsAtMaximum
+242/392 Test #242: AppInputHandlerTest.QuadWidth_ClampsAtMaximum ........................................   Passed    0.03 sec
+        Start 243: AppInputHandlerTest.QuadWidth_ClampsAtMinimum
+243/392 Test #243: AppInputHandlerTest.QuadWidth_ClampsAtMinimum ........................................   Passed    0.03 sec
+        Start 244: AppInputHandlerTest.QuadHeight_PKeyIncreases
+244/392 Test #244: AppInputHandlerTest.QuadHeight_PKeyIncreases .........................................   Passed    0.03 sec
+        Start 245: AppInputHandlerTest.QuadHeight_OKeyDecreases
+245/392 Test #245: AppInputHandlerTest.QuadHeight_OKeyDecreases .........................................   Passed    0.03 sec
+        Start 246: AppInputHandlerTest.QuadHeight_ClampsAtMaximum
+246/392 Test #246: AppInputHandlerTest.QuadHeight_ClampsAtMaximum .......................................   Passed    0.03 sec
+        Start 247: AppInputHandlerTest.QuadHeight_ClampsAtMinimum
+247/392 Test #247: AppInputHandlerTest.QuadHeight_ClampsAtMinimum .......................................   Passed    0.03 sec
+        Start 248: AppInputHandlerTest.EscapeKey_InCameraModeWithMouseCapture_DisablesCapture
+248/392 Test #248: AppInputHandlerTest.EscapeKey_InCameraModeWithMouseCapture_DisablesCapture ...........   Passed    0.03 sec
+        Start 249: AppInputHandlerTest.EscapeKey_InCameraModeWithoutMouseCapture_DoesNothing
+249/392 Test #249: AppInputHandlerTest.EscapeKey_InCameraModeWithoutMouseCapture_DoesNothing ............   Passed    0.03 sec
+        Start 250: AppInputHandlerTest.InputModeToggle_EnteringTerminalMode_ReleasesMouseCapture
+250/392 Test #250: AppInputHandlerTest.InputModeToggle_EnteringTerminalMode_ReleasesMouseCapture ........   Passed    0.03 sec
+        Start 251: AppInputHandlerTest.InputModeToggle_ExitingTerminalMode_DoesNotAffectMouseCapture
+251/392 Test #251: AppInputHandlerTest.InputModeToggle_ExitingTerminalMode_DoesNotAffectMouseCapture ....   Passed    0.03 sec
+        Start 252: AppInputHandlerTest.TerminalInput_CursorDisplayedInTerminalMode
+252/392 Test #252: AppInputHandlerTest.TerminalInput_CursorDisplayedInTerminalMode ......................   Passed    0.03 sec
+        Start 253: AppInputHandlerTest.TerminalInput_CursorNotDisplayedInCameraMode
+253/392 Test #253: AppInputHandlerTest.TerminalInput_CursorNotDisplayedInCameraMode .....................   Passed    0.04 sec
+        Start 254: AppInputHandlerTest.TerminalInput_TextPersistenceAcrossModeToggle
+254/392 Test #254: AppInputHandlerTest.TerminalInput_TextPersistenceAcrossModeToggle ....................   Passed    0.03 sec
+        Start 255: AppInputHandlerTest.TerminalInput_EmptyTextWithCursor
+255/392 Test #255: AppInputHandlerTest.TerminalInput_EmptyTextWithCursor ................................   Passed    0.03 sec
+        Start 256: AppInputHandlerTest.TerminalInput_CursorAfterCharacterSequence
+256/392 Test #256: AppInputHandlerTest.TerminalInput_CursorAfterCharacterSequence .......................   Passed    0.03 sec
+        Start 257: AppInputHandlerTest.TerminalInput_CursorPositionAfterBackspace
+257/392 Test #257: AppInputHandlerTest.TerminalInput_CursorPositionAfterBackspace .......................   Passed    0.04 sec
+        Start 258: AppInputHandlerTest.TerminalInput_CursorVisibilityAfterModeSwitch
+258/392 Test #258: AppInputHandlerTest.TerminalInput_CursorVisibilityAfterModeSwitch ....................   Passed    0.03 sec
+        Start 259: AppInputHandlerTest.TerminalInput_AddCharacterThenViewCursor
+259/392 Test #259: AppInputHandlerTest.TerminalInput_AddCharacterThenViewCursor .........................   Passed    0.03 sec
+        Start 260: AppInputHandlerTest.TerminalInput_BackspaceAndCursorState
+260/392 Test #260: AppInputHandlerTest.TerminalInput_BackspaceAndCursorState ............................   Passed    0.03 sec
+        Start 261: AppInputHandlerTest.TerminalInput_LongTextWithCursor
+261/392 Test #261: AppInputHandlerTest.TerminalInput_LongTextWithCursor .................................   Passed    0.03 sec
+        Start 262: AppInputHandlerTest.TerminalInput_CursorStateBeforeAndAfterEscape
+262/392 Test #262: AppInputHandlerTest.TerminalInput_CursorStateBeforeAndAfterEscape ....................   Passed    0.03 sec
+        Start 263: AppInputHandlerTest.TerminalInput_MultipleCharacterAdditions_CursorTrails
+263/392 Test #263: AppInputHandlerTest.TerminalInput_MultipleCharacterAdditions_CursorTrails ............   Passed    0.03 sec
+        Start 264: AppInputHandlerTest.TerminalInput_CursorNotAffectedByDepthBiasChanges
+264/392 Test #264: AppInputHandlerTest.TerminalInput_CursorNotAffectedByDepthBiasChanges ................   Passed    0.03 sec
+        Start 265: AppInputHandlerTest.DepthBias_VerySmallValue
+265/392 Test #265: AppInputHandlerTest.DepthBias_VerySmallValue .........................................   Passed    0.03 sec
+        Start 266: AppInputHandlerTest.DepthBias_VeryLargeValue
+266/392 Test #266: AppInputHandlerTest.DepthBias_VeryLargeValue .........................................   Passed    0.03 sec
+        Start 267: AppInputHandlerTest.DepthBias_NegativeValue
+267/392 Test #267: AppInputHandlerTest.DepthBias_NegativeValue ..........................................   Passed    0.03 sec
+        Start 268: AppInputHandlerTest.DepthBias_Zero
+268/392 Test #268: AppInputHandlerTest.DepthBias_Zero ...................................................   Passed    0.03 sec
+        Start 269: AppInputHandlerTest.DepthBias_DecreaseFromDefault
+269/392 Test #269: AppInputHandlerTest.DepthBias_DecreaseFromDefault ....................................   Passed    0.04 sec
+        Start 270: AppInputHandlerTest.DepthBias_IncreaseToLarge
+270/392 Test #270: AppInputHandlerTest.DepthBias_IncreaseToLarge ........................................   Passed    0.03 sec
+        Start 271: AppInputHandlerTest.ModeToggle_PendsFlagOnSpacePress
+271/392 Test #271: AppInputHandlerTest.ModeToggle_PendsFlagOnSpacePress .................................   Passed    0.03 sec
+        Start 272: AppInputHandlerTest.ModeToggle_InputModePreservedAcrossToggle
+272/392 Test #272: AppInputHandlerTest.ModeToggle_InputModePreservedAcrossToggle ........................   Passed    0.03 sec
+        Start 273: AppInputHandlerTest.ModeToggle_TerminalTextPreservedAcrossToggle
+273/392 Test #273: AppInputHandlerTest.ModeToggle_TerminalTextPreservedAcrossToggle .....................   Passed    0.03 sec
+        Start 274: AppInputHandlerTest.ModeToggle_DepthBiasPreservedAcrossToggle
+274/392 Test #274: AppInputHandlerTest.ModeToggle_DepthBiasPreservedAcrossToggle ........................   Passed    0.03 sec
+        Start 275: AppInputHandlerTest.ModeToggle_DirectToTraditionalTransition
+275/392 Test #275: AppInputHandlerTest.ModeToggle_DirectToTraditionalTransition .........................   Passed    0.03 sec
+        Start 276: AppInputHandlerTest.ModeToggle_TraditionalToDirectTransition
+276/392 Test #276: AppInputHandlerTest.ModeToggle_TraditionalToDirectTransition .........................   Passed    0.03 sec
+        Start 277: AppInputHandlerTest.ModeToggle_SequentialToggles
+277/392 Test #277: AppInputHandlerTest.ModeToggle_SequentialToggles .....................................   Passed    0.03 sec
+        Start 278: AppInputHandlerTest.ModeToggle_IgnoredInTerminalMode
+278/392 Test #278: AppInputHandlerTest.ModeToggle_IgnoredInTerminalMode .................................   Passed    0.03 sec
+        Start 279: LightIntensityPulsingTest.StartValue_AtTimeZero_Equals1Point0
+279/392 Test #279: LightIntensityPulsingTest.StartValue_AtTimeZero_Equals1Point0 ........................   Passed    0.01 sec
+        Start 280: LightIntensityPulsingTest.MaximumValue_AtQuarterPeriod_Equals1Point3
+280/392 Test #280: LightIntensityPulsingTest.MaximumValue_AtQuarterPeriod_Equals1Point3 .................   Passed    0.01 sec
+        Start 281: LightIntensityPulsingTest.MinimumValue_AtThreeQuarterPeriod_Equals0Point7
+281/392 Test #281: LightIntensityPulsingTest.MinimumValue_AtThreeQuarterPeriod_Equals0Point7 ............   Passed    0.01 sec
+        Start 282: LightIntensityPulsingTest.ReturnsToStart_AtHalfPeriod_Equals1Point0
+282/392 Test #282: LightIntensityPulsingTest.ReturnsToStart_AtHalfPeriod_Equals1Point0 ..................   Passed    0.01 sec
+        Start 283: LightIntensityPulsingTest.CompleteCycle_AtFullPeriod_EqualsStart
+283/392 Test #283: LightIntensityPulsingTest.CompleteCycle_AtFullPeriod_EqualsStart .....................   Passed    0.01 sec
+        Start 284: LightIntensityPulsingTest.ValueAlwaysInValidRange_Over1SecondSweep
+284/392 Test #284: LightIntensityPulsingTest.ValueAlwaysInValidRange_Over1SecondSweep ...................   Passed    0.01 sec
+        Start 285: LightIntensityPulsingTest.OscillatesSmoothlyContinuously
+285/392 Test #285: LightIntensityPulsingTest.OscillatesSmoothlyContinuously .............................   Passed    0.01 sec
+        Start 286: LightIntensityPulsingTest.AmplitudeOfOscillation_IsExactly0Point3
+286/392 Test #286: LightIntensityPulsingTest.AmplitudeOfOscillation_IsExactly0Point3 ....................   Passed    0.01 sec
+        Start 287: LightIntensityPulsingTest.PeriodOfOscillation_IsCorrect
+287/392 Test #287: LightIntensityPulsingTest.PeriodOfOscillation_IsCorrect ..............................   Passed    0.01 sec
+        Start 288: LightIntensityPulsingTest.IncreaseTowardMaximum_InFirstQuarter
+288/392 Test #288: LightIntensityPulsingTest.IncreaseTowardMaximum_InFirstQuarter .......................   Passed    0.01 sec
+        Start 289: LightIntensityPulsingTest.DecreaseFromMaximum_InSecondQuarter
+289/392 Test #289: LightIntensityPulsingTest.DecreaseFromMaximum_InSecondQuarter ........................   Passed    0.01 sec
+        Start 290: LightIntensityPulsingTest.MaintainsOscillation_OverLongDuration
+290/392 Test #290: LightIntensityPulsingTest.MaintainsOscillation_OverLongDuration ......................   Passed    0.01 sec
+        Start 291: CommandLineTest.DefaultTimeout_NoParameter_ReturnsZero
+291/392 Test #291: CommandLineTest.DefaultTimeout_NoParameter_ReturnsZero ...............................   Passed    0.01 sec
+        Start 292: CommandLineTest.Timeout_ValidInteger_ParsesCorrectly
+292/392 Test #292: CommandLineTest.Timeout_ValidInteger_ParsesCorrectly .................................   Passed    0.01 sec
+        Start 293: CommandLineTest.Timeout_Zero_RemainsDefault
+293/392 Test #293: CommandLineTest.Timeout_Zero_RemainsDefault ..........................................   Passed    0.01 sec
+        Start 294: CommandLineTest.Timeout_LargeValue_ParsesCorrectly
+294/392 Test #294: CommandLineTest.Timeout_LargeValue_ParsesCorrectly ...................................   Passed    0.01 sec
+        Start 295: CommandLineTest.Timeout_NegativeValue_RemainsDefault
+295/392 Test #295: CommandLineTest.Timeout_NegativeValue_RemainsDefault .................................   Passed    0.01 sec
+        Start 296: CommandLineTest.Timeout_MissingValue_RemainsDefault
+296/392 Test #296: CommandLineTest.Timeout_MissingValue_RemainsDefault ..................................   Passed    0.01 sec
+        Start 297: CommandLineTest.Timeout_MultipleParameters_LastWins
+297/392 Test #297: CommandLineTest.Timeout_MultipleParameters_LastWins ..................................   Passed    0.01 sec
+        Start 298: CommandLineTest.Timeout_NonNumericValue_RemainsDefault
+298/392 Test #298: CommandLineTest.Timeout_NonNumericValue_RemainsDefault ...............................   Passed    0.01 sec
+        Start 299: CommandLineTest.Timeout_AtEnd_NoValue_RemainsDefault
+299/392 Test #299: CommandLineTest.Timeout_AtEnd_NoValue_RemainsDefault .................................   Passed    0.01 sec
+        Start 300: CommandLineTest.Timeout_WithOtherArgs_ParsesCorrectly
+300/392 Test #300: CommandLineTest.Timeout_WithOtherArgs_ParsesCorrectly ................................   Passed    0.01 sec
+        Start 301: ContainmentTest.DirectMode_MagentaPixels_InsideSurfaceQuad
+301/392 Test #301: ContainmentTest.DirectMode_MagentaPixels_InsideSurfaceQuad ...........................   Passed    0.19 sec
+        Start 302: ContainmentTest.TraditionalMode_MagentaPixels_InsideSurfaceQuad
+302/392 Test #302: ContainmentTest.TraditionalMode_MagentaPixels_InsideSurfaceQuad ......................   Passed    0.17 sec
+        Start 303: ContainmentTest.ExtremeAngle_DirectMode_MagentaPixels_InsideSurfaceQuad
+303/392 Test #303: ContainmentTest.ExtremeAngle_DirectMode_MagentaPixels_InsideSurfaceQuad ..............   Passed    0.16 sec
+        Start 304: ContainmentTest.DirectMode_AnimationFrames_MagentaContained
+304/392 Test #304: ContainmentTest.DirectMode_AnimationFrames_MagentaContained ..........................   Passed    0.30 sec
+        Start 305: ContainmentTest.BackWall_NotSelfShadowed
+305/392 Test #305: ContainmentTest.BackWall_NotSelfShadowed .............................................   Passed    0.16 sec
+        Start 306: ContainmentTest.PCFShadow_Symmetry_CenteredKernel
+306/392 Test #306: ContainmentTest.PCFShadow_Symmetry_CenteredKernel ....................................   Passed    0.15 sec
+        Start 307: ContainmentTest.ShadowCasting_UIQuadDarkensBackWall
+307/392 Test #307: ContainmentTest.ShadowCasting_UIQuadDarkensBackWall ..................................   Passed    0.16 sec
+        Start 308: ContainmentTest.UIcubeShadow_AnimatedCubeRendersWithoutArtifacts
+308/392 Test #308: ContainmentTest.UIcubeShadow_AnimatedCubeRendersWithoutArtifacts .....................   Passed    0.24 sec
+        Start 309: ContainmentTest.UIcubeShadow_ExtremeRotationStability
+309/392 Test #309: ContainmentTest.UIcubeShadow_ExtremeRotationStability ................................   Passed    0.19 sec
+        Start 310: ContainmentTest.NonUniformScale_DirectMode_ClipPlanesTrackReshapedSurface
+310/392 Test #310: ContainmentTest.NonUniformScale_DirectMode_ClipPlanesTrackReshapedSurface ............   Passed    0.16 sec
+        Start 311: ContainmentTest.FontSizeInvariance_DirectVsTraditional_ScaledQuad
+311/392 Test #311: ContainmentTest.FontSizeInvariance_DirectVsTraditional_ScaledQuad ....................   Passed    0.17 sec
+        Start 312: PerfTest.DirectMode_FrameTime_WithinTolerance
+312/392 Test #312: PerfTest.DirectMode_FrameTime_WithinTolerance ........................................   Passed    0.14 sec
+        Start 313: PerfTest.TraditionalMode_FrameTime_WithinTolerance
+313/392 Test #313: PerfTest.TraditionalMode_FrameTime_WithinTolerance ...................................   Passed    0.15 sec
+        Start 314: PerfTest.DirectMode_GPUMem_WithinTolerance
+314/392 Test #314: PerfTest.DirectMode_GPUMem_WithinTolerance ...........................................   Passed    0.13 sec
+        Start 315: PerfTest.TraditionalMode_GPUMem_WithinTolerance
+315/392 Test #315: PerfTest.TraditionalMode_GPUMem_WithinTolerance ......................................   Passed    0.13 sec
+        Start 316: PerfTest.MemoryStable_After300Frames_DirectMode
+316/392 Test #316: PerfTest.MemoryStable_After300Frames_DirectMode ......................................   Passed    0.18 sec
+        Start 317: PerfTest.MemoryStable_After300Frames_TraditionalMode
+317/392 Test #317: PerfTest.MemoryStable_After300Frames_TraditionalMode .................................   Passed    0.19 sec
+        Start 318: RendererInitTest.HeadlessInit_CreatesValidDevice
+318/392 Test #318: RendererInitTest.HeadlessInit_CreatesValidDevice .....................................   Passed    0.13 sec
+        Start 319: RendererInitTest.HeadlessInit_CreatesAllocator
+319/392 Test #319: RendererInitTest.HeadlessInit_CreatesAllocator .......................................   Passed    0.13 sec
+        Start 320: RendererInitTest.HeadlessInit_SetsFlagCorrectly
+320/392 Test #320: RendererInitTest.HeadlessInit_SetsFlagCorrectly ......................................   Passed    0.13 sec
+        Start 321: RendererInitTest.HeadlessRT_CreateAndDestroy
+321/392 Test #321: RendererInitTest.HeadlessRT_CreateAndDestroy .........................................   Passed    0.13 sec
+        Start 322: RendererInitTest.OffscreenRTInit
+322/392 Test #322: RendererInitTest.OffscreenRTInit .....................................................   Passed    0.13 sec
+        Start 323: UniformBufferTest.UpdateSceneUBO_AcceptsValidData
+323/392 Test #323: UniformBufferTest.UpdateSceneUBO_AcceptsValidData ....................................   Passed    0.13 sec
+        Start 324: UniformBufferTest.UpdateSurfaceUBO_AcceptsValidData
+324/392 Test #324: UniformBufferTest.UpdateSurfaceUBO_AcceptsValidData ..................................   Passed    0.13 sec
+        Start 325: UniformBufferTest.UpdateFaceSurfaceUBOs_AcceptsValidData
+325/392 Test #325: UniformBufferTest.UpdateFaceSurfaceUBOs_AcceptsValidData .............................   Passed    0.13 sec
+        Start 326: UniformBufferTest.SceneUBO_WithPerspectiveMatrix
+326/392 Test #326: UniformBufferTest.SceneUBO_WithPerspectiveMatrix .....................................   Passed    0.13 sec
+        Start 327: UniformBufferTest.SurfaceUBO_WithTransforms
+327/392 Test #327: UniformBufferTest.SurfaceUBO_WithTransforms ..........................................   Passed    0.13 sec
+        Start 328: SurfaceGeometryTest.UpdateSurfaceQuad_AcceptsValidCorners
+328/392 Test #328: SurfaceGeometryTest.UpdateSurfaceQuad_AcceptsValidCorners ............................   Passed    0.13 sec
+        Start 329: SurfaceGeometryTest.UpdateSurfaceQuad_WithAnimatedTransform
+329/392 Test #329: SurfaceGeometryTest.UpdateSurfaceQuad_WithAnimatedTransform ..........................   Passed    0.13 sec
+        Start 330: SurfaceGeometryTest.UpdateCubeSurface_AcceptsValidCorners
+330/392 Test #330: SurfaceGeometryTest.UpdateCubeSurface_AcceptsValidCorners ............................   Passed    0.13 sec
+        Start 331: SurfaceGeometryTest.UpdateUIShadowCube_AcceptsValidCorners
+331/392 Test #331: SurfaceGeometryTest.UpdateUIShadowCube_AcceptsValidCorners ...........................   Passed    0.13 sec
+        Start 332: SurfaceGeometryTest.UpdateCubeSurface_MultipleFrames
+332/392 Test #332: SurfaceGeometryTest.UpdateCubeSurface_MultipleFrames .................................   Passed    0.14 sec
+        Start 333: DescriptorBindingTest.BindAtlasDescriptor
+333/392 Test #333: DescriptorBindingTest.BindAtlasDescriptor ............................................   Passed    0.14 sec
+        Start 334: RenderPassTest.ShadowPassCreated
+334/392 Test #334: RenderPassTest.ShadowPassCreated .....................................................   Passed    0.13 sec
+        Start 335: RenderPassTest.UIRTPassCreated
+335/392 Test #335: RenderPassTest.UIRTPassCreated .......................................................   Passed    0.13 sec
+        Start 336: RenderPassTest.MainPassCreated
+336/392 Test #336: RenderPassTest.MainPassCreated .......................................................   Passed    0.13 sec
+        Start 337: RenderPassTest.MetricsPassCreated
+337/392 Test #337: RenderPassTest.MetricsPassCreated ....................................................   Passed    0.13 sec
+        Start 338: RenderPassTest.RenderPassesAreDistinct
+338/392 Test #338: RenderPassTest.RenderPassesAreDistinct ...............................................   Passed    0.13 sec
+        Start 339: PipelineTest.ShadowPipelineCreated
+339/392 Test #339: PipelineTest.ShadowPipelineCreated ...................................................   Passed    0.13 sec
+        Start 340: PipelineTest.RoomPipelineCreated
+340/392 Test #340: PipelineTest.RoomPipelineCreated .....................................................   Passed    0.13 sec
+        Start 341: PipelineTest.UIDirectPipelineCreated
+341/392 Test #341: PipelineTest.UIDirectPipelineCreated .................................................   Passed    0.13 sec
+        Start 342: PipelineTest.UIRTPipelineCreated
+342/392 Test #342: PipelineTest.UIRTPipelineCreated .....................................................   Passed    0.13 sec
+        Start 343: PipelineTest.CompositePipelineCreated
+343/392 Test #343: PipelineTest.CompositePipelineCreated ................................................   Passed    0.13 sec
+        Start 344: PipelineTest.SurfacePipelineCreated
+344/392 Test #344: PipelineTest.SurfacePipelineCreated ..................................................   Passed    0.13 sec
+        Start 345: PipelineTest.MetricsPipelineCreated
+345/392 Test #345: PipelineTest.MetricsPipelineCreated ..................................................   Passed    0.13 sec
+        Start 346: PipelineTest.PipelinesAreDistinct
+346/392 Test #346: PipelineTest.PipelinesAreDistinct ....................................................   Passed    0.13 sec
+        Start 347: PipelineTest.PipelineLayoutCreated
+347/392 Test #347: PipelineTest.PipelineLayoutCreated ...................................................   Passed    0.12 sec
+        Start 348: PipelineTest.DescriptorSetLayoutsCreated
+348/392 Test #348: PipelineTest.DescriptorSetLayoutsCreated .............................................   Passed    0.13 sec
+        Start 349: PipelineTest.DescriptorSetLayoutsAreDistinct
+349/392 Test #349: PipelineTest.DescriptorSetLayoutsAreDistinct .........................................   Passed    0.14 sec
+        Start 350: MSAAQualityTest.DirectMode_EdgesSmootherThanTraditional
+350/392 Test #350: MSAAQualityTest.DirectMode_EdgesSmootherThanTraditional ..............................   Passed    0.17 sec
+        Start 351: MSAAQualityTest.DirectMode_SmoothnessDifferentialIsConsistent
+351/392 Test #351: MSAAQualityTest.DirectMode_SmoothnessDifferentialIsConsistent ........................   Passed    0.17 sec
+        Start 352: DepthBiasTest.DepthBias_NonZero_ProducesStableOutput
+352/392 Test #352: DepthBiasTest.DepthBias_NonZero_ProducesStableOutput .................................   Passed    0.17 sec
+        Start 353: DepthBiasTest.DepthBias_ObliqueSurface_WithSmallBias_StableRendering
+353/392 Test #353: DepthBiasTest.DepthBias_ObliqueSurface_WithSmallBias_StableRendering .................   Passed    0.15 sec
+        Start 354: DepthBiasTest.DepthBias_LargeBias_StillRendersCorrectly
+354/392 Test #354: DepthBiasTest.DepthBias_LargeBias_StillRendersCorrectly ..............................   Passed    0.15 sec
+        Start 355: DepthBiasTest.DepthBias_Sweep_OutputConsistent
+355/392 Test #355: DepthBiasTest.DepthBias_Sweep_OutputConsistent .......................................   Passed    0.21 sec
+        Start 356: DepthBiasTest.DepthBias_AnimatedSurface_MaintainsOrder
+356/392 Test #356: DepthBiasTest.DepthBias_AnimatedSurface_MaintainsOrder ...............................   Passed    0.19 sec
+        Start 357: SpotlightConeTest.Spotlight_InnerCone_ProducesMaxIntensity
+357/392 Test #357: SpotlightConeTest.Spotlight_InnerCone_ProducesMaxIntensity ...........................   Passed    0.15 sec
+        Start 358: SpotlightConeTest.Spotlight_OuterCone_ProducesAmbientLighting
+358/392 Test #358: SpotlightConeTest.Spotlight_OuterCone_ProducesAmbientLighting ........................   Passed    0.15 sec
+        Start 359: SpotlightConeTest.Spotlight_TransitionZone_SmoothFalloff
+359/392 Test #359: SpotlightConeTest.Spotlight_TransitionZone_SmoothFalloff .............................   Passed    0.15 sec
+        Start 360: SpotlightConeTest.Spotlight_ConeIsSymmetric_SameAngleSameBrightness
+360/392 Test #360: SpotlightConeTest.Spotlight_ConeIsSymmetric_SameAngleSameBrightness ..................   Passed    0.16 sec
+        Start 361: SpotlightConeTest.Spotlight_ShadowPresence_OnWallNearLight
+361/392 Test #361: SpotlightConeTest.Spotlight_ShadowPresence_OnWallNearLight ...........................   Passed    0.15 sec
+        Start 362: PBRMaterialTest.DielectricMaterial_HasDiffuseComponent
+362/392 Test #362: PBRMaterialTest.DielectricMaterial_HasDiffuseComponent ...............................   Passed    0.15 sec
+        Start 363: PBRMaterialTest.RoughDielectricMaterial_RendersDifferently
+363/392 Test #363: PBRMaterialTest.RoughDielectricMaterial_RendersDifferently ...........................   Passed    0.15 sec
+        Start 364: PBRMaterialTest.PBRShader_ReceivesMaterialProperties
+364/392 Test #364: PBRMaterialTest.PBRShader_ReceivesMaterialProperties .................................   Passed    0.13 sec
+        Start 365: PBRMaterialTest.AmbientLight_AppliedInPBR
+365/392 Test #365: PBRMaterialTest.AmbientLight_AppliedInPBR ............................................   Passed    0.16 sec
+        Start 366: PBRMaterialTest.SceneMaterialDefinitions_IncludeRoughnessVariety
+366/392 Test #366: PBRMaterialTest.SceneMaterialDefinitions_IncludeRoughnessVariety .....................   Passed    0.13 sec
+        Start 367: PBRMaterialTest.RoughnessProperty_VariesAcrossMaterials
+367/392 Test #367: PBRMaterialTest.RoughnessProperty_VariesAcrossMaterials ..............................   Passed    0.14 sec
+        Start 368: PBRMaterialTest.MetallicVsDielectric_RenderDifferently
+368/392 Test #368: PBRMaterialTest.MetallicVsDielectric_RenderDifferently ...............................   Passed    0.15 sec
+        Start 369: PBRMaterialTest.MaterialValues_AreNotNaN
+369/392 Test #369: PBRMaterialTest.MaterialValues_AreNotNaN .............................................   Passed    0.13 sec
+        Start 370: PBRMaterialTest.GlossyDielectric_HasLowRoughness
+370/392 Test #370: PBRMaterialTest.GlossyDielectric_HasLowRoughness .....................................   Passed    0.14 sec
+        Start 371: PBRMaterialTest.PBRWorks_InBothRenderModes
+371/392 Test #371: PBRMaterialTest.PBRWorks_InBothRenderModes ...........................................   Passed    0.17 sec
+        Start 372: MetallicMaterialTest.MaterialDefinitions_IncludeMetallicSurfaces
+372/392 Test #372: MetallicMaterialTest.MaterialDefinitions_IncludeMetallicSurfaces .....................   Passed    0.14 sec
+        Start 373: MetallicMaterialTest.RoomMesh_ContainsMetallicVertices
+373/392 Test #373: MetallicMaterialTest.RoomMesh_ContainsMetallicVertices ...............................   Passed    0.14 sec
+        Start 374: MetallicMaterialTest.MaterialVariety_HasMetallicAndDielectric
+374/392 Test #374: MetallicMaterialTest.MaterialVariety_HasMetallicAndDielectric ........................   Passed    0.14 sec
+        Start 375: MetallicMaterialTest.MetallicVsDielectric_DifferentProperties
+375/392 Test #375: MetallicMaterialTest.MetallicVsDielectric_DifferentProperties ........................   Passed    0.13 sec
+        Start 376: MetallicMaterialTest.MetallicMaterials_RenderWithoutCrashing
+376/392 Test #376: MetallicMaterialTest.MetallicMaterials_RenderWithoutCrashing .........................   Passed    0.15 sec
+        Start 377: MetallicMaterialTest.MetallicValues_InValidRange
+377/392 Test #377: MetallicMaterialTest.MetallicValues_InValidRange .....................................   Passed    0.13 sec
+        Start 378: MetallicMaterialTest.MetallicMaterials_WorkInBothRenderModes
+378/392 Test #378: MetallicMaterialTest.MetallicMaterials_WorkInBothRenderModes .........................   Passed    0.17 sec
+        Start 379: MetallicMaterialTest.MetallicMaterials_HaveDescriptiveNames
+379/392 Test #379: MetallicMaterialTest.MetallicMaterials_HaveDescriptiveNames ..........................   Passed    0.13 sec
+        Start 380: FloorRippleTest.RenderSucceeds
+380/392 Test #380: FloorRippleTest.RenderSucceeds .......................................................   Passed    0.15 sec
+        Start 381: FloorRippleTest.FloorRippleAnimatesOverTime
+381/392 Test #381: FloorRippleTest.FloorRippleAnimatesOverTime ..........................................   Passed    0.17 sec
+        Start 382: FloorRippleTest.FloorRippleCreatesLocalVariation
+382/392 Test #382: FloorRippleTest.FloorRippleCreatesLocalVariation .....................................   Passed    0.15 sec
+        Start 383: FloorRippleTest.FloorRippleHasValidFrequency
+383/392 Test #383: FloorRippleTest.FloorRippleHasValidFrequency .........................................   Passed    0.23 sec
+        Start 384: SDFThresholdTest.BitmapVsSDF_ProduceDifferentPixelOutput
+384/392 Test #384: SDFThresholdTest.BitmapVsSDF_ProduceDifferentPixelOutput .............................   Passed    0.14 sec
+        Start 385: SDFThresholdTest.TraditionalMode_UIRTPass_SdfThreshold_AffectsOutput
+385/392 Test #385: SDFThresholdTest.TraditionalMode_UIRTPass_SdfThreshold_AffectsOutput .................   Passed    0.14 sec
+        Start 386: SDFOnEdgeTest.OnEdge_SdfThreshold05_ProducesNonZeroAlphaPixels
+386/392 Test #386: SDFOnEdgeTest.OnEdge_SdfThreshold05_ProducesNonZeroAlphaPixels .......................   Passed    0.14 sec
+        Start 387: SDFOnEdgeTest.AboveThreshold_SdfThreshold05_SmoothstepSaturates
+387/392 Test #387: SDFOnEdgeTest.AboveThreshold_SdfThreshold05_SmoothstepSaturates ......................   Passed    0.14 sec
+        Start 388: SDFOnEdgeTest.TraditionalMode_OnEdge_SdfThreshold05_DiffersFromZeroAtlas
+388/392 Test #388: SDFOnEdgeTest.TraditionalMode_OnEdge_SdfThreshold05_DiffersFromZeroAtlas .............   Passed    0.14 sec
+        Start 389: SDFOnEdgeTest.BelowThreshold_PixelsAreFullyTransparent
+389/392 Test #389: SDFOnEdgeTest.BelowThreshold_PixelsAreFullyTransparent ...............................   Passed    0.14 sec
+        Start 390: SDFOnEdgeTest.ShadowSDF_AlphaIsSDFDerived_InDirectMode
+390/392 Test #390: SDFOnEdgeTest.ShadowSDF_AlphaIsSDFDerived_InDirectMode ...............................   Passed    0.14 sec
+        Start 391: SDFOnEdgeTest.PreMultipliedAlpha_TraditionalMode_TealBleeds
+391/392 Test #391: SDFOnEdgeTest.PreMultipliedAlpha_TraditionalMode_TealBleeds ..........................   Passed    0.14 sec
+        Start 392: SDFHelloWorldTest.HelloWorld_SdfMode_VisibleText
+392/392 Test #392: SDFHelloWorldTest.HelloWorld_SdfMode_VisibleText .....................................   Passed    0.14 sec
+
+100% tests passed, 0 tests failed out of 392
+
+Total Test time (real) =  18.75 sec

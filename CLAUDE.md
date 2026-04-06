@@ -49,7 +49,7 @@ direct_ui_rendering/
 │   ├── composite.frag                # Traditional mode: blend UI render target onto teal quad
 │   ├── quad.vert                     # Vertex shader for surface/composite quad geometry
 │   ├── room.vert                     # PBR room geometry vertex shader (transforms, material properties, floor ripple displacement)
-│   ├── room.frag                     # PBR (Cook-Torrance BRDF) with metallic/roughness properties + PCF shadow; Fresnel-Schlick approximation; GGX distribution; procedural roughness variation (normal map simulation); material variety; ripple-based normal perturbation
+│   ├── room.frag                     # PBR (Cook-Torrance BRDF) with metallic/roughness properties + PCF shadow; Fresnel-Schlick approximation; GGX distribution; procedural roughness variation (normal map simulation); wall normal mapping; ripple-based normal perturbation on floor
 │   ├── shadow.vert                   # Depth-only shadow pass vertex shader
 │   ├── surface.frag                  # Opaque teal quad fragment shader (direct mode base layer)
 │   ├── ui.frag                       # UI atlas sampling with SDF smoothstep (white text) or bitmap mode
@@ -81,5 +81,6 @@ direct_ui_rendering/
 │   ├── test_shadow_render.cpp        # tests_render: back wall self-shadow, PCF kernel symmetry, UI cube shadow casting (3 tests)
 │   ├── test_spotlight_cone.cpp       # tests_render: spotlight cone angle attenuation (5 tests)
 │   ├── test_ui_cube_shadow.cpp       # tests_render: animated UI cube shadow consistency, extreme rotation stability (2 tests)
-│   └── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
+│   ├── test_ui_system.cpp            # tests_unit: SDFConstants, UISystemUVTable, TessellateString, UISurface
+│   └── test_wall_normal_mapping.cpp  # tests_render: wall normal mapping effects, parallax mapping, roughness-dependent shading (6 tests)
 ```
