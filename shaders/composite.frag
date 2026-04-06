@@ -1,17 +1,7 @@
 #version 450
 
 #include "common.glsl"
-
-layout(set = 0, binding = 0) uniform SceneUBO {
-    mat4 view;
-    mat4 proj;
-    mat4 lightViewProj;
-    vec4 lightPos;
-    vec4 lightDir;
-    vec4 lightColor;
-    vec4 ambientColor;
-    float lightIntensity;
-};
+#include "ubo_structs.glsl"
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
 layout(set = 2, binding = 1) uniform sampler2D uiRT;

@@ -1,22 +1,9 @@
 #version 450
 
 #include "common.glsl"
+#include "ubo_structs.glsl"
 
 #define PI 3.14159265359
-
-layout(set = 0, binding = 0) uniform SceneUBO {
-    mat4 view;
-    mat4 proj;
-    mat4 lightViewProj;
-    vec4 lightPos;         // xyz = spotlight world position
-    vec4 lightDir;         // xyz = spotlight direction, w = cos(outerConeAngle)
-    vec4 lightColor;       // rgb = color, w = cos(innerConeAngle)
-    vec4 ambientColor;
-    float lightIntensity;  // time-based pulsing intensity multiplier
-    float uiColorPhase;    // time-based color animation phase for UI text
-    float isTerminalMode;  // 1.0 if in terminal input mode, 0.0 otherwise
-    float time;            // elapsed time in seconds for ripple animation
-};
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
 
@@ -181,7 +168,7 @@ void main() {
     // 3. Combine into Cook-Torrance BRDF
     // Fresnel term F is already computed above
     // Specular = (D * G * F) / (4 * NdotV * NdotL)
-    vec3 specular = (D * G * F) * shadow * spotFactor;
+    vec3 specular = (D * G * F) * shadow * spotFactor * lightIntensity;
 
     // Ambient term (environmental lighting approximation)
     vec3 ambient = ambientColor.rgb * inColor.rgb * (1.0 - metallic * 0.9);

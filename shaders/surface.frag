@@ -1,21 +1,11 @@
 #version 450
 
 #include "common.glsl"
+#include "ubo_structs.glsl"
 
 // Fragment shader for the opaque teal UI surface quad.
 // Renders the moving world-space quad as solid teal with PCF shadow.
 // Used in direct mode: UI geometry is drawn on top of this quad.
-
-layout(set = 0, binding = 0) uniform SceneUBO {
-    mat4 view;
-    mat4 proj;
-    mat4 lightViewProj;
-    vec4 lightPos;
-    vec4 lightDir;
-    vec4 lightColor;
-    vec4 ambientColor;
-    float lightIntensity;
-};
 
 layout(set = 0, binding = 1) uniform sampler2DShadow shadowMap;
 
