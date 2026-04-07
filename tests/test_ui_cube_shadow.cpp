@@ -21,16 +21,8 @@ TEST_F(ContainmentTest, UIcubeShadow_AnimatedCubeRendersWithoutArtifacts)
                                       0.1f, 100.0f);
     proj[1][1] *= -1.0f;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view          = view;
-    sceneUBO.proj          = proj;
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient, 1.0f);
-    sceneUBO.lightIntensity = 1.0f;
+    SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
+    sceneUBO.lightIntensity = 1.0f;  // Ensure directional light is active
 
     SurfaceUBO surfaceUBO{};
     surfaceUBO.depthBias = Renderer::DEPTH_BIAS_DEFAULT;
@@ -150,16 +142,8 @@ TEST_F(ContainmentTest, UIcubeShadow_ExtremeRotationStability)
                                       0.1f, 100.0f);
     proj[1][1] *= -1.0f;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view   = view;
-    sceneUBO.proj   = proj;
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient, 1.0f);
-    sceneUBO.lightIntensity = 1.0f;
+    SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
+    sceneUBO.lightIntensity = 1.0f;  // Ensure directional light is active
 
     SurfaceUBO surfaceUBO{};
     surfaceUBO.depthBias = Renderer::DEPTH_BIAS_DEFAULT;

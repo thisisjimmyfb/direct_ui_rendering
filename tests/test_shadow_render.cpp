@@ -33,7 +33,9 @@ TEST_F(ContainmentTest, BackWall_NotSelfShadowed)
     proj[1][1] *= -1.0f;
     glm::mat4 vp = proj * view;
 
-    renderer.updateSceneUBO(makeSpotlightSceneUBO(scene, view, proj));
+    SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
+    sceneUBO.lightIntensity = 1.0f;  // Ensure directional light is active
+    renderer.updateSceneUBO(sceneUBO);
 
     auto pixels = renderAndReadback(/*directMode=*/true);
 
@@ -117,16 +119,8 @@ TEST_F(ContainmentTest, PCFShadow_Symmetry_CenteredKernel)
                                       0.1f, 100.0f);
     proj[1][1] *= -1.0f;
 
-    SceneUBO sceneUBO{};
-    sceneUBO.view          = view;
-    sceneUBO.proj          = proj;
-    sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-    sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
-    sceneUBO.lightDir      = glm::vec4(scene.light().direction,
-                                       std::cos(scene.light().outerConeAngle));
-    sceneUBO.lightColor    = glm::vec4(scene.light().color,
-                                       std::cos(scene.light().innerConeAngle));
-    sceneUBO.ambientColor  = glm::vec4(scene.light().ambient, 1.0f);
+    SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
+    sceneUBO.lightIntensity = 1.0f;  // Ensure directional light is active
     renderer.updateSceneUBO(sceneUBO);
 
     // SurfaceUBO must be bound even though the room-only pass never reads it.
@@ -254,16 +248,8 @@ TEST_F(ContainmentTest, ShadowCasting_UIQuadDarkensBackWall)
     proj[1][1] *= -1.0f;
 
     auto setupSceneUBO = [&]() {
-        SceneUBO ubo{};
-        ubo.view          = view;
-        ubo.proj          = proj;
-        ubo.lightViewProj = scene.lightViewProj(0.0f);
-        ubo.lightPos      = glm::vec4(scene.light().position, 1.0f);
-        ubo.lightDir      = glm::vec4(scene.light().direction,
-                                      std::cos(scene.light().outerConeAngle));
-        ubo.lightColor    = glm::vec4(scene.light().color,
-                                      std::cos(scene.light().innerConeAngle));
-        ubo.ambientColor  = glm::vec4(scene.light().ambient, 1.0f);
+        SceneUBO ubo = makeSpotlightSceneUBO(scene, view, proj);
+        ubo.lightIntensity = 1.0f;  // Ensure directional light is active
         renderer.updateSceneUBO(ubo);
 
         SurfaceUBO surfaceUBO{};

@@ -4,6 +4,7 @@
 #include "ui_surface.h"
 #include "ui_system.h"
 #include "vk_utils.h"
+#include "scene_ubo_helper.h"
 
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
@@ -192,16 +193,8 @@ protected:
                                           0.1f, 100.0f);
         proj[1][1] *= -1.0f;
 
-        SceneUBO sceneUBO{};
-        sceneUBO.view         = view;
-        sceneUBO.proj         = proj;
-        sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-        sceneUBO.lightPos     = glm::vec4(scene.light().position, 1.0f);
-        sceneUBO.lightDir     = glm::vec4(scene.light().direction,
-                                          std::cos(scene.light().outerConeAngle));
-        sceneUBO.lightColor   = glm::vec4(scene.light().color,
-                                          std::cos(scene.light().innerConeAngle));
-        sceneUBO.ambientColor = glm::vec4(scene.light().ambient,   1.0f);
+        SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
+        sceneUBO.lightIntensity = 1.0f;  // Ensure directional light is active
         renderer.updateSceneUBO(sceneUBO);
 
         auto transforms = computeSurfaceTransforms(m_P00, m_P10, m_P01,
@@ -594,16 +587,8 @@ protected:
                                           0.1f, 100.0f);
         proj[1][1] *= -1.0f;
 
-        SceneUBO sceneUBO{};
-        sceneUBO.view         = view;
-        sceneUBO.proj         = proj;
-        sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-        sceneUBO.lightPos     = glm::vec4(scene.light().position, 1.0f);
-        sceneUBO.lightDir     = glm::vec4(scene.light().direction,
-                                          std::cos(scene.light().outerConeAngle));
-        sceneUBO.lightColor   = glm::vec4(scene.light().color,
-                                          std::cos(scene.light().innerConeAngle));
-        sceneUBO.ambientColor = glm::vec4(scene.light().ambient,   1.0f);
+        SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
+        sceneUBO.lightIntensity = 1.0f;  // Ensure directional light is active
         renderer.updateSceneUBO(sceneUBO);
 
         auto transforms = computeSurfaceTransforms(m_P00, m_P10, m_P01,
@@ -1286,16 +1271,8 @@ protected:
                                           0.1f, 100.0f);
         proj[1][1] *= -1.0f;
 
-        SceneUBO sceneUBO{};
-        sceneUBO.view         = view;
-        sceneUBO.proj         = proj;
-        sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
-        sceneUBO.lightPos     = glm::vec4(scene.light().position, 1.0f);
-        sceneUBO.lightDir     = glm::vec4(scene.light().direction,
-                                          std::cos(scene.light().outerConeAngle));
-        sceneUBO.lightColor   = glm::vec4(scene.light().color,
-                                          std::cos(scene.light().innerConeAngle));
-        sceneUBO.ambientColor = glm::vec4(scene.light().ambient,   1.0f);
+        SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
+        sceneUBO.lightIntensity = 1.0f;  // Ensure directional light is active
         renderer.updateSceneUBO(sceneUBO);
 
         auto transforms = computeSurfaceTransforms(m_P00, m_P10, m_P01,
