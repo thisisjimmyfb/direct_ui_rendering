@@ -52,33 +52,6 @@ vec3 fresnelSchlick2(float cosTheta, vec3 F0) {
     return F0 * (1.0 - cosTheta) + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-
-// Generate roughness variation based on world position (simulating a roughness map)
-float getRoughnessVariation(vec3 worldPos, float baseRoughness) {
-    // Multi-octave Perlin-like noise for natural variation
-    float variation = 0.0;
-    float amplitude = 0.3;  // First octave strength
-    float frequency = 1.0;
-    float maxAmplitude = 0.0;
-
-    // 3 octaves of noise for natural looking variation
-    for (int i = 0; i < 3; i++) {
-        variation += noisePerlin(worldPos * frequency * 0.5) * amplitude;
-        maxAmplitude += amplitude;
-        amplitude *= 0.5;
-        frequency *= 2.0;
-    }
-
-    // Normalize and scale to roughness range
-    variation /= maxAmplitude;
-
-    // Add variation: -0.2 to +0.2 range
-    float variationAmount = (variation - 0.5) * 0.4;
-
-    // Clamp final roughness to valid range [0, 1]
-    return clamp(baseRoughness + variationAmount, 0.0, 1.0);
-}
-
 // Simulate subtle normal map effects by perturbing the surface normal
 // This creates the appearance of microscopic depth variance
 vec3 perturbNormal(vec3 N, vec3 worldPos, float strength) {
@@ -110,10 +83,7 @@ void main() {
 
     // Get material properties from vertex shader
     float metallic = inMaterial.x;
-    float baseRoughness = inMaterial.y;
-
-    // Apply roughness variation based on world position (normal map simulation)
-    float roughness = getRoughnessVariation(inWorldPos, baseRoughness);
+    float roughness = inMaterial.y;
 
     // Per-fragment light vector for the spotlight.
     vec3 toLight = lightPos.xyz - inWorldPos;

@@ -27,15 +27,15 @@ float sampleShadowPCF(vec4 shadowCoord, vec3 N, vec3 L, sampler2DShadow shadowMa
     // Slope-scaled bias: stronger scaling to prevent acne on steep surfaces
     float cosTheta = dot(N, L);
     float bias = max(0.008 * (1.0 - cosTheta), 0.002);
-    proj.z -= bias;
-    float shadow = 0.0;
+    //proj.z -= bias;
     vec2 texelSize = vec2(1.0 / 1024.0);
-    for (float x = -0.5; x <= 0.5; x += 1.0) {
+    float shadow = texture(shadowMap, vec3(proj.xy, proj.z));
+    /*for (float x = -0.5; x <= 0.5; x += 1.0) {
         for (float y = -0.5; y <= 0.5; y += 1.0) {
             shadow += texture(shadowMap,
                 vec3(proj.xy + vec2(x, y) * texelSize, proj.z));
         }
-    }
+    }*/
     return shadow * 0.25;
 }
 
