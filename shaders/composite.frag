@@ -37,16 +37,19 @@ void main() {
     // Shadow sampling with slope-scaled bias (matches surface.frag)
     float shadow = sampleShadowPCF(inShadowCoord, N, L, shadowMap);
 
-    // Teal base color; premul-alpha blend the UI texture on top.
-    // uiColor.rgb is premultiplied, so: out = ui.rgb + teal * (1 - ui.a)
-    vec3 teal = vec3(0.0, 0.5, 0.5);
-    vec3 composited = uiColor.rgb + teal * (1.0 - uiColor.a);
-
     // Ambient is always visible; diffuse uses shadow, spotFactor, and NdotL
     vec3 ambient = ambientColor.rgb;
     vec3 diffuse = shadow * lightColor.rgb * lightIntensity * spotFactor * NdotL;
 
     vec3 lit = clamp(ambient + diffuse, 0.0, 1.0);
-    outColor = vec4(composited * lit, 1.0);
+
+    // Apply lighting to the pre-multiplied UI color BEFORE compositing,
+    // matching ui_direct.frag behavior. uiColor.rgb is already premultiplied
+    // (RGB = tex.rgb * tex.a), so we scale by lit and then composite with teal.
+    vec3 teal = vec3(0.0, 0.5, 0.5);
+    vec3 composited = uiColor.rgb * lit + teal * (1.0 - uiColor.a);
+
+    // Alpha is 1.0 because the UI element is opaque after compositing
+    outColor = vec4(composited, 1.0);
 #endif
 }
