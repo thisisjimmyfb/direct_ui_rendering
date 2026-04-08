@@ -3,6 +3,14 @@ Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_r
 
 ## Pending Tasks
 
+- **Fix ContainmentTest.BackWall_NotSelfShadowed**: Back wall appears to be self-shadowing excessively (luminance ~0.088, expected >0.185).
+- **Fix MSAAQualityTest.DirectMode_SmoothnessDifferentialIsConsistent**: Direct mode smoothness differential test failing.
+- **Fix SpotlightConeTest.Spotlight_InnerCone_ProducesMaxIntensity**: Inner cone brightness is 59, expected >150.
+- **Fix StaticFloorCeilingTest.WallsRenderCorrectlyWithStaticGeometry**: Walls not rendering correctly.
+- **Fix WallNormalMappingTest.MetallicWall_ShowsRoughnessVariation**: Metallic wall roughness variation not showing.
+
+**Fixed**: composite.frag now applies lighting factor to teal base color, fixing TraditionalLightingTest failures.
+
 ## Iterate
 - Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct. 
 - Run tests by running /scripts/test.sh. If there are any test failures, please investigate and fix the failure if the fix is small. If the fix will be big, please identify tasks to address the problem, and then append the task to the ['Pending Tasks'](#Pending-Tasks). 

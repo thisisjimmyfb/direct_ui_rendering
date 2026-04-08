@@ -47,7 +47,8 @@ void main() {
     // matching ui_direct.frag behavior. uiColor.rgb is already premultiplied
     // (RGB = tex.rgb * tex.a), so we scale by lit and then composite with teal.
     vec3 teal = vec3(0.0, 0.5, 0.5);
-    vec3 composited = uiColor.rgb * lit + teal * (1.0 - uiColor.a);
+    // Apply lighting to both the UI color and the teal base color.
+    vec3 composited = (uiColor.rgb + teal * (1.0 - uiColor.a)) * lit;
 
     // Alpha is 1.0 because the UI element is opaque after compositing
     outColor = vec4(composited, 1.0);
