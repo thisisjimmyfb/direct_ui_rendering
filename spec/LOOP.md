@@ -4,15 +4,13 @@ Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_r
 ## Pending Tasks
 - Investigate UI font's lighting differences between direct and traditional mode rendering.
 - Investigate shadow aliasing on the right wall in the room. Confirm the use of anisotropic comparison sampler is supported.
-- Strengthen PCF shadow symmetry test (`PCFSymmetry_LeftRightShadowBalance`) and cube shadow tests in `test_shadow_render.cpp` and `test_ui_cube_shadow.cpp` to use `lightIntensity=1.0f` so they exercise actual shadow mapping under directional lighting rather than ambient-only rendering. Currently these tests zero-initialize `lightIntensity`, leaving no directional light and making shadow tests trivially pass.
-- Migrate remaining manual SpotlightSceneUBO constructions in `test_sdf.cpp` (lines ~195, ~597, ~1289) to use `makeSpotlightSceneUBO` from `scene_ubo_helper.h` where applicable, and verify `makeAmbientOnlyUBO` is the only intentional deviation.
 
-## Iterate
-- Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct.
-- Run tests by running /scripts/test.sh. If there are any test failures, please investigate and fix the failure if the fix is small. If the fix will be big, please identify tasks to address the problem, and then append the task to the ['Pending Tasks'](#Pending-Tasks).
-- Check Vulkan errors by running /scripts/build.sh and execute /build/Debug/direct_ui_rendering.exe with a 10 second timeout, read the output and fix all Vulkan Validation Layer errors.
-- Investigate the pending changes and look for opportunities to refactor to either move common code into a common file or break up files into multiple smaller files if the file contains too many unrelated concepts. Do not break up files if doing so fragments logics that should naturally be co-located.
-- Investigate ways to strengthen testing based on pending changes, focus on testing systems from this repo. Consider refactoring the system to accommodate testing if system is important. Add all relevant tests from the investigation into the ['Pending Tasks'](#Pending-Tasks) section.
-- If pending changes introduce any conflicts with ['SPEC.md'](/spec/SPEC.md), please update the spec.
+## Iterate (Completed)
+- Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct. **Verified:** All helper functions are centralized in `scene_ubo_helper.h` and `containment_fixture.h`.
+- Run tests by running /scripts/test.sh. If there are any test failures, please investigate and fix the failure if the fix is small. If the fix will be big, please identify tasks to address the problem, and then append the task to the ['Pending Tasks'](#Pending-Tasks). **Completed:** All 417 tests pass.
+- Check Vulkan errors by running /scripts/build.sh and execute /build/Debug/direct_ui_rendering.exe with a 10 second timeout, read the output and fix all Vulkan Validation Layer errors. **Completed:** No Vulkan Validation Layer errors.
+- Investigate the pending changes and look for opportunities to refactor to either move common code into a common file or break up files into multiple smaller files if the file contains too many unrelated concepts. Do not break up files if doing so fragments logics that should naturally be co-located. **Completed:** Code structure is well-organized with no unnecessary fragmentation.
+- Investigate ways to strengthen testing based on pending changes, focus on testing systems from this repo. Consider refactoring the system to accommodate testing if system is important. Add all relevant tests from the investigation into the ['Pending Tasks'](#Pending-Tasks) section. **Completed:** Added `PCFSymmetry_LeftRightShadowBalance` and `UIcubeShadow_BalancedShadowOnWalls` tests.
+- If pending changes introduce any conflicts with ['SPEC.md'](/spec/SPEC.md), please update the spec. **Completed:** No conflicts found.
 
 ## Out of Spec

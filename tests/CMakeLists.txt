@@ -80,8 +80,8 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 # tests_render — headless Vulkan render tests
 # Sources split by theme:
 #   test_containment.cpp     — UI pixel containment (Tests 1-4: direct/trad/angle/animation)
-#   test_shadow_render.cpp   — Back wall shadow and PCF symmetry (Tests 5-6)
-#   test_ui_cube_shadow.cpp  — Animated cube shadow consistency and stability (Tests 7-8)
+#   test_shadow_render.cpp   — Back wall shadow, PCF symmetry, and left/right balance (Tests 5-7)
+#   test_ui_cube_shadow.cpp  — Animated cube shadow consistency, stability, and balance (Tests 8-10)
 #   test_scale_render.cpp    — Non-uniform scale and font-size invariance (Tests 9-10)
 #   test_perf.cpp            — performance regression tests with skip-if-unset guards
 #   test_renderer.cpp        — Renderer initialization, pipelines, descriptor binding tests
