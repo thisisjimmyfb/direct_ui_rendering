@@ -282,36 +282,7 @@ inward_bottom = -inward_top                  → (nx, ny, nz, -dot(n_bottom, P_0
 
 ## 9. Handling Transparency and Blending
 
-Since UI elements render in the main scene pass rather than to their own RT, blending order matters.
-
-### Sort Key
-
-Assign each UI element a sort key combining:
-- The surface's distance from camera (coarse sort)
-- The UI element's z-order within the surface (fine sort)
-
-```
-sort_key = (surface_distance << 16) | (ui_z_order)
-```
-
-Render back-to-front with standard alpha blending.
-
-### Pre-multiplied Alpha
-
-Use pre-multiplied alpha for the UI elements:
-
-```c
-// In VkPipelineColorBlendAttachmentState
-VkPipelineColorBlendAttachmentState blendAttachment = {
-    .blendEnable         = VK_TRUE,
-    .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
-    .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-    .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-    .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-};
-```
-
-This composites correctly regardless of draw order for non-overlapping elements and avoids the dark fringing from conventional alpha blending.
+Since UI elements render in the main scene pass rather than to their own RT, blending order matters. Transparent UI elemnts can simply be rendered in a dedicated transparent pass to simplify the pipeline.
 
 ---
 

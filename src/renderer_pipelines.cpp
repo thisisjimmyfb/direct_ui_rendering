@@ -77,22 +77,22 @@ bool Renderer::createPipelines()
         VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-    // Pre-multiplied alpha blend state (used by all UI pipelines).
-    VkPipelineColorBlendAttachmentState premulBlend{};
-    premulBlend.blendEnable         = VK_TRUE;
-    premulBlend.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-    premulBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    premulBlend.colorBlendOp        = VK_BLEND_OP_ADD;
-    premulBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    premulBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    premulBlend.alphaBlendOp        = VK_BLEND_OP_ADD;
-    premulBlend.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+    // Alpha blend state (used by all UI pipelines).
+    VkPipelineColorBlendAttachmentState alphaBlend{};
+    alphaBlend.blendEnable         = VK_TRUE;
+    alphaBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    alphaBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    alphaBlend.colorBlendOp        = VK_BLEND_OP_ADD;
+    alphaBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    alphaBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    alphaBlend.alphaBlendOp        = VK_BLEND_OP_ADD;
+    alphaBlend.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-    VkPipelineColorBlendStateCreateInfo premulBlendState{
+    VkPipelineColorBlendStateCreateInfo alphaBlendState{
         VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
-    premulBlendState.attachmentCount = 1;
-    premulBlendState.pAttachments    = &premulBlend;
+    alphaBlendState.attachmentCount = 1;
+    alphaBlendState.pAttachments    = &alphaBlend;
 
     // Opaque blend (room geometry).
     VkPipelineColorBlendAttachmentState opaqueBlend{};
@@ -280,7 +280,7 @@ bool Renderer::createPipelines()
         pci.pRasterizationState = &raster;
         pci.pMultisampleState   = &msaa;
         pci.pDepthStencilState  = &depth;
-        pci.pColorBlendState    = &premulBlendState;
+        pci.pColorBlendState    = &alphaBlendState;
         pci.pDynamicState       = &dynState;
         pci.layout              = m_pipelineLayout;
         pci.renderPass          = m_mainPass;
@@ -323,7 +323,7 @@ bool Renderer::createPipelines()
         pci.pRasterizationState = &raster;
         pci.pMultisampleState   = &msaa;
         pci.pDepthStencilState  = &depth;
-        pci.pColorBlendState    = &premulBlendState;
+        pci.pColorBlendState    = &alphaBlendState;
         pci.pDynamicState       = &dynState;
         pci.layout              = m_pipelineLayout;
         pci.renderPass          = m_uiRTPass;
@@ -458,7 +458,7 @@ bool Renderer::createPipelines()
         pci.pRasterizationState = &raster;
         pci.pMultisampleState   = &msaa;
         pci.pDepthStencilState  = &depth;
-        pci.pColorBlendState    = &premulBlendState;
+        pci.pColorBlendState    = &alphaBlendState;
         pci.pDynamicState       = &dynState;
         pci.layout              = m_pipelineLayout;
         pci.renderPass          = m_metricsPass;

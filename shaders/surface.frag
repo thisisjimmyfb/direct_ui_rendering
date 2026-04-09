@@ -39,5 +39,5 @@ void main() {
     vec3 diffuse = shadow * lightColor.rgb * lightIntensity * spotFactor * NdotL;
 
     vec3 lit = clamp(ambient + diffuse, 0.0, 1.0);
-    outColor   = vec4(teal * lit, 1.0);
+    outColor = vec4(teal * lit, 1.0);
 }

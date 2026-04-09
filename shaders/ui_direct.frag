@@ -37,7 +37,6 @@ void main() {
         texColor = vec4(alpha, alpha, alpha, alpha);  // pre-multiplied white text
     } else {
         texColor = texture(uiAtlas, inTexCoord);
-        // Pre-multiplied alpha assumed in atlas (bitmap mode)
     }
 
     // Lighting calculation matching surface.frag and room.frag
@@ -60,7 +59,7 @@ void main() {
 
     vec3 lit = clamp(ambient + diffuse, 0.0, 1.0);
 
-    // Output text with pre-multiplied blending: RGB channels modulated by static white and lighting, alpha preserved
-    outColor = vec4(texColor.rgb * textColor * lit, texColor.a);
+    // Output text with alpha blending: RGB channels modulated by static white and lighting, alpha preserved
+    outColor = vec4(texColor.rgb * lit, texColor.a);
 #endif
 }

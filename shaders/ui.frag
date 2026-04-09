@@ -17,18 +17,15 @@ void main() {
 #ifdef UI_TEST_COLOR
     outColor = vec4(1.0, 0.0, 1.0, 1.0);  // Solid magenta for render tests
 #else
-    // Static white color for UI text
-    vec3 textColor = vec3(1.0);
 
     if (sdfThreshold > 0.0) {
         // SDF mode: atlas is R8_UNORM, R channel is the signed distance field.
         float dist = texture(uiAtlas, inTexCoord).r;
         float spread = 0.07;
         float alpha = smoothstep(sdfThreshold - spread, sdfThreshold + spread, dist);
-        outColor = vec4(vec3(alpha), alpha);  // pre-multiplied white text
+        outColor = vec4(1.0, 1.0, 1.0, alpha); // white text
     } else {
-        vec4 texColor = texture(uiAtlas, inTexCoord);
-        outColor = vec4(texColor.rgb * textColor * texColor.a, texColor.a);  // pre-multiplied bitmap text with static white
+        outColor = texture(uiAtlas, inTexCoord);
     }
 #endif
 }

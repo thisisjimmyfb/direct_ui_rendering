@@ -202,7 +202,7 @@ bool UISystem::init(VmaAllocator allocator,
         // Create device-local image.
         VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
         imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-        imageInfo.format        = VK_FORMAT_R8G8B8A8_UNORM;
+        imageInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
         imageInfo.extent        = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
         imageInfo.mipLevels     = 1;
         imageInfo.arrayLayers   = 1;

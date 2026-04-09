@@ -1,15 +1,8 @@
 ## Instructions
-Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks), but don't implement it yet. If the task affects the core execution of the demo, then please create tests that will fail without implementing the task. After tests are created, work on the implementation. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Be concise. Do not commit and do not write progress or summary in this file.
+Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks), but don't implement it yet. If the task affects the core execution of the demo, then please create tests that will fail without implementing the task. After tests are created, work on the implementation. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Be concise and only write comments if the logic is complex. Do not commit and do not write progress or summary in this file.
 
 ## Pending Tasks
-
-- **Fix ContainmentTest.BackWall_NotSelfShadowed**: Back wall appears to be self-shadowing excessively (luminance ~0.088, expected >0.185).
-- **Fix MSAAQualityTest.DirectMode_SmoothnessDifferentialIsConsistent**: Direct mode smoothness differential test failing.
-- **Fix SpotlightConeTest.Spotlight_InnerCone_ProducesMaxIntensity**: Inner cone brightness is 59, expected >150.
-- **Fix StaticFloorCeilingTest.WallsRenderCorrectlyWithStaticGeometry**: Walls not rendering correctly.
-- **Fix WallNormalMappingTest.MetallicWall_ShowsRoughnessVariation**: Metallic wall roughness variation not showing.
-
-**Fixed**: composite.frag now applies lighting factor to teal base color, fixing TraditionalLightingTest failures.
+- Direct mode UI drawcall is missing normals. Give direct UI reasonable normal values so that lighting looks identical to tradition mode.
 
 ## Iterate
 - Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct. 
