@@ -78,11 +78,11 @@ bool Renderer::createPipelines()
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
     // Pre-multiplied alpha blend (pipe_ui_direct, pipe_ui_rt, pipe_metrics).
-    // ui_direct.frag outputs pre-multiplied (alpha*rgb, alpha) in SDF mode.
-    // ui.frag outputs (1,1,1,alpha); ONE blend stores it intact for composite.frag.
+    // ui_direct.frag outputs pre-multiplied (alpha, alpha, alpha, alpha) in SDF mode.
+    // ui.frag outputs (1, 1, 1, alpha); ONE blend stores it intact for composite.frag.
     VkPipelineColorBlendAttachmentState alphaBlend{};
     alphaBlend.blendEnable         = VK_TRUE;
-    alphaBlend.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    alphaBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     alphaBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     alphaBlend.colorBlendOp        = VK_BLEND_OP_ADD;
     alphaBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;

@@ -23,7 +23,7 @@ void main() {
         float dist = texture(uiAtlas, inTexCoord).r;
         float spread = 0.07;
         float alpha = smoothstep(sdfThreshold - spread, sdfThreshold + spread, dist);
-        outColor = vec4(1.0, 1.0, 1.0, alpha); // white text
+        outColor = vec4(1, 1, 1, alpha); // white text
     } else {
         outColor = texture(uiAtlas, inTexCoord);
     }
