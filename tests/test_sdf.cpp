@@ -1537,3 +1537,452 @@ TEST_F(SDFHelloWorldTest, HelloWorld_SdfMode_VisibleText)
     // visible pixels for the "Hello World" text
     std::cout << "Visible text pixels: " << visiblePixelCount << std::endl;
 }
+
+// ---------------------------------------------------------------------------
+// DirectVsTraditionalLightingParityTest — validates that direct and traditional
+// modes produce identical lighting for the same surfaceNormal/vertex normal.
+//
+// This test renders the same surface with identical geometry in both modes
+// and asserts their center-pixel brightness is within a small tolerance.
+// This validates the core claim that both modes produce identical lighting.
+//
+// Setup:
+//   - Horizontal surface at y=1.0, z=-2.0, inside the spotlight cone.
+//   - Surface normal = +Y (facing the light) → NdotL > 0, significantly lit.
+//   - Fully-opaque white atlas (all pixels = 255) in bitmap mode (sdfThreshold=0).
+//   - Pure ambient lighting (lightColor=0, ambientColor=1) so lit=(1,1,1) everywhere.
+//   - Alpha=1 means the UI text completely overwrites the teal cube surface below.
+//
+// Expected:
+//   With pure ambient lighting, both modes should output (1,1,1,1) at center pixel.
+//   The difference should be within a small tolerance (e.g., 2-3 units) due to
+//   floating-point precision differences in the shader implementations.
+// ---------------------------------------------------------------------------
+
+class DirectVsTraditionalLightingParityTest : public ::testing::Test {
+protected:
+    static constexpr uint32_t FB_WIDTH      = 640;
+    static constexpr uint32_t FB_HEIGHT     = 360;
+    static constexpr uint32_t ATLAS_DIM     = 64;
+    static constexpr uint32_t UI_VTX_COUNT  = 6;
+
+    Renderer renderer;
+    Scene    scene;
+
+    VkImage       atlasImg{VK_NULL_HANDLE};
+    VmaAllocation atlasAlloc{};
+    VkImageView   atlasView{VK_NULL_HANDLE};
+    VkSampler     atlasSampler{VK_NULL_HANDLE};
+
+    VkBuffer      uiVtxBuf{VK_NULL_HANDLE};
+    VmaAllocation uiVtxAlloc{};
+
+    HeadlessRenderTarget hrt{};
+
+    glm::mat4 m_view{};
+    glm::mat4 m_proj{};
+
+    // Horizontal test surface at y=1, inside the spotlight cone.
+    // Normal is +Y (facing the light).
+    const glm::vec3 m_P00{-1.0f, 1.0f, -1.5f};
+    const glm::vec3 m_P10{ 1.0f, 1.0f, -1.5f};
+    const glm::vec3 m_P01{-1.0f, 1.0f, -2.5f};
+    const glm::vec3 m_P11{ 1.0f, 1.0f, -2.5f};
+
+    void SetUp() override {
+        ASSERT_TRUE(renderer.init(/*headless=*/true))
+            << "Headless renderer init failed";
+        scene.init();
+        ASSERT_TRUE(renderer.uploadSceneGeometry(scene));
+
+        // Camera above the surface, looking down at its centre (0,1,-2).
+        m_view = glm::lookAt(glm::vec3(0.0f, 2.5f, -1.0f),
+                             glm::vec3(0.0f, 1.0f, -2.0f),
+                             glm::vec3(1.0f, 0.0f,  0.0f));
+        m_proj = glm::perspective(glm::radians(60.0f),
+                                  static_cast<float>(FB_WIDTH) / FB_HEIGHT,
+                                  0.1f, 100.0f);
+        m_proj[1][1] *= -1.0f;  // Vulkan Y-flip
+
+        // White atlas: all pixels = (255,255,255,255) — fully opaque white.
+        // In bitmap mode (sdfThreshold=0): texColor = (1,1,1,1), so
+        //   outColor = vec4(texColor.rgb * lit, texColor.a) = vec4(lit, 1.0).
+        {
+            std::vector<uint8_t> pixels(ATLAS_DIM * ATLAS_DIM * 4, 255);
+
+            VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+            ci.imageType     = VK_IMAGE_TYPE_2D;
+            ci.format        = VK_FORMAT_R8G8B8A8_UNORM;
+            ci.extent        = {ATLAS_DIM, ATLAS_DIM, 1};
+            ci.mipLevels     = 1;
+            ci.arrayLayers   = 1;
+            ci.samples       = VK_SAMPLE_COUNT_1_BIT;
+            ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
+            ci.usage         = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+            ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            VmaAllocationCreateInfo ai{};
+            ai.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+            ASSERT_EQ(vmaCreateImage(renderer.getAllocator(), &ci, &ai,
+                                     &atlasImg, &atlasAlloc, nullptr), VK_SUCCESS);
+
+            VkBuffer stagingBuf;
+            VmaAllocation stagingAlloc;
+            {
+                VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+                bci.size        = pixels.size();
+                bci.usage       = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+                bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                VmaAllocationCreateInfo sai{};
+                sai.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+                ASSERT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &sai,
+                                          &stagingBuf, &stagingAlloc, nullptr), VK_SUCCESS);
+                void* mapped = nullptr;
+                vmaMapMemory(renderer.getAllocator(), stagingAlloc, &mapped);
+                memcpy(mapped, pixels.data(), pixels.size());
+                vmaUnmapMemory(renderer.getAllocator(), stagingAlloc);
+            }
+
+            VkCommandBuffer uploadCmd = vku::beginOneShot(renderer.getDevice(),
+                                                          renderer.getCommandPool());
+            vku::imageBarrier(uploadCmd, atlasImg,
+                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+            VkBufferImageCopy region{};
+            region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+            region.imageExtent      = {ATLAS_DIM, ATLAS_DIM, 1};
+            vkCmdCopyBufferToImage(uploadCmd, stagingBuf, atlasImg,
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+            vku::imageBarrier(uploadCmd, atlasImg,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+            vku::endOneShot(renderer.getDevice(), renderer.getCommandPool(),
+                            renderer.getGraphicsQueue(), uploadCmd);
+            vmaDestroyBuffer(renderer.getAllocator(), stagingBuf, stagingAlloc);
+
+            VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+            viewCI.image            = atlasImg;
+            viewCI.viewType         = VK_IMAGE_VIEW_TYPE_2D;
+            viewCI.format           = VK_FORMAT_R8G8B8A8_UNORM;
+            viewCI.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            ASSERT_EQ(vkCreateImageView(renderer.getDevice(), &viewCI, nullptr, &atlasView),
+                      VK_SUCCESS);
+
+            VkSamplerCreateInfo sampCI{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+            sampCI.magFilter    = VK_FILTER_NEAREST;
+            sampCI.minFilter    = VK_FILTER_NEAREST;
+            sampCI.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+            sampCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            sampCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            sampCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            ASSERT_EQ(vkCreateSampler(renderer.getDevice(), &sampCI, nullptr, &atlasSampler),
+                      VK_SUCCESS);
+
+            renderer.bindAtlasDescriptor(atlasView, atlasSampler);
+        }
+
+        ASSERT_TRUE(renderer.initOffscreenRT());
+
+        ASSERT_TRUE(renderer.createHeadlessRT(FB_WIDTH, FB_HEIGHT, hrt));
+
+        // Pure ambient lighting: lightColor=0, ambientColor=1 → lit=(1,1,1).
+        SceneUBO sceneUBO{};
+        sceneUBO.view          = m_view;
+        sceneUBO.proj          = m_proj;
+        sceneUBO.lightViewProj = scene.lightViewProj(0.0f);
+        sceneUBO.lightPos      = glm::vec4(scene.light().position, 1.0f);
+        sceneUBO.lightDir      = glm::vec4(scene.light().direction,
+                                          std::cos(scene.light().outerConeAngle));
+        sceneUBO.lightColor    = glm::vec4(0.0f, 0.0f, 0.0f,
+                                           std::cos(scene.light().innerConeAngle));
+        sceneUBO.ambientColor  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);  // full ambient → lit=(1,1,1)
+        sceneUBO.lightIntensity = 1.0f;
+        renderer.updateSceneUBO(sceneUBO);
+
+        auto transforms = computeSurfaceTransforms(m_P00, m_P10, m_P01,
+                                                   2.0f, 1.0f,
+                                                   m_proj * m_view);
+        auto clipPlanes = computeClipPlanes(m_P00, m_P10, m_P01);
+
+        SurfaceUBO surfaceUBO{};
+        surfaceUBO.totalMatrix = transforms.M_total;
+        surfaceUBO.worldMatrix = transforms.M_world;
+        for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
+        surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
+        // Compute surface normal from edge vectors (same as computeM_sw).
+        glm::vec3 e_u = m_P10 - m_P00;
+        glm::vec3 e_v = m_P01 - m_P00;
+        glm::vec3 normal = normalize(cross(e_u, e_v));
+        surfaceUBO.surfaceNormal = glm::vec4(normal, 0.0f);
+
+        renderer.updateSurfaceUBO(surfaceUBO);
+
+        // Create full-canvas UI quad.
+        {
+            const float W = static_cast<float>(W_UI);
+            const float H = static_cast<float>(H_UI);
+            UIVertex verts[UI_VTX_COUNT] = {
+                {{0, 0}, {0, 0}}, {{W, 0}, {1, 0}}, {{W, H}, {1, 1}},
+                {{0, 0}, {0, 0}}, {{W, H}, {1, 1}}, {{0, H}, {0, 1}},
+            };
+            VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+            bci.size        = sizeof(verts);
+            bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            VmaAllocationCreateInfo ai{};
+            ai.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+            ASSERT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
+                                      &uiVtxBuf, &uiVtxAlloc, nullptr), VK_SUCCESS);
+            void* mapped = nullptr;
+            vmaMapMemory(renderer.getAllocator(), uiVtxAlloc, &mapped);
+            memcpy(mapped, verts, sizeof(verts));
+            vmaUnmapMemory(renderer.getAllocator(), uiVtxAlloc);
+        }
+    }
+
+    void TearDown() override {
+        if (renderer.getDevice() != VK_NULL_HANDLE)
+            vkDeviceWaitIdle(renderer.getDevice());
+        renderer.destroyHeadlessRT(hrt);
+        if (uiVtxBuf != VK_NULL_HANDLE)
+            vmaDestroyBuffer(renderer.getAllocator(), uiVtxBuf, uiVtxAlloc);
+        if (atlasSampler != VK_NULL_HANDLE)
+            vkDestroySampler(renderer.getDevice(), atlasSampler, nullptr);
+        if (atlasView != VK_NULL_HANDLE)
+            vkDestroyImageView(renderer.getDevice(), atlasView, nullptr);
+        if (atlasImg != VK_NULL_HANDLE)
+            vmaDestroyImage(renderer.getAllocator(), atlasImg, atlasAlloc);
+        renderer.cleanup();
+    }
+
+    // Render one frame in direct mode with pure ambient lighting.
+    std::vector<uint8_t> renderDirect() {
+        const VkDeviceSize readbackSize =
+            static_cast<VkDeviceSize>(FB_WIDTH) * FB_HEIGHT * 4;
+
+        VkBuffer      readbackBuf;
+        VmaAllocation readbackAlloc;
+        {
+            VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+            bci.size        = readbackSize;
+            bci.usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            VmaAllocationCreateInfo ai{};
+            ai.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+            EXPECT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
+                                      &readbackBuf, &readbackAlloc, nullptr), VK_SUCCESS);
+        }
+
+        VkCommandBufferAllocateInfo cbAI{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        cbAI.commandPool        = renderer.getCommandPool();
+        cbAI.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cbAI.commandBufferCount = 1;
+        VkCommandBuffer cmd = VK_NULL_HANDLE;
+        EXPECT_EQ(vkAllocateCommandBuffers(renderer.getDevice(), &cbAI, &cmd), VK_SUCCESS);
+
+        VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(cmd, &beginInfo);
+
+        renderer.recordShadowPass(cmd);
+        renderer.recordMainPass(cmd, hrt.rt, /*directMode=*/true,
+                                uiVtxBuf, UI_VTX_COUNT, /*sdfThreshold=*/0.0f);
+
+        vku::imageBarrier(cmd, hrt.rt.image,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_ACCESS_TRANSFER_READ_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+        VkBufferImageCopy copyRegion{};
+        copyRegion.imageSubresource  = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        copyRegion.imageExtent       = {FB_WIDTH, FB_HEIGHT, 1};
+        vkCmdCopyImageToBuffer(cmd, hrt.rt.image,
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               readbackBuf, 1, &copyRegion);
+
+        vkEndCommandBuffer(cmd);
+
+        VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = &cmd;
+        EXPECT_EQ(vkQueueSubmit(renderer.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE),
+                  VK_SUCCESS);
+        vkQueueWaitIdle(renderer.getGraphicsQueue());
+
+        void* mapped = nullptr;
+        vmaMapMemory(renderer.getAllocator(), readbackAlloc, &mapped);
+        std::vector<uint8_t> pixels(readbackSize);
+        memcpy(pixels.data(), mapped, static_cast<size_t>(readbackSize));
+        vmaUnmapMemory(renderer.getAllocator(), readbackAlloc);
+
+        vkFreeCommandBuffers(renderer.getDevice(), renderer.getCommandPool(), 1, &cmd);
+        vmaDestroyBuffer(renderer.getAllocator(), readbackBuf, readbackAlloc);
+
+        // Transition resolve image back to COLOR_ATTACHMENT_OPTIMAL.
+        VkCommandBuffer resetCmd = vku::beginOneShot(renderer.getDevice(),
+                                                     renderer.getCommandPool());
+        vku::imageBarrier(resetCmd, hrt.rt.image,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_TRANSFER_READ_BIT,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        vku::endOneShot(renderer.getDevice(), renderer.getCommandPool(),
+                        renderer.getGraphicsQueue(), resetCmd);
+
+        return pixels;
+    }
+
+    // Render one frame in traditional mode with pure ambient lighting.
+    std::vector<uint8_t> renderTraditional() {
+        const VkDeviceSize readbackSize =
+            static_cast<VkDeviceSize>(FB_WIDTH) * FB_HEIGHT * 4;
+
+        VkBuffer      readbackBuf;
+        VmaAllocation readbackAlloc;
+        {
+            VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+            bci.size        = readbackSize;
+            bci.usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            VmaAllocationCreateInfo ai{};
+            ai.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+            EXPECT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
+                                      &readbackBuf, &readbackAlloc, nullptr), VK_SUCCESS);
+        }
+
+        // Provide the surface quad geometry for the composite pipeline.
+        renderer.updateSurfaceQuad(m_P00, m_P10, m_P01, m_P11);
+
+        VkCommandBufferAllocateInfo cbAI{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        cbAI.commandPool        = renderer.getCommandPool();
+        cbAI.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cbAI.commandBufferCount = 1;
+        VkCommandBuffer cmd = VK_NULL_HANDLE;
+        EXPECT_EQ(vkAllocateCommandBuffers(renderer.getDevice(), &cbAI, &cmd), VK_SUCCESS);
+
+        VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(cmd, &beginInfo);
+
+        renderer.recordShadowPass(cmd);
+
+        // UI RT pass.
+        glm::mat4 ortho = glm::ortho(0.0f, static_cast<float>(W_UI),
+                                     0.0f, static_cast<float>(H_UI),
+                                     -1.0f, 1.0f);
+        renderer.recordUIRTPass(cmd, uiVtxBuf, UI_VTX_COUNT, ortho, /*sdfThreshold=*/0.0f);
+
+        // Main pass: composite the UI RT onto the surface quad.
+        renderer.recordMainPass(cmd, hrt.rt, /*directMode=*/false,
+                                uiVtxBuf, UI_VTX_COUNT, /*sdfThreshold=*/0.0f);
+
+        vku::imageBarrier(cmd, hrt.rt.image,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_ACCESS_TRANSFER_READ_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+        VkBufferImageCopy copyRegion{};
+        copyRegion.imageSubresource  = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        copyRegion.imageExtent       = {FB_WIDTH, FB_HEIGHT, 1};
+        vkCmdCopyImageToBuffer(cmd, hrt.rt.image,
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               readbackBuf, 1, &copyRegion);
+
+        vkEndCommandBuffer(cmd);
+
+        VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = &cmd;
+        EXPECT_EQ(vkQueueSubmit(renderer.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE),
+                  VK_SUCCESS);
+        vkQueueWaitIdle(renderer.getGraphicsQueue());
+
+        void* mapped = nullptr;
+        vmaMapMemory(renderer.getAllocator(), readbackAlloc, &mapped);
+        std::vector<uint8_t> pixels(readbackSize);
+        memcpy(pixels.data(), mapped, static_cast<size_t>(readbackSize));
+        vmaUnmapMemory(renderer.getAllocator(), readbackAlloc);
+
+        vkFreeCommandBuffers(renderer.getDevice(), renderer.getCommandPool(), 1, &cmd);
+        vmaDestroyBuffer(renderer.getAllocator(), readbackBuf, readbackAlloc);
+
+        // Transition resolve image back to COLOR_ATTACHMENT_OPTIMAL.
+        VkCommandBuffer resetCmd = vku::beginOneShot(renderer.getDevice(),
+                                                     renderer.getCommandPool());
+        vku::imageBarrier(resetCmd, hrt.rt.image,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_TRANSFER_READ_BIT,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        vku::endOneShot(renderer.getDevice(), renderer.getCommandPool(),
+                        renderer.getGraphicsQueue(), resetCmd);
+
+        return pixels;
+    }
+};
+
+// Test: direct and traditional modes produce identical lighting for the same surfaceNormal.
+//
+// With pure ambient lighting (lightColor=0, ambientColor=1), both modes should output
+// (1,1,1,1) at the center pixel since:
+//   - Direct mode: outColor = vec4(texColor.rgb * lit, texColor.a) = vec4(1,1,1,1)
+//   - Traditional mode: composited = base * lit = (0,0.5,0.5)*(1-a) + (1,1,1)*a * 1
+//                      with a=1 → composited = (1,1,1,1)
+TEST_F(DirectVsTraditionalLightingParityTest, CenterPixelBrightness_PureAmbient_WithinTolerance)
+{
+    auto pixelsDirect = renderDirect();
+    auto pixelsTrad   = renderTraditional();
+
+    // Center pixel of FB_WIDTH x FB_HEIGHT = world-space surface centre (0,0,0).
+    const uint32_t cx = FB_WIDTH / 2;
+    const uint32_t cy = FB_HEIGHT / 2;
+    const size_t   ci = (static_cast<size_t>(cy) * FB_WIDTH + cx) * 4;
+
+    // Extract RGB components (alpha should be 1.0 in both modes).
+    float rDirect = static_cast<float>(pixelsDirect[ci + 0]) / 255.0f;
+    float gDirect = static_cast<float>(pixelsDirect[ci + 1]) / 255.0f;
+    float bDirect = static_cast<float>(pixelsDirect[ci + 2]) / 255.0f;
+
+    float rTrad = static_cast<float>(pixelsTrad[ci + 0]) / 255.0f;
+    float gTrad = static_cast<float>(pixelsTrad[ci + 1]) / 255.0f;
+    float bTrad = static_cast<float>(pixelsTrad[ci + 2]) / 255.0f;
+
+    // Calculate brightness as average of RGB.
+    float brightnessDirect = (rDirect + gDirect + bDirect) / 3.0f;
+    float brightnessTrad   = (rTrad   + gTrad   + bTrad)   / 3.0f;
+
+    // With pure ambient lighting, both should be 1.0 (white).
+    // Allow small tolerance for floating-point precision differences.
+    const float tolerance = 0.01f;  // ~2.55 on 0-255 scale
+
+    EXPECT_NEAR(brightnessDirect, 1.0f, tolerance)
+        << "Direct mode center pixel brightness should be ~1.0 (white) with pure ambient lighting";
+    EXPECT_NEAR(brightnessTrad, 1.0f, tolerance)
+        << "Traditional mode center pixel brightness should be ~1.0 (white) with pure ambient lighting";
+
+    // The core claim: direct and traditional modes produce identical lighting.
+    EXPECT_NEAR(brightnessDirect, brightnessTrad, tolerance)
+        << "Direct mode brightness (" << brightnessDirect << ") and traditional mode brightness ("
+        << brightnessTrad << ") should be within " << tolerance
+        << " tolerance. This validates that both modes produce identical lighting for the same "
+           "surfaceNormal/vertex normal.";
+
+    std::cout << "Direct mode brightness: " << brightnessDirect << std::endl;
+    std::cout << "Traditional mode brightness: " << brightnessTrad << std::endl;
+    std::cout << "Difference: " << std::abs(brightnessDirect - brightnessTrad) << std::endl;
+}

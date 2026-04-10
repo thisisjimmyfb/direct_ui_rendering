@@ -43,9 +43,8 @@ void main() {
 
     vec3 lit = clamp(ambient + diffuse, 0.0, 1.0);
 
-    // Alpha blend the UI color and then apply lighting
-    vec3 base = vec3(0.0, 0.5, 0.5) * (1.0 - uiColor.a) + uiColor.rgb * uiColor.a;
-    // Apply lighting to both the UI color and the teal base color.
+    // Pre-multiplied alpha composite: RT stores (alpha*rgb, alpha) from SRC_ALPHA blend in ui_rt pass.
+    vec3 base = uiColor.rgb + vec3(0.0, 0.5, 0.5) * (1.0 - uiColor.a);
     vec3 composited = base * lit;
 
     // Alpha is 1.0 because the UI element is opaque after compositing

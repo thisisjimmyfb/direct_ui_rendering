@@ -77,9 +77,26 @@ bool Renderer::createPipelines()
         VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-    // Pre-multiplied alpha blend (pipe_ui_direct, pipe_ui_rt, pipe_metrics).
-    // ui_direct.frag outputs pre-multiplied (alpha, alpha, alpha, alpha) in SDF mode.
-    // ui.frag outputs (1, 1, 1, alpha); ONE blend stores it intact for composite.frag.
+    // Pre-multiplied alpha blend (pipe_ui_direct):
+    // ui_direct.frag outputs pre-multiplied (alpha, alpha, alpha, alpha), so src factor is ONE.
+    VkPipelineColorBlendAttachmentState preMultiBlend{};
+    preMultiBlend.blendEnable         = VK_TRUE;
+    preMultiBlend.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    preMultiBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    preMultiBlend.colorBlendOp        = VK_BLEND_OP_ADD;
+    preMultiBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    preMultiBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    preMultiBlend.alphaBlendOp        = VK_BLEND_OP_ADD;
+    preMultiBlend.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+    VkPipelineColorBlendStateCreateInfo preMultiBlendState{
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+    preMultiBlendState.attachmentCount = 1;
+    preMultiBlendState.pAttachments    = &preMultiBlend;
+
+    // Standard alpha blend (pipe_ui_rt, pipe_metrics):
+    // ui.frag outputs (1, 1, 1, alpha); SRC_ALPHA blend produces pre-multiplied content in the RT.
     VkPipelineColorBlendAttachmentState alphaBlend{};
     alphaBlend.blendEnable         = VK_TRUE;
     alphaBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
@@ -89,7 +106,7 @@ bool Renderer::createPipelines()
     alphaBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
     alphaBlend.alphaBlendOp        = VK_BLEND_OP_ADD;
     alphaBlend.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                                     VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
     VkPipelineColorBlendStateCreateInfo alphaBlendState{
         VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
@@ -248,7 +265,7 @@ bool Renderer::createPipelines()
         }
     }
 
-    // --- 2. pipe_ui_direct: UI in world space, clip distances, pre-multiplied alpha, 4x MSAA ---
+    // --- 2. pipe_ui_direct: UI in world space, clip distances, pre-multiplied alpha blend, 4x MSAA ---
     {
         VkPipelineShaderStageCreateInfo stages[2]{};
         stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
@@ -282,7 +299,7 @@ bool Renderer::createPipelines()
         pci.pRasterizationState = &raster;
         pci.pMultisampleState   = &msaa;
         pci.pDepthStencilState  = &depth;
-        pci.pColorBlendState    = &alphaBlendState;
+        pci.pColorBlendState    = &preMultiBlendState;
         pci.pDynamicState       = &dynState;
         pci.layout              = m_pipelineLayout;
         pci.renderPass          = m_mainPass;

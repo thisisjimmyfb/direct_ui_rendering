@@ -327,6 +327,109 @@ protected:
             (static_cast<uint32_t>(px[0]) + px[1] + px[2]) / 3);
     }
 
+    // Render the cube surface in direct mode (no UI); return mean RGB brightness
+    // of the centre pixel.  The output is teal * lit from surface.frag.
+    uint8_t renderFacesDirect(
+        const std::array<std::array<glm::vec3, 4>, 6>& faceCorners,
+        const glm::mat4& view, const glm::mat4& proj)
+    {
+        SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
+        renderer.updateSceneUBO(sceneUBO);
+
+        renderer.updateCubeSurface(faceCorners);
+
+        std::array<std::array<glm::vec3, 4>, 6> shadowCorners;
+        for (auto& f : shadowCorners)
+            f[0] = f[1] = f[2] = f[3] = glm::vec3(0.0f, 10.0f, 0.0f);
+        renderer.updateUIShadowCube(shadowCorners);
+
+        // SurfaceUBO placed off-screen so the UI draw (0 verts) is irrelevant.
+        glm::vec3 P00{-0.5f,  0.5f, -50.0f};
+        glm::vec3 P10{ 0.5f,  0.5f, -50.0f};
+        glm::vec3 P01{-0.5f, -0.5f, -50.0f};
+        glm::mat4 vp = proj * view;
+        auto transforms = computeSurfaceTransforms(P00, P10, P01,
+                                                   static_cast<float>(W_UI),
+                                                   static_cast<float>(H_UI), vp);
+        auto clipPlanes = computeClipPlanes(P00, P10, P01);
+        SurfaceUBO surfaceUBO{};
+        surfaceUBO.totalMatrix = transforms.M_total;
+        surfaceUBO.worldMatrix = transforms.M_world;
+        for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
+        surfaceUBO.depthBias = Renderer::DEPTH_BIAS_DEFAULT;
+        renderer.updateSurfaceUBO(surfaceUBO);
+
+        const VkDeviceSize readbackSize =
+            static_cast<VkDeviceSize>(TRAD_FB_WIDTH) * TRAD_FB_HEIGHT * 4;
+
+        VkBuffer      readbackBuf   = VK_NULL_HANDLE;
+        VmaAllocation readbackAlloc = VK_NULL_HANDLE;
+        {
+            VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+            bci.size        = readbackSize;
+            bci.usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            VmaAllocationCreateInfo ai{};
+            ai.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+            vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
+                            &readbackBuf, &readbackAlloc, nullptr);
+        }
+
+        VkCommandBufferAllocateInfo cbAI{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        cbAI.commandPool        = renderer.getCommandPool();
+        cbAI.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cbAI.commandBufferCount = 1;
+        VkCommandBuffer cmd = VK_NULL_HANDLE;
+        vkAllocateCommandBuffers(renderer.getDevice(), &cbAI, &cmd);
+
+        VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(cmd, &beginInfo);
+
+        renderer.recordShadowPass(cmd);
+        // directMode=true, no UI vertices — surface.frag renders teal*lit only.
+        renderer.recordMainPass(cmd, hrt.rt, /*directMode=*/true,
+                                VK_NULL_HANDLE, 0, 0.0f);
+
+        vku::imageBarrier(cmd, hrt.rt.image,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_ACCESS_TRANSFER_READ_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+        VkBufferImageCopy copyRegion{};
+        copyRegion.imageSubresource  = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        copyRegion.imageExtent       = {TRAD_FB_WIDTH, TRAD_FB_HEIGHT, 1};
+        vkCmdCopyImageToBuffer(cmd, hrt.rt.image,
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               readbackBuf, 1, &copyRegion);
+
+        vkEndCommandBuffer(cmd);
+
+        VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = &cmd;
+        vkQueueSubmit(renderer.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(renderer.getGraphicsQueue());
+
+        void* mapped = nullptr;
+        vmaMapMemory(renderer.getAllocator(), readbackAlloc, &mapped);
+        std::vector<uint8_t> pixels(readbackSize);
+        memcpy(pixels.data(), mapped, static_cast<size_t>(readbackSize));
+        vmaUnmapMemory(renderer.getAllocator(), readbackAlloc);
+
+        vkFreeCommandBuffers(renderer.getDevice(), renderer.getCommandPool(), 1, &cmd);
+        vmaDestroyBuffer(renderer.getAllocator(), readbackBuf, readbackAlloc);
+
+        const uint8_t* px = pixels.data() +
+            (static_cast<size_t>(TRAD_FB_HEIGHT / 2) * TRAD_FB_WIDTH +
+             TRAD_FB_WIDTH / 2) * 4;
+        return static_cast<uint8_t>(
+            (static_cast<uint32_t>(px[0]) + px[1] + px[2]) / 3);
+    }
+
     // Camera: above and slightly in front of the test surface, looking down at (0,1,-2).
     static glm::mat4 makeTopView() {
         return glm::lookAt(glm::vec3(0.0f, 2.5f, -1.0f),
@@ -416,4 +519,32 @@ TEST_F(TraditionalLightingTest, NdotL_TopFaceBrighterThanBottomFace_Traditional)
         << static_cast<int>(botBrightness)
         << "). Difference must exceed 20/255. "
            "Equal brightness indicates NdotL is not applied in composite.frag.";
+}
+
+// ---------------------------------------------------------------------------
+// Test 4: Direct-vs-traditional lighting parity
+//
+// The core claim: both rendering modes produce identical lighting for the same
+// surface with the same surfaceNormal/vertex normal.
+//
+// surface.frag (direct):    outColor = vec4(teal * lit, 1.0)
+// composite.frag (trad, no UI): base = teal*(1-0)+0*0 = teal → vec4(teal*lit, 1.0)
+//
+// Center-pixel brightness must be within 5/255 between the two modes.
+// A large difference would indicate a lighting model mismatch between shaders.
+// ---------------------------------------------------------------------------
+TEST_F(TraditionalLightingTest, DirectVsTraditional_LightingParity_SameSurface)
+{
+    auto view  = makeTopView();
+    auto proj  = makeProj();
+    auto faces = makeHorizontalFaces(1.0f, +1.0f);
+
+    uint8_t brightnessTrad   = renderFaces(faces, view, proj);
+    uint8_t brightnessDirect = renderFacesDirect(faces, view, proj);
+
+    EXPECT_NEAR(static_cast<int>(brightnessDirect), static_cast<int>(brightnessTrad), 5)
+        << "Direct mode brightness (" << static_cast<int>(brightnessDirect)
+        << ") differs from traditional mode (" << static_cast<int>(brightnessTrad)
+        << ") by more than 5/255. Both modes should produce identical lighting "
+           "for the same surface normal and spotlight configuration.";
 }
