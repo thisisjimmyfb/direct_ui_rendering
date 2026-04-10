@@ -230,13 +230,17 @@ The same quad list is rendered with the composite matrix `M_total` (Section 4.5)
 
 ```c
 struct SceneUBO {
-    mat4 view;
-    mat4 proj;
-    mat4 lightViewProj;   // for shadow map sampling
-    vec4 lightPos;        // xyz = spotlight world position, w = 1
-    vec4 lightDir;        // xyz = spotlight direction, w = cos(outerConeAngle)
-    vec4 lightColor;      // rgb = light color, w = cos(innerConeAngle)
-    vec4 ambientColor;
+    mat4  view;
+    mat4  proj;
+    mat4  lightViewProj;    // for shadow map sampling
+    vec4  lightPos;         // xyz = spotlight world position, w = 1
+    vec4  lightDir;         // xyz = spotlight direction, w = cos(outerConeAngle)
+    vec4  lightColor;       // rgb = light color, w = cos(innerConeAngle)
+    vec4  ambientColor;
+    float lightIntensity;   // time-based pulsing intensity multiplier
+    float uiColorPhase;     // time-based color animation phase for UI text
+    float isTerminalMode;   // 1.0 if in terminal input mode, 0.0 otherwise
+    float time;             // elapsed time in seconds for ripple animation
 };
 ```
 
@@ -250,15 +254,18 @@ The spotlight parameters include:
 ### 6.5 SurfaceUBO Layout — Per Face
 
 ```c
+// C++ struct (shader_uniforms.h):
 struct SurfaceUBO {
     mat4 totalMatrix;     // M_wc * M_sw * M_us
     mat4 worldMatrix;     // M_sw * M_us, for clip distance computation
     vec4 clipPlanes[4];   // world-space clip planes
     float depthBias;
-    float _pad[3];
-    vec4 surfaceNormal;   // xyz = world-space outward normal, w = 0
+    float _pad[3];        // CPU: 12 bytes of padding
+    vec4 surfaceNormal;   // xyz = world-space outward normal, w = 0 — at offset 208
 };
 ```
+
+**GLSL layout note**: In GLSL std140, `float _pad[3]` would be treated as an array of scalars each padded to 16 bytes (vec4 alignment), placing `surfaceNormal` at offset 256 instead of the CPU's offset 208. To avoid this mismatch, the GLSL declaration in `ubo_structs.glsl` uses three individual scalar members `float _pad0; float _pad1; float _pad2;` instead of an array, preserving the 4-byte-per-element layout and matching the CPU struct at offset 208.
 
 **6 SurfaceUBOs are allocated** — one for each cube face (indices 0-5 corresponding to +X, -X, +Y, -Y, +Z, -Z). Each face's UBO contains the per-face `M_total` transform, clip planes computed from that face's world-space corners, and the outward world-space face normal used by `ui_direct.frag` for NdotL lighting of text. The normal is derived from the cross product of face edge vectors and corrected to point outward from the cube centre.
 
@@ -302,7 +309,7 @@ struct SurfaceUBO {
 
 ### 9.1 Overview
 
-Testing is split into two GoogleTest targets:
+Testing is split into three GoogleTest targets:
 
 | Target | Vulkan context | What it tests |
 |--------|---------------|---------------|

@@ -60,6 +60,11 @@ set(TEST_SHADER_SOURCES
     ${RENDER_SHADER_DIR}/shadow.vert
 )
 
+set(SHADER_INCLUDE_HEADERS
+    ${RENDER_SHADER_DIR}/common.glsl
+    ${RENDER_SHADER_DIR}/ubo_structs.glsl
+)
+
 set(TEST_SPIRV_OUTPUTS "")
 foreach(SRC ${TEST_SHADER_SOURCES})
     get_filename_component(NAME ${SRC} NAME)
@@ -67,7 +72,7 @@ foreach(SRC ${TEST_SHADER_SOURCES})
     add_custom_command(
         OUTPUT  ${SPV}
         COMMAND Vulkan::glslc -DUI_TEST_COLOR ${SRC} -o ${SPV}
-        DEPENDS ${SRC}
+        DEPENDS ${SRC} ${SHADER_INCLUDE_HEADERS}
         COMMENT "Compiling test shader (UI_TEST_COLOR) ${NAME}"
         VERBATIM
     )
@@ -140,6 +145,7 @@ gtest_discover_tests(tests_render)
 add_executable(tests_sdf
     test_sdf.cpp
     test_traditional_lighting.cpp
+    test_direct_ui_normal.cpp
 )
 
 add_dependencies(tests_sdf shaders)

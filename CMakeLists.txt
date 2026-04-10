@@ -123,6 +123,7 @@ set(SHADER_SOURCES
 # Shared shader headers
 set(SHADER_HEADERS
     ${SHADER_DIR}/common.glsl
+    ${SHADER_DIR}/ubo_structs.glsl
 )
 
 # Production shader SPIRVs (no test defines)

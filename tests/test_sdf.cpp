@@ -208,6 +208,11 @@ protected:
         surfaceUBO.worldMatrix = transforms.M_world;
         for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
         surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
+        // Compute surface normal from edge vectors (same as computeM_sw).
+        glm::vec3 eu = m_P10 - m_P00;
+        glm::vec3 ev = m_P01 - m_P00;
+        glm::vec3 n = glm::normalize(glm::cross(eu, ev));
+        surfaceUBO.surfaceNormal = glm::vec4(n, 0.0f);
         renderer.updateSurfaceUBO(surfaceUBO);
     }
 
@@ -602,6 +607,11 @@ protected:
         surfaceUBO.worldMatrix = transforms.M_world;
         for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
         surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
+        // Compute surface normal from edge vectors (same as computeM_sw).
+        glm::vec3 eu = m_P10 - m_P00;
+        glm::vec3 ev = m_P01 - m_P00;
+        glm::vec3 n = glm::normalize(glm::cross(eu, ev));
+        surfaceUBO.surfaceNormal = glm::vec4(n, 0.0f);
         renderer.updateSurfaceUBO(surfaceUBO);
     }
 
@@ -1286,6 +1296,11 @@ protected:
         surfaceUBO.worldMatrix = transforms.M_world;
         for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
         surfaceUBO.depthBias   = Renderer::DEPTH_BIAS_DEFAULT;
+        // Compute surface normal from edge vectors (same as computeM_sw).
+        glm::vec3 eu = m_P10 - m_P00;
+        glm::vec3 ev = m_P01 - m_P00;
+        glm::vec3 n = glm::normalize(glm::cross(eu, ev));
+        surfaceUBO.surfaceNormal = glm::vec4(n, 0.0f);
         renderer.updateSurfaceUBO(surfaceUBO);
     }
 

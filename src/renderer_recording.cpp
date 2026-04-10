@@ -8,6 +8,13 @@
 // Command buffer recording
 // ---------------------------------------------------------------------------
 
+// Push-constant layout for ortho UI passes (matches the pipeline layout at offset 0, size 80).
+struct OrthoPC {
+    glm::mat4 orthoMatrix;
+    float     sdfThreshold;
+    float     _pad[3];
+};
+
 void Renderer::recordShadowPass(VkCommandBuffer cmd)
 {
     VkClearValue clearDepth{};
@@ -78,7 +85,7 @@ void Renderer::recordUIRTPass(VkCommandBuffer cmd,
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
                                 2, 1, &m_set2, 0, nullptr);
-        struct { glm::mat4 orthoMatrix; float sdfThreshold; float _pad[3]; } pc{ortho, sdfThreshold, {}};
+        OrthoPC pc{ortho, sdfThreshold, {}};
         vkCmdPushConstants(cmd, m_pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, 80, &pc);
@@ -191,7 +198,7 @@ void Renderer::recordMetricsPass(VkCommandBuffer cmd, RenderTarget& rt,
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
                                 2, 1, &m_set2, 0, nullptr);
-        struct { glm::mat4 orthoMatrix; float sdfThreshold; float _pad[3]; } pc{ortho, sdfThreshold, {}};
+        OrthoPC pc{ortho, sdfThreshold, {}};
         vkCmdPushConstants(cmd, m_pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, 80, &pc);

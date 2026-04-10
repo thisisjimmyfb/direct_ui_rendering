@@ -20,6 +20,8 @@ layout(set = 1, binding = 0) uniform SurfaceUBO {
     mat4 worldMatrix;     // M_sw * M_us, for clip distance computation
     vec4 clipPlanes[4];   // world-space clip planes
     float depthBias;
-    float _pad[3];
+    float _pad0;
+    float _pad1;
+    float _pad2;
     vec4 surfaceNormal;   // xyz = world-space outward normal, w = 0
 };
