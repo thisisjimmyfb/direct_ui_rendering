@@ -124,4 +124,13 @@ public:
     static void setTime(App& app, float time) {
         app.m_time = time;
     }
+
+    // ---- Pause ----
+    static bool getPaused(const App& app) {
+        return app.m_paused;
+    }
+
+    static void setPaused(App& app, bool paused) {
+        app.m_paused = paused;
+    }
 };

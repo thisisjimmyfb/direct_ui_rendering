@@ -185,7 +185,8 @@ void App::drawFrame()
     if (dt > 0.1f) dt = 0.1f;  // clamp first-frame spike
     m_lastFrameTime = now;
 
-    m_time += dt;
+    if (!m_paused)
+        m_time += dt;
 
     // WASD camera movement
     glm::vec3 camFront(
@@ -270,7 +271,7 @@ void App::drawFrame()
     m_hudVerts.clear();
     const char* inputModeStr = (m_inputMode == InputMode::UITerminal)
         ? "Input: TERMINAL  [Tab]" : "Input: CAMERA  [Tab]";
-    uint32_t hudVtxCount = m_metrics.tessellateHUD(m_ui, m_mode, 4, m_hudVerts, inputModeStr);
+    uint32_t hudVtxCount = m_metrics.tessellateHUD(m_ui, m_mode, 4, m_hudVerts, inputModeStr, m_paused);
     if (hudVtxCount > 0 && m_hudVtxBuf != VK_NULL_HANDLE) {
         void* mapped = nullptr;
         vmaMapMemory(m_renderer.getAllocator(), m_hudVtxAlloc, &mapped);
@@ -442,6 +443,9 @@ void App::onKey(int key, int action)
         m_quadH -= 0.1f;
         if (m_quadH < 0.1f) m_quadH = 0.1f;
         printf("quadW = %.2f  quadH = %.2f\n", m_quadW, m_quadH);
+    } else if (key == GLFW_KEY_F) {
+        m_paused = !m_paused;
+        printf(m_paused ? "Animation paused\n" : "Animation resumed\n");
     } else if (key == GLFW_KEY_ESCAPE && m_mouseCapture) {
         m_mouseCapture = false;
         glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

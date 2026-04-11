@@ -980,3 +980,48 @@ TEST_F(AppInputHandlerTest, ModeToggle_IgnoredInTerminalMode) {
     EXPECT_FALSE(AppTestHelper::getPendingModeToggle(app))
         << "Mode toggle should not work in terminal mode; Space inputs text";
 }
+
+// ---------------------------------------------------------------------------
+// Pause Tests — animation freeze via F key
+// ---------------------------------------------------------------------------
+
+TEST_F(AppInputHandlerTest, Pause_FKey_SetsPausedFlag) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    EXPECT_FALSE(AppTestHelper::getPaused(app));
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_F, GLFW_PRESS);
+
+    EXPECT_TRUE(AppTestHelper::getPaused(app))
+        << "F key press in camera mode should set paused flag";
+}
+
+TEST_F(AppInputHandlerTest, Pause_FKey_Toggles) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_F, GLFW_PRESS);
+    EXPECT_TRUE(AppTestHelper::getPaused(app));
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_F, GLFW_PRESS);
+    EXPECT_FALSE(AppTestHelper::getPaused(app))
+        << "Second F press should unpause";
+}
+
+TEST_F(AppInputHandlerTest, Pause_FKey_ReleaseDoesNotToggle) {
+    AppTestHelper::setInputMode(app, InputMode::Camera);
+    EXPECT_FALSE(AppTestHelper::getPaused(app));
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_F, GLFW_RELEASE);
+
+    EXPECT_FALSE(AppTestHelper::getPaused(app))
+        << "F key release must not toggle pause";
+}
+
+TEST_F(AppInputHandlerTest, Pause_DisabledInTerminalMode) {
+    AppTestHelper::setInputMode(app, InputMode::UITerminal);
+    AppTestHelper::setPaused(app, false);
+
+    AppTestHelper::callOnKey(app, GLFW_KEY_F, GLFW_PRESS);
+
+    EXPECT_FALSE(AppTestHelper::getPaused(app))
+        << "F key in terminal mode inputs text, must not toggle pause";
+}

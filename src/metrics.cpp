@@ -41,7 +41,8 @@ uint32_t Metrics::tessellateHUD(const UISystem& uiSystem,
                                 RenderMode mode,
                                 uint32_t msaaSamples,
                                 std::vector<UIVertex>& outVerts,
-                                const char* inputModeStr) const
+                                const char* inputModeStr,
+                                bool paused) const
 {
     if (!uiSystem.isGlyphTableBuilt()) return 0;
 
@@ -100,6 +101,16 @@ uint32_t Metrics::tessellateHUD(const UISystem& uiSystem,
 
     snprintf(buf, sizeof(buf), "MSAA: %ux", msaaSamples);
     total += uiSystem.tessellateString(buf, leftMargin, leftMargin + nextLine * lineHeight, outVerts);
+    ++nextLine;
+
+    snprintf(buf, sizeof(buf), "  [F] pause/resume");
+    total += uiSystem.tessellateString(buf, leftMargin, leftMargin + nextLine * lineHeight, outVerts);
+    ++nextLine;
+
+    if (paused) {
+        snprintf(buf, sizeof(buf), "Status: PAUSED");
+        total += uiSystem.tessellateString(buf, leftMargin, leftMargin + nextLine * lineHeight, outVerts);
+    }
 
     return total;
 }

@@ -22,7 +22,7 @@ TEST(MetricsTest, HUDTessellation_VertexCountMatchesLineCount)
     // With RenderMode::Direct, msaaSamples=4, no inputModeStr:
     //   Line 0: "Mode: DIRECT"              = 12 chars
     //   Line 1: "  [Space] toggle render mode" = 28 chars
-    //   Line 2: "  [Tab] toggle input mode"     = 27 chars
+    //   Line 2: "  [Tab] toggle input mode"     = 25 chars
     //   Line 3: "  [+] [-] adjust depth bias"  = 27 chars
     //   Line 4: "  [[] []] quad width"         = 20 chars
     //   Line 5: "  [O] [P] quad height"        = 21 chars
@@ -30,16 +30,17 @@ TEST(MetricsTest, HUDTessellation_VertexCountMatchesLineCount)
     //   Line 7: "Frame: 0.0 ms"                = 13 chars
     //   Line 8: "GPU Mem: 0.0 MB"              = 15 chars
     //   Line 9: "MSAA: 4x"                     =  8 chars
-    //   Total                                   = 190 chars  -> 1140 vertices
+    //   Line 10: "  [F] pause/resume"           = 18 chars
+    //   Total                                   = 208 chars  -> 1248 vertices
     Metrics metrics;
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
 
-    constexpr int expectedChars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8;
+    constexpr int expectedChars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8 + 18;
     constexpr uint32_t expectedVerts = 6u * static_cast<uint32_t>(expectedChars);
 
     EXPECT_EQ(count, expectedVerts)
-        << "tessellateHUD returned wrong vertex count for 8 HUD lines";
+        << "tessellateHUD returned wrong vertex count for HUD lines";
     EXPECT_EQ(static_cast<uint32_t>(verts.size()), expectedVerts)
         << "outVerts.size() does not match the returned count";
 }
@@ -60,7 +61,7 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_VertexCount)
     // With RenderMode::Traditional, msaaSamples=4, no inputModeStr:
     //   Line 0: "Mode: TRADITIONAL"           = 17 chars
     //   Line 1: "  [Space] toggle render mode" = 28 chars
-    //   Line 2: "  [Tab] toggle input mode"     = 27 chars
+    //   Line 2: "  [Tab] toggle input mode"     = 25 chars
     //   Line 3: "  [+] [-] adjust depth bias"  = 27 chars
     //   Line 4: "  [[] []] quad width"         = 20 chars
     //   Line 5: "  [O] [P] quad height"        = 21 chars
@@ -68,12 +69,13 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_VertexCount)
     //   Line 7: "Frame: 0.0 ms"                = 13 chars
     //   Line 8: "GPU Mem: 0.0 MB"              = 15 chars
     //   Line 9: "MSAA: 4x"                     =  8 chars
-    //   Total                                   = 195 chars  -> 1170 vertices
+    //   Line 10: "  [F] pause/resume"           = 18 chars
+    //   Total                                   = 213 chars  -> 1278 vertices
     Metrics metrics;
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts);
 
-    constexpr int expectedChars = 17 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8;
+    constexpr int expectedChars = 17 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8 + 18;
     constexpr uint32_t expectedVerts = 6u * static_cast<uint32_t>(expectedChars);
 
     EXPECT_EQ(count, expectedVerts)
@@ -96,10 +98,10 @@ TEST(MetricsTest, HUDTessellation_WithInputModeStr_AddsExtraLine)
 
     // Fresh Metrics: averageFrameMs()==0.0f, gpuAllocatedBytes()==0.
     // With RenderMode::Direct, msaaSamples=4, inputModeStr="Input: CAMERA":
-    //   10-line base (same as HUDTessellation_VertexCountMatchesLineCount):
+    //   11-line base (same as HUDTessellation_VertexCountMatchesLineCount):
     //     Mode: DIRECT              = 12 chars
     //     [Space] toggle...         = 28 chars
-    //     [Tab] toggle...           = 27 chars
+    //     [Tab] toggle...           = 25 chars
     //     [+] [-] adjust...         = 27 chars
     //     [[] []] quad width        = 20 chars
     //     [O] [P] quad height       = 21 chars
@@ -107,14 +109,15 @@ TEST(MetricsTest, HUDTessellation_WithInputModeStr_AddsExtraLine)
     //     Frame: 0.0 ms             = 13 chars
     //     GPU Mem: 0.0 MB           = 15 chars
     //     MSAA: 4x                  =  8 chars
-    //   Line 10: "Input: CAMERA"       = 13 chars
-    //   Total                              = 203 chars  -> 1218 vertices
+    //     [F] pause/resume          = 18 chars
+    //   inputModeStr: "Input: CAMERA" = 13 chars (inserted before Frame:)
+    //   Total                              = 221 chars  -> 1326 vertices
     const char* inputStr = "Input: CAMERA";
     Metrics metrics;
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, inputStr);
 
-    constexpr int baseLine10Chars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8;
+    constexpr int baseLine10Chars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8 + 18;
     const int extraChars = static_cast<int>(std::strlen(inputStr));
     const uint32_t expectedVerts = 6u * static_cast<uint32_t>(baseLine10Chars + extraChars);
 
@@ -141,10 +144,10 @@ TEST(MetricsTest, HUDTessellation_AppendsToExistingVector)
     verts.resize(preExistingCount);
 
     // tessellateHUD with RenderMode::Direct, msaaSamples=4, no inputModeStr
-    // produces 1140 vertices (same as HUDTessellation_VertexCountMatchesLineCount).
+    // produces 1248 vertices (same as HUDTessellation_VertexCountMatchesLineCount).
     uint32_t appended = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
 
-    constexpr uint32_t expectedAppended = 6u * (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 8u); // 1140
+    constexpr uint32_t expectedAppended = 6u * (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 8u + 18u); // 1248
     EXPECT_EQ(appended, expectedAppended)
         << "tessellateHUD returned wrong appended vertex count";
     EXPECT_EQ(verts.size(), static_cast<size_t>(preExistingCount + expectedAppended))
@@ -747,8 +750,8 @@ TEST(MetricsTest, HUDTessellation_TraditionalMode_EmptyInputModeStr_FiveLinesYSp
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Traditional, 4u, verts, "");
 
-    // The inputModeStr contributes 0 vertices; total must match the 10-line Traditional base.
-    constexpr uint32_t expectedVerts = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 8u) * 6u;  // 1170
+    // The inputModeStr contributes 0 vertices; total must match the 11-line Traditional base.
+    constexpr uint32_t expectedVerts = (17u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 8u + 18u) * 6u;  // 1278
     EXPECT_EQ(count, expectedVerts)
         << "tessellateHUD (Traditional, empty inputModeStr) returned " << count
         << " vertices; expected " << expectedVerts;
@@ -912,7 +915,7 @@ TEST(MetricsTest, HUDTessellation_LargeMSAASampleCount_NoBufferOverflow)
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 999u, verts);
 
-    constexpr uint32_t expectedVerts = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 10u) * 6u;  // 1164
+    constexpr uint32_t expectedVerts = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 10u + 18u) * 6u;  // 1260
 
     ASSERT_GT(count, 0u)
         << "tessellateHUD returned 0 for msaaSamples=999";
@@ -936,8 +939,8 @@ TEST(MetricsTest, HUDTessellation_EmptyInputModeStr_FiveLinesYSpacing)
     std::vector<UIVertex> verts;
     uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts, "");
 
-    // The inputModeStr contributes 0 vertices; total must match the 10-line Direct base.
-    constexpr uint32_t expectedVerts = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 8u) * 6u;  // 1140
+    // The inputModeStr contributes 0 vertices; total must match the 11-line Direct base.
+    constexpr uint32_t expectedVerts = (12u + 28u + 25u + 27u + 20u + 21u + 21u + 13u + 15u + 8u + 18u) * 6u;  // 1248
     EXPECT_EQ(count, expectedVerts)
         << "tessellateHUD (Direct, empty inputModeStr) returned " << count
         << " vertices; expected " << expectedVerts;
@@ -1023,7 +1026,8 @@ TEST(MetricsTest, HUDTessellation_FrameTimeLine_ReflectsNonZeroAverage)
     //   Line 7: frame time line               (variable — frameLineChars)
     //   Line 8: "GPU Mem: 0.0 MB"             = 15 chars
     //   Line 9: "MSAA: 4x"                    =  8 chars
-    constexpr int fixedChars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 15 + 8; // = 177
+    //   Line 10: "  [F] pause/resume"          = 18 chars
+    constexpr int fixedChars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 15 + 8 + 18; // = 195
     const uint32_t expectedVerts =
         6u * static_cast<uint32_t>(fixedChars + frameLineChars);
 
@@ -1037,4 +1041,56 @@ TEST(MetricsTest, HUDTessellation_FrameTimeLine_ReflectsNonZeroAverage)
            "tessellateHUD may be hardcoding 0.0 for the frame time";
     EXPECT_EQ(static_cast<uint32_t>(verts.size()), expectedVerts)
         << "outVerts.size() does not match the returned vertex count";
+}
+
+// ---------------------------------------------------------------------------
+// MetricsTest — pause button line is always rendered (fails until implemented)
+// ---------------------------------------------------------------------------
+
+// tessellateHUD must include an "  [F] pause/resume" line (18 chars) after MSAA.
+// Without the pause button implementation, vertex count is 190*6=1140 (Direct,
+// no inputModeStr). With the [F] line it must be (190+18)*6=1248.
+TEST(MetricsTest, HUDTessellation_PauseHintLine_AlwaysPresent)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+    std::vector<UIVertex> verts;
+    uint32_t count = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, verts);
+
+    // "  [F] pause/resume" = 18 chars
+    constexpr int pauseHintChars = 18;
+    constexpr int baseChars = 12 + 28 + 25 + 27 + 20 + 21 + 21 + 13 + 15 + 8; // 190
+    constexpr uint32_t expectedVerts = 6u * static_cast<uint32_t>(baseChars + pauseHintChars);
+
+    EXPECT_EQ(count, expectedVerts)
+        << "tessellateHUD must include [F] pause/resume hint line (18 chars); "
+           "got " << count << " verts, expected " << expectedVerts;
+}
+
+// ---------------------------------------------------------------------------
+// MetricsTest — paused=true adds a status line (fails until implemented)
+// ---------------------------------------------------------------------------
+
+// When paused=true, tessellateHUD must append "Status: PAUSED" (14 chars)
+// after the [F] pause hint line. Without implementation, the paused parameter
+// has no effect and the count is the same as the non-paused case.
+TEST(MetricsTest, HUDTessellation_PausedState_ShowsStatusLine)
+{
+    UISystem sys;
+    sys.buildGlyphTable();
+
+    Metrics metrics;
+    std::vector<UIVertex> vertsUnpaused, vertsPaused;
+    uint32_t countUnpaused = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, vertsUnpaused,
+                                                    nullptr, /*paused=*/false);
+    uint32_t countPaused   = metrics.tessellateHUD(sys, RenderMode::Direct, 4u, vertsPaused,
+                                                    nullptr, /*paused=*/true);
+
+    // "Status: PAUSED" = 14 chars = 84 extra vertices
+    constexpr uint32_t expectedExtra = 6u * 14u;
+    EXPECT_EQ(countPaused, countUnpaused + expectedExtra)
+        << "paused=true must add 'Status: PAUSED' (14 chars = 84 verts); "
+           "unpaused=" << countUnpaused << " paused=" << countPaused;
 }

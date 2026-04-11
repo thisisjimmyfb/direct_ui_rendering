@@ -31,7 +31,8 @@ public:
                            RenderMode mode,
                            uint32_t msaaSamples,
                            std::vector<UIVertex>& outVerts,
-                           const char* inputModeStr = nullptr) const;
+                           const char* inputModeStr = nullptr,
+                           bool paused = false) const;
 
     float averageFrameMs() const;
     uint64_t gpuAllocatedBytes() const { return m_gpuBytes; }

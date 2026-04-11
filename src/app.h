@@ -88,6 +88,8 @@ private:
     static constexpr uint32_t WINDOW_WIDTH  = 1920;
     static constexpr uint32_t WINDOW_HEIGHT = 1080;
 
+    bool m_paused{false};
+
     // Timeout tracking
     int m_timeoutSeconds{0};
     std::chrono::steady_clock::time_point m_startTime;

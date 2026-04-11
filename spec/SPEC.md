@@ -71,6 +71,12 @@ Press `Space` to toggle between modes at runtime. The current mode is displayed 
 | Traditional | `Space` (toggle) | UI rendered to offscreen RT, composited onto quad |
 | Direct | `Space` (toggle) | UI rendered directly into main scene pass |
 
+Press `F` to toggle animation pause. When paused, all time-driven animation (cube rotation, spotlight motion, light pulsing, UI color phase, ripple effect) freezes at the last frame time. Rendering continues at full rate with the frozen scene state.
+
+| Action | Key | Description |
+|--------|-----|-------------|
+| Pause / Resume | `F` (toggle) | Freezes or resumes all time-based animation |
+
 ### 3.2 Traditional Mode — Offscreen RT
 
 **Pass 1 — UI Pass:**
@@ -292,6 +298,8 @@ struct SurfaceUBO {
 | Frame time | CPU timer (`std::chrono`) per frame | `Frame: 3.2 ms` |
 | GPU memory | VMA total allocated bytes | `GPU Mem: 48.3 MB` |
 | MSAA | Compile-time / runtime constant | `MSAA: 4x` |
+| Pause toggle | App state | `[F] pause/resume` |
+| Pause status | App state (conditional) | `Status: PAUSED` (only displayed when paused) |
 
 ---
 
