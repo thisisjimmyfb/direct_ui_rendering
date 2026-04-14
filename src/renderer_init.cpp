@@ -5,7 +5,12 @@
 #include "scene.h"
 #include "ui_system.h"
 
+#ifndef __ANDROID__
 #include <GLFW/glfw3.h>
+#else
+#include <vulkan/vulkan_android.h>
+#endif
+
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
@@ -15,7 +20,7 @@
 // Lifecycle - Initialization
 // ---------------------------------------------------------------------------
 
-bool Renderer::init(bool headless, GLFWwindow* window, const char* shaderDir)
+bool Renderer::init(bool headless, const NativeWindowHandle& window, const char* shaderDir)
 {
     m_headless   = headless;
     m_shaderDir  = shaderDir ? shaderDir : SHADER_DIR;
@@ -24,11 +29,18 @@ bool Renderer::init(bool headless, GLFWwindow* window, const char* shaderDir)
 
     if (!createInstance())       return false;
 
-    // Create the Vulkan surface from the GLFW window before device selection so
+    // Create the Vulkan surface from the native window before device selection so
     // that present-queue compatibility can be checked if needed.
-    if (!m_headless && window) {
-        if (glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface) != VK_SUCCESS)
+    if (!m_headless && !window.isNull()) {
+#ifdef __ANDROID__
+        VkAndroidSurfaceCreateInfoKHR sci{VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR};
+        sci.window = window.androidWindow();
+        if (vkCreateAndroidSurfaceKHR(m_instance, &sci, nullptr, &m_surface) != VK_SUCCESS)
             return false;
+#else
+        if (glfwCreateWindowSurface(m_instance, window.glfwWindow(), nullptr, &m_surface) != VK_SUCCESS)
+            return false;
+#endif
     }
 
     if (!selectPhysicalDevice())       return false;
@@ -73,10 +85,15 @@ bool Renderer::createInstance()
     // Collect required instance extensions.
     std::vector<const char*> extensions;
     if (!m_headless) {
+#ifdef __ANDROID__
+        extensions.push_back("VK_KHR_surface");
+        extensions.push_back("VK_KHR_android_surface");
+#else
         uint32_t glfwCount = 0;
         const char** glfwExts = glfwGetRequiredInstanceExtensions(&glfwCount);
         for (uint32_t i = 0; i < glfwCount; ++i)
             extensions.push_back(glfwExts[i]);
+#endif
     }
 #ifdef ENABLE_VALIDATION_LAYERS
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

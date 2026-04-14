@@ -25,6 +25,7 @@ add_executable(tests_unit
     test_app_input.cpp
     test_light_intensity.cpp
     test_command_line.cpp
+    test_android_platform.cpp
 )
 
 target_link_libraries(tests_unit PRIVATE

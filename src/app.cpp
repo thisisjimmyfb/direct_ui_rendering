@@ -9,7 +9,9 @@
 #include <stdexcept>
 #include <string>
 
-#ifdef _WIN32
+#ifdef __ANDROID__
+static std::string exeDir() { return ""; }
+#elif defined(_WIN32)
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 static std::string exeDir()
@@ -65,6 +67,18 @@ void App::setTimeout(int seconds)
 
 bool App::initWindow()
 {
+#ifdef __ANDROID__
+    // Wait for the Android window to become available.
+    if (!m_androidApp) return false;
+    while (!m_androidApp->window) {
+        int events;
+        android_poll_source* source;
+        ALooper_pollAll(0, nullptr, &events, reinterpret_cast<void**>(&source));
+        if (source) source->process(m_androidApp, source);
+    }
+    m_androidWindow = m_androidApp->window;
+    return m_androidWindow != nullptr;
+#else
     if (!glfwInit()) return false;
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -80,11 +94,17 @@ bool App::initWindow()
     glfwSetMouseButtonCallback(m_window, mouseButtonCallback);
     glfwSetCharCallback(m_window, charCallback);
     return true;
+#endif
 }
 
 bool App::initSubsystems()
 {
-    if (!m_renderer.init(/*headless=*/false, m_window)) return false;
+#ifdef __ANDROID__
+    NativeWindowHandle nativeWindow = NativeWindowHandle::fromAndroid(m_androidWindow);
+#else
+    NativeWindowHandle nativeWindow = NativeWindowHandle::fromGLFW(m_window);
+#endif
+    if (!m_renderer.init(/*headless=*/false, nativeWindow)) return false;
 
     m_scene.init();
 
@@ -152,8 +172,27 @@ bool App::initSubsystems()
 
 void App::mainLoop()
 {
+#ifdef __ANDROID__
+    bool running = true;
+    while (running) {
+        if (m_timeoutSeconds > 0) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - m_startTime).count();
+            if (elapsed >= m_timeoutSeconds) {
+                printf("Timeout reached: %d seconds. Exiting.\n", m_timeoutSeconds);
+                break;
+            }
+        }
+        int events;
+        android_poll_source* source;
+        while (ALooper_pollAll(0, nullptr, &events, reinterpret_cast<void**>(&source)) >= 0) {
+            if (source) source->process(m_androidApp, source);
+            if (m_androidApp->destroyRequested) { running = false; break; }
+        }
+        if (running) drawFrame();
+    }
+#else
     while (!glfwWindowShouldClose(m_window)) {
-        // Check timeout if enabled
         if (m_timeoutSeconds > 0) {
             auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                 std::chrono::steady_clock::now() - m_startTime).count();
@@ -163,10 +202,10 @@ void App::mainLoop()
                 break;
             }
         }
-
         glfwPollEvents();
         drawFrame();
     }
+#endif
 }
 
 void App::drawFrame()
@@ -379,21 +418,22 @@ void App::drawFrame()
 // Input
 // ---------------------------------------------------------------------------
 
+#ifndef __ANDROID__
 void App::keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods)
 {
     auto* app = static_cast<App*>(glfwGetWindowUserPointer(win));
     app->onKey(key, action);
 }
+#endif
 
+#ifndef __ANDROID__
 void App::onKey(int key, int action)
 {
     if (action != GLFW_PRESS && action != GLFW_REPEAT) return;
 
-    // Tab toggles between camera and UI terminal input modes.
     if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
         if (m_inputMode == InputMode::Camera) {
             m_inputMode = InputMode::UITerminal;
-            // Release mouse capture when entering terminal mode.
             if (m_mouseCapture) {
                 m_mouseCapture = false;
                 m_firstMouse   = true;
@@ -407,7 +447,6 @@ void App::onKey(int key, int action)
         return;
     }
 
-    // In UITerminal mode only handle backspace and Escape.
     if (m_inputMode == InputMode::UITerminal) {
         if (key == GLFW_KEY_BACKSPACE && !m_terminalText.empty()) {
             m_terminalText.pop_back();
@@ -418,7 +457,6 @@ void App::onKey(int key, int action)
         return;
     }
 
-    // Camera mode key handling.
     if (key == GLFW_KEY_SPACE) {
         m_pendingModeToggle = true;
     } else if (key == GLFW_KEY_EQUAL || key == GLFW_KEY_KP_ADD) {
@@ -473,7 +511,7 @@ void App::onMouseMove(double x, double y)
         m_firstMouse = false;
     }
     double dx = x - m_lastMouseX;
-    double dy = m_lastMouseY - y;  // reversed: y increases downward
+    double dy = m_lastMouseY - y;
     m_lastMouseX = x;
     m_lastMouseY = y;
 
@@ -499,6 +537,7 @@ void App::charCallback(GLFWwindow* win, unsigned int codepoint)
     auto* app = static_cast<App*>(glfwGetWindowUserPointer(win));
     app->onChar(codepoint);
 }
+#endif
 
 void App::onChar(unsigned int codepoint)
 {
@@ -533,6 +572,8 @@ void App::cleanup()
     m_ui.cleanup();
     m_renderer.cleanup();
 
+#ifndef __ANDROID__
     if (m_window) glfwDestroyWindow(m_window);
     glfwTerminate();
+#endif
 }

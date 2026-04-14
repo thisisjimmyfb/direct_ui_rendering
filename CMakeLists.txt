@@ -5,21 +5,30 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Detect Android build (NDK sets CMAKE_SYSTEM_NAME to "Android")
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    set(PLATFORM_ANDROID TRUE)
+else()
+    set(PLATFORM_ANDROID FALSE)
+endif()
+
 # ---------------------------------------------------------------------------
 # Dependencies via FetchContent
 # ---------------------------------------------------------------------------
 include(FetchContent)
 
-# GLFW
-FetchContent_Declare(
-    glfw
-    GIT_REPOSITORY https://github.com/glfw/glfw.git
-    GIT_TAG        3.4
-)
-set(GLFW_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(glfw)
+# GLFW — desktop only (Android uses ANativeWindow directly)
+if(NOT PLATFORM_ANDROID)
+    FetchContent_Declare(
+        glfw
+        GIT_REPOSITORY https://github.com/glfw/glfw.git
+        GIT_TAG        3.4
+    )
+    set(GLFW_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(glfw)
+endif()
 
 # VulkanMemoryAllocator (VMA)
 FetchContent_Declare(
@@ -170,13 +179,26 @@ target_include_directories(direct_ui_rendering_lib PUBLIC
 
 target_link_libraries(direct_ui_rendering_lib PUBLIC
     Vulkan::Vulkan
-    glfw
     GPUOpen::VulkanMemoryAllocator
     glm::glm
     stb_image
     validation_layer_config
     msaa_config
 )
+
+if(PLATFORM_ANDROID)
+    # android_native_app_glue is provided by the NDK
+    find_library(ANDROID_LIB android)
+    find_library(LOG_LIB log)
+    target_link_libraries(direct_ui_rendering_lib PUBLIC
+        android_native_app_glue
+        ${ANDROID_LIB}
+        ${LOG_LIB}
+    )
+    target_compile_definitions(direct_ui_rendering_lib PUBLIC VK_USE_PLATFORM_ANDROID_KHR)
+else()
+    target_link_libraries(direct_ui_rendering_lib PUBLIC glfw)
+endif()
 
 target_compile_definitions(direct_ui_rendering_lib PUBLIC
     SHADER_DIR="${SHADER_OUTPUT_DIR}/"
@@ -185,24 +207,32 @@ target_compile_definitions(direct_ui_rendering_lib PUBLIC
 )
 
 # ---------------------------------------------------------------------------
-# App executable
+# App executable (or shared library on Android)
 # ---------------------------------------------------------------------------
-add_executable(direct_ui_rendering src/main.cpp)
-target_link_libraries(direct_ui_rendering PRIVATE direct_ui_rendering_lib)
+if(PLATFORM_ANDROID)
+    # Android requires a shared library loaded by NativeActivity / GameActivity.
+    add_library(direct_ui_rendering SHARED src/main.cpp)
+    target_link_libraries(direct_ui_rendering PRIVATE direct_ui_rendering_lib)
+else()
+    add_executable(direct_ui_rendering src/main.cpp)
+    target_link_libraries(direct_ui_rendering PRIVATE direct_ui_rendering_lib)
 
-# Copy glyph atlas to the build output directory so the app can find it at
-# "assets/atlas.png" relative to the executable.
-add_custom_command(TARGET direct_ui_rendering POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-        $<TARGET_FILE_DIR:direct_ui_rendering>/assets
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas.png
-        $<TARGET_FILE_DIR:direct_ui_rendering>/assets/atlas.png
-    COMMENT "Copying glyph atlas to build output"
-)
+    # Copy glyph atlas to the build output directory so the app can find it at
+    # "assets/atlas.png" relative to the executable.
+    add_custom_command(TARGET direct_ui_rendering POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:direct_ui_rendering>/assets
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas.png
+            $<TARGET_FILE_DIR:direct_ui_rendering>/assets/atlas.png
+        COMMENT "Copying glyph atlas to build output"
+    )
+endif()
 
 # ---------------------------------------------------------------------------
-# Tests subdirectory
+# Tests subdirectory (desktop only)
 # ---------------------------------------------------------------------------
-enable_testing()
-add_subdirectory(tests)
+if(NOT PLATFORM_ANDROID)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

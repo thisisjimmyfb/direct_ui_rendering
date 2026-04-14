@@ -5,8 +5,14 @@
 #include "ui_system.h"
 #include "ui_surface.h"
 #include "metrics.h"
+#include "platform.h"
 
+#ifndef __ANDROID__
 #include <GLFW/glfw3.h>
+#else
+#include <android_native_app_glue.h>
+#endif
+
 #include <glm/glm.hpp>
 #include <string>
 #include <vector>
@@ -29,25 +35,37 @@ public:
     // Set timeout in seconds (0 = no timeout)
     void setTimeout(int seconds);
 
+#ifdef __ANDROID__
+    // Called before run() on Android to supply the native app state.
+    void setAndroidApp(android_app* app) { m_androidApp = app; }
+#endif
+
 private:
     bool initWindow();
     bool initSubsystems();
     void mainLoop();
     void cleanup();
 
-    // Input callbacks (static, forwarded to instance methods)
+#ifndef __ANDROID__
+    // Input callbacks (static, forwarded to instance methods) — desktop only
     static void keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods);
     static void cursorPosCallback(GLFWwindow* win, double x, double y);
     static void mouseButtonCallback(GLFWwindow* win, int button, int action, int mods);
+    static void charCallback(GLFWwindow* win, unsigned int codepoint);
     void onKey(int key, int action);
     void onMouseMove(double x, double y);
     void onMouseButton(int button, int action);
-    static void charCallback(GLFWwindow* win, unsigned int codepoint);
     void onChar(unsigned int codepoint);
+#endif
 
     void drawFrame();
 
+#ifndef __ANDROID__
     GLFWwindow* m_window{nullptr};
+#else
+    android_app* m_androidApp{nullptr};
+    ANativeWindow* m_androidWindow{nullptr};
+#endif
 
     Renderer  m_renderer;
     Scene     m_scene;

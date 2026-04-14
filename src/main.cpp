@@ -2,10 +2,21 @@
 #include <cstdio>
 #include <cstdlib>
 
+#ifdef __ANDROID__
+#include <android_native_app_glue.h>
+
+void android_main(android_app* state)
+{
+    App app;
+    app.setAndroidApp(state);
+    app.run();
+}
+
+#else
+
 int main(int argc, char* argv[])
 {
-    // Parse command-line timeout parameter: --timeout <seconds>
-    int timeoutSeconds = 0;  // 0 = no timeout (default)
+    int timeoutSeconds = 0;
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--timeout") == 0 && i + 1 < argc) {
             int parsed = std::atoi(argv[i + 1]);
@@ -13,7 +24,7 @@ int main(int argc, char* argv[])
                 timeoutSeconds = parsed;
                 printf("Starting with timeout: %d seconds\n", timeoutSeconds);
             }
-            ++i;  // Skip the next argument
+            ++i;
         }
     }
 
@@ -21,3 +32,5 @@ int main(int argc, char* argv[])
     app.setTimeout(timeoutSeconds);
     return app.run();
 }
+
+#endif

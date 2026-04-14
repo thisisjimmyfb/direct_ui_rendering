@@ -331,7 +331,7 @@ Both targets link against the same app library (`direct_ui_rendering_lib`) and c
 
 The `Renderer` class must cleanly separate the **device/pipeline layer** from the **swapchain/presentation layer**:
 
-- `Renderer::init(headless: bool, shaderDir: const char*)` — when `headless` is `true`, skips GLFW surface creation and swapchain setup. All pipelines, render passes, descriptor layouts, and VMA allocator are initialized identically. The `shaderDir` parameter specifies the directory path where test shaders are located; tests must pass `TEST_SHADER_DIR` at runtime so the library resolves test shaders rather than defaulting to the production `SHADER_DIR`.
+- `Renderer::init(headless: bool, window: NativeWindowHandle, shaderDir: const char*)` — when `headless` is `true`, skips surface and swapchain setup. `NativeWindowHandle` wraps either a `GLFWwindow*` (desktop) or an `ANativeWindow*` (Android); passing a null handle is equivalent to headless mode. All pipelines, render passes, descriptor layouts, and VMA allocator are initialized identically regardless of platform. The `shaderDir` parameter specifies the directory path where test shaders are located; tests must pass `TEST_SHADER_DIR` at runtime so the library resolves test shaders rather than defaulting to the production `SHADER_DIR`.
 - The output render target is abstracted behind a `RenderTarget` handle. In normal mode this wraps the swapchain image; in headless mode it wraps a plain `VkImage` allocated by the test.
 - All render functions (`drawScene`, `drawUI`, etc.) accept a `RenderTarget&` and are unaware of whether it is a swapchain image or an offscreen image.
 
@@ -344,7 +344,8 @@ This constraint also applies to `UISurface` and `Scene` — neither may hold a d
 | Library | Version | Purpose |
 |---------|---------|---------|
 | Vulkan SDK | 1.3+ | Core API, validation layers, `glslc` |
-| GLFW | 3.4 | Window creation, input, Vulkan surface |
+| GLFW | 3.4 | Window creation, input, Vulkan surface (desktop only) |
+| Android NDK | r26+ | `ANativeWindow`, `android_native_app_glue`, Vulkan surface (Android only) |
 | VMA | 3.x | GPU memory allocation and tracking |
 | `stb_image` | latest | PNG atlas loading |
 | `glm` | 0.9.9+ | Math (matrices, vectors) |

@@ -9,6 +9,7 @@
 #include <cstdint>
 #include "shader_uniforms.h"
 #include "ui_system.h"
+#include "platform.h"
 
 // Vertex layout for the composite surface quad (world-space pos + UV + face index).
 struct QuadVertex {
@@ -32,9 +33,6 @@ struct RenderTarget {
     uint32_t      height{0};
     bool          isSwapchain{false};
 };
-
-// Forward-declare GLFWwindow so callers don't need to include GLFW.
-struct GLFWwindow;
 
 // Headless render target: wraps a RenderTarget with owned MSAA attachments.
 // Create with createHeadlessRT(), destroy with destroyHeadlessRT().
@@ -60,9 +58,9 @@ class Scene;
 class Renderer {
 public:
     // Lifecycle
-    // In non-headless mode, pass the GLFW window so the renderer can create
-    // the Vulkan surface and swapchain.
-    bool init(bool headless = false, GLFWwindow* window = nullptr,
+    // In non-headless mode, pass a NativeWindowHandle so the renderer can
+    // create the Vulkan surface and swapchain.
+    bool init(bool headless = false, const NativeWindowHandle& window = {},
               const char* shaderDir = nullptr);
     void cleanup();
 
