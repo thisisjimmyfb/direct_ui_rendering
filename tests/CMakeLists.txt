@@ -37,6 +37,10 @@ target_include_directories(tests_unit PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+target_compile_definitions(tests_unit PRIVATE
+    ATLAS_ASSET_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../assets/atlas.png"
+)
+
 gtest_discover_tests(tests_unit)
 
 # ---------------------------------------------------------------------------

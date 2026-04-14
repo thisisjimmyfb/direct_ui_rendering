@@ -10,6 +10,10 @@
 #include <string>
 
 #ifdef __ANDROID__
+#include <android/asset_manager.h>
+#endif
+
+#ifdef __ANDROID__
 static std::string exeDir() { return ""; }
 #elif defined(_WIN32)
 #  define WIN32_LEAN_AND_MEAN
@@ -108,12 +112,30 @@ bool App::initSubsystems()
 
     m_scene.init();
 
-    std::string atlasPath = exeDir() + "/assets/atlas.png";
+#ifdef __ANDROID__
+    AAssetManager* assetMgr = m_androidApp ? m_androidApp->activity->assetManager : nullptr;
+    UISystem::AssetLoader assetLoader = [assetMgr](const char* path) -> std::vector<uint8_t> {
+        if (!assetMgr) return {};
+        AAsset* asset = AAssetManager_open(assetMgr, path, AASSET_MODE_BUFFER);
+        if (!asset) return {};
+        off_t sz = AAsset_getLength(asset);
+        std::vector<uint8_t> data(static_cast<size_t>(sz));
+        AAsset_read(asset, data.data(), data.size());
+        AAsset_close(asset);
+        return data;
+    };
+#else
+    std::string assetBase = exeDir() + "/";
+    UISystem::AssetLoader assetLoader = [assetBase](const char* path) -> std::vector<uint8_t> {
+        return vku::readBinaryFile((assetBase + path).c_str());
+    };
+#endif
+
     if (!m_ui.init(m_renderer.getAllocator(),
                    m_renderer.getDevice(),
                    m_renderer.getCommandPool(),
                    m_renderer.getGraphicsQueue(),
-                   atlasPath.c_str())) {
+                   std::move(assetLoader))) {
         return false;
     }
 

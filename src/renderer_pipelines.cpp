@@ -21,20 +21,13 @@ bool Renderer::createPipelines()
     // Helper: read a .spv file and create a VkShaderModule.
     auto loadShaderModule = [&](const char* relName) -> VkShaderModule {
         std::string path = m_shaderDir + relName;
-        FILE* f = fopen(path.c_str(), "rb");
-        if (!f) {
+        auto buf = vku::readBinaryFile(path.c_str());
+        if (buf.empty()) {
             fprintf(stderr, "Renderer: cannot open shader: %s\n", path.c_str());
             return VK_NULL_HANDLE;
         }
-        fseek(f, 0, SEEK_END);
-        long sz = ftell(f);
-        fseek(f, 0, SEEK_SET);
-        std::vector<char> buf(sz);
-        fread(buf.data(), 1, static_cast<size_t>(sz), f);
-        fclose(f);
-
         VkShaderModuleCreateInfo ci{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
-        ci.codeSize = static_cast<size_t>(sz);
+        ci.codeSize = buf.size();
         ci.pCode    = reinterpret_cast<const uint32_t*>(buf.data());
         VkShaderModule mod{VK_NULL_HANDLE};
         vkCreateShaderModule(m_device, &ci, nullptr, &mod);

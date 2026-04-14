@@ -3,8 +3,25 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 #include <cstdint>
+#include <cstdio>
+#include <vector>
 
 namespace vku {
+
+// Read an entire binary file into a byte vector. Returns empty on failure.
+inline std::vector<uint8_t> readBinaryFile(const char* path)
+{
+    FILE* f = fopen(path, "rb");
+    if (!f) return {};
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (sz <= 0) { fclose(f); return {}; }
+    std::vector<uint8_t> data(static_cast<size_t>(sz));
+    fread(data.data(), 1, data.size(), f);
+    fclose(f);
+    return data;
+}
 
 // Insert a pipeline barrier that transitions an image from one layout/access to another.
 inline void imageBarrier(VkCommandBuffer cmd,

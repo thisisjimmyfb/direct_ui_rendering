@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <string_view>
 #include <vector>
 
@@ -44,13 +45,23 @@ struct GlyphRect {
 // and the device-local vertex buffer for "Hello World".
 class UISystem {
 public:
+    // Callable that loads raw bytes for a named asset (e.g. "assets/atlas.png").
+    // Returns empty vector if the asset cannot be found.
+    // On desktop: UISystem::makeFileAssetLoader() provides a filesystem-based loader.
+    // On Android: the caller provides an AAssetManager-backed loader.
+    using AssetLoader = std::function<std::vector<uint8_t>(const char* path)>;
+
+    // Returns a loader that reads assets from the filesystem via fopen.
+    static AssetLoader makeFileAssetLoader();
+
     // Upload atlas PNG and tessellate the "Hello World" vertex buffer.
     // cmdPool/queue used for staging uploads.
+    // assetLoader is called with "assets/atlas.png" when SDF generation fails.
     bool init(VmaAllocator allocator,
               VkDevice device,
               VkCommandPool cmdPool,
               VkQueue queue,
-              const char* atlasPath);
+              AssetLoader assetLoader);
 
     void cleanup();
 

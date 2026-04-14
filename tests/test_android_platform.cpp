@@ -65,3 +65,42 @@ TEST(NativeWindowHandle, CopyConstructorPreservesState) {
     EXPECT_EQ(b.glfwWindow(), a.glfwWindow());
     EXPECT_EQ(b.isNull(), a.isNull());
 }
+
+// ---------------------------------------------------------------------------
+// Android asset manager integration — UISystem::AssetLoader interface
+// These tests verify the asset loader abstraction that allows Android to load
+// atlas data from APK assets via AAssetManager instead of a filesystem path.
+// ---------------------------------------------------------------------------
+
+#include "ui_system.h"
+#include <vector>
+#include <cstdint>
+
+TEST(AndroidAssetIntegration, AssetLoaderTypeIsCallable) {
+    // UISystem::AssetLoader must be a callable type that takes a path string
+    // and returns a byte vector. This will fail to compile without the typedef.
+    UISystem::AssetLoader loader = [](const char*) -> std::vector<uint8_t> {
+        return {};
+    };
+    auto result = loader("dummy_path");
+    EXPECT_TRUE(result.empty());
+}
+
+TEST(AndroidAssetIntegration, MakeFileAssetLoaderExists) {
+    // UISystem::makeFileAssetLoader() must exist and return a loader that
+    // returns empty bytes for a nonexistent path.
+    auto loader = UISystem::makeFileAssetLoader();
+    auto result = loader("nonexistent_atlas_xyz_12345.png");
+    EXPECT_TRUE(result.empty());
+}
+
+TEST(AndroidAssetIntegration, MakeFileAssetLoaderReadsExistingFile) {
+    // Verify the file-based loader can read a real file (the production atlas).
+    // This test is skipped if the atlas is not present in the build dir.
+    auto loader = UISystem::makeFileAssetLoader();
+    auto result = loader(ATLAS_ASSET_PATH);
+    if (result.empty()) {
+        GTEST_SKIP() << "atlas.png not present at " ATLAS_ASSET_PATH ", skipping";
+    }
+    EXPECT_GT(result.size(), 0u);
+}

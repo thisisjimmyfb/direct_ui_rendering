@@ -35,6 +35,17 @@ void UISystem::buildGlyphTable()
 }
 
 // ---------------------------------------------------------------------------
+// makeFileAssetLoader
+// ---------------------------------------------------------------------------
+
+UISystem::AssetLoader UISystem::makeFileAssetLoader()
+{
+    return [](const char* path) -> std::vector<uint8_t> {
+        return vku::readBinaryFile(path);
+    };
+}
+
+// ---------------------------------------------------------------------------
 // init
 // ---------------------------------------------------------------------------
 
@@ -42,7 +53,7 @@ bool UISystem::init(VmaAllocator allocator,
                     VkDevice device,
                     VkCommandPool cmdPool,
                     VkQueue queue,
-                    const char* atlasPath)
+                    AssetLoader assetLoader)
 {
     m_allocator = allocator;
     m_device    = device;
@@ -50,12 +61,16 @@ bool UISystem::init(VmaAllocator allocator,
     // Build glyph UV table.
     buildGlyphTable();
 
-    // Try system fonts for SDF generation
+    // Try system fonts for SDF generation (desktop + Android paths)
     const char* fontPaths[] = {
         "C:/Windows/Fonts/arial.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
         "/usr/share/fonts/TTF/LiberationSans-Regular.ttf",
+        // Android system fonts
+        "/system/fonts/Roboto-Regular.ttf",
+        "/system/fonts/DroidSans.ttf",
+        "/system/fonts/NotoSans-Regular.ttf",
         nullptr
     };
 
@@ -188,14 +203,23 @@ bool UISystem::init(VmaAllocator allocator,
         m_sdfMode = true;
         printf("UISystem: SDF atlas generated (font loaded from system)\n");
     } else {
-        // Fall back to PNG bitmap atlas.
-        int w, h, ch;
-        stbi_uc* pixels = stbi_load(atlasPath, &w, &h, &ch, STBI_rgb_alpha);
+        // Fall back to PNG bitmap atlas loaded via the asset loader.
+        std::vector<uint8_t> atlasBytes = assetLoader ? assetLoader("assets/atlas.png") : std::vector<uint8_t>{};
+
+        int w = 1, h = 1, ch = 4;
+        stbi_uc* pixels = nullptr;
+        bool usedDummy = false;
+
+        if (!atlasBytes.empty()) {
+            pixels = stbi_load_from_memory(atlasBytes.data(),
+                static_cast<int>(atlasBytes.size()), &w, &h, &ch, STBI_rgb_alpha);
+        }
         if (!pixels) {
             // Atlas not found — create a 1x1 placeholder so the app can still link.
             static stbi_uc dummy[4] = {255, 255, 255, 255};
             pixels = dummy;
             w = h = 1;
+            usedDummy = true;
         }
         VkDeviceSize imageSize = static_cast<VkDeviceSize>(w) * h * 4;
 
@@ -236,10 +260,8 @@ bool UISystem::init(VmaAllocator allocator,
         memcpy(mapped, pixels, imageSize);
         vmaUnmapMemory(allocator, stagingAlloc);
 
-        if (pixels != reinterpret_cast<stbi_uc*>(nullptr) + 0) {
-            // Only free if stbi allocated it (not our dummy).
-            // (Simple check: if w*h > 1 stbi allocated it)
-            if (w * h > 1) stbi_image_free(pixels);
+        if (!usedDummy) {
+            stbi_image_free(pixels);
         }
 
         VkCommandBuffer cmd = vku::beginOneShot(device, cmdPool);
