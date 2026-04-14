@@ -2,8 +2,8 @@
 Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks), but don't implement it yet. If the task affects the core execution of the demo, then please create tests that will fail without implementing the task. After tests are created, work on the implementation. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Be concise and only write comments if the logic is complex. Do not commit and do not write progress or summary in this file.
 
 ## Pending Tasks
-- Refactor renderAndReadback/renderDirect/renderTraditional boilerplate (~500 lines duplicated across test_sdf.cpp, test_traditional_lighting.cpp, and containment_fixture.h) into a shared helper in a new tests/render_helpers.h.
-- Refactor atlas image creation/upload patterns (~150 lines duplicated across test_sdf.cpp, test_traditional_lighting.cpp, containment_fixture.h) into a shared helper.
+- Add Android support
+- Add OpenXR support
 
 ## Iterate
 - Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct. 
