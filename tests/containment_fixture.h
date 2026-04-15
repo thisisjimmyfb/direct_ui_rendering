@@ -16,76 +16,6 @@
 #include <cstdint>
 #include <cmath>
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// Project a world-space point through viewProj to screen-space pixel coords.
-static glm::vec2 projectToScreen(glm::vec3 worldPos,
-                                 const glm::mat4& viewProj,
-                                 uint32_t width, uint32_t height)
-{
-    glm::vec4 clip = viewProj * glm::vec4(worldPos, 1.0f);
-    glm::vec3 ndc  = glm::vec3(clip) / clip.w;
-    return {
-        (ndc.x * 0.5f + 0.5f) * static_cast<float>(width),
-        (ndc.y * 0.5f + 0.5f) * static_cast<float>(height)
-    };
-}
-
-// Test if a pixel coordinate is inside a convex screen-space quad.
-// quad[0..3] are the four screen-space corners in order (e.g. TL, TR, BR, BL).
-// margin: allow N pixels outside the quad boundary.
-static bool insideConvexQuad(glm::vec2 p,
-                             const glm::vec2 quad[4],
-                             float margin = 2.0f)
-{
-    for (int i = 0; i < 4; ++i) {
-        glm::vec2 a    = quad[i];
-        glm::vec2 b    = quad[(i + 1) % 4];
-        glm::vec2 edge = b - a;
-        float len = glm::length(edge);
-        if (len < 1e-6f) continue;  // degenerate edge
-        // Normalised inward normal (CCW winding in screen space).
-        // Dividing by len gives d in units of pixels, so margin is truly in pixels.
-        glm::vec2 perp = glm::vec2{-edge.y, edge.x} / len;
-        float d = glm::dot(p - a, perp);
-        if (d < -margin) return false;
-    }
-    return true;
-}
-
-// Check if a pixel (r,g,b) is "magenta-like" within a tolerance.
-static bool isMagenta(uint8_t r, uint8_t g, uint8_t b, uint8_t threshold = 32)
-{
-    return r > (255 - threshold) && g < threshold && b > (255 - threshold);
-}
-
-// Axis-aligned bounding box of all magenta pixels in a readback buffer.
-struct MagentaBBox {
-    int minX{INT_MAX}, minY{INT_MAX};
-    int maxX{INT_MIN}, maxY{INT_MIN};
-    bool valid{false};
-};
-
-static MagentaBBox computeMagentaBBox(const std::vector<uint8_t>& pixels,
-                                      uint32_t width, uint32_t height)
-{
-    MagentaBBox bb;
-    for (uint32_t y = 0; y < height; ++y)
-        for (uint32_t x = 0; x < width; ++x) {
-            const uint8_t* px = pixels.data() + (y * width + x) * 4;
-            if (isMagenta(px[0], px[1], px[2])) {
-                bb.valid = true;
-                bb.minX  = std::min(bb.minX, (int)x);
-                bb.minY  = std::min(bb.minY, (int)y);
-                bb.maxX  = std::max(bb.maxX, (int)x);
-                bb.maxY  = std::max(bb.maxY, (int)y);
-            }
-        }
-    return bb;
-}
-
 #include "scene_ubo_helper.h"
 
 // ---------------------------------------------------------------------------
@@ -217,13 +147,7 @@ protected:
 
     // Count how many pixels in the readback image are magenta.
     int countMagentaPixels(const std::vector<uint8_t>& pixels) const {
-        int count = 0;
-        for (uint32_t y = 0; y < FB_HEIGHT; ++y)
-            for (uint32_t x = 0; x < FB_WIDTH; ++x) {
-                const uint8_t* px = pixels.data() + (y * FB_WIDTH + x) * 4;
-                if (isMagenta(px[0], px[1], px[2])) ++count;
-            }
-        return count;
+        return render_helpers::countMagentaPixels(pixels, FB_WIDTH, FB_HEIGHT);
     }
 
     // Assert that all magenta pixels in a readback image lie inside the screen-space
@@ -235,19 +159,19 @@ protected:
                                  float margin = 2.0f)
     {
         glm::vec2 screenCorners[4] = {
-            projectToScreen(P00, viewProj, FB_WIDTH, FB_HEIGHT),
-            projectToScreen(P10, viewProj, FB_WIDTH, FB_HEIGHT),
-            projectToScreen(P11, viewProj, FB_WIDTH, FB_HEIGHT),
-            projectToScreen(P01, viewProj, FB_WIDTH, FB_HEIGHT),
+            render_helpers::projectToScreen(P00, viewProj, FB_WIDTH, FB_HEIGHT),
+            render_helpers::projectToScreen(P10, viewProj, FB_WIDTH, FB_HEIGHT),
+            render_helpers::projectToScreen(P11, viewProj, FB_WIDTH, FB_HEIGHT),
+            render_helpers::projectToScreen(P01, viewProj, FB_WIDTH, FB_HEIGHT),
         };
 
         int violations = 0;
         for (uint32_t y = 0; y < FB_HEIGHT; ++y) {
             for (uint32_t x = 0; x < FB_WIDTH; ++x) {
                 const uint8_t* px = pixels.data() + (y * FB_WIDTH + x) * 4;
-                if (isMagenta(px[0], px[1], px[2])) {
+                if (render_helpers::isMagenta(px[0], px[1], px[2])) {
                     glm::vec2 coord{static_cast<float>(x), static_cast<float>(y)};
-                    if (!insideConvexQuad(coord, screenCorners, margin)) {
+                    if (!render_helpers::insideConvexQuad(coord, screenCorners, margin)) {
                         ++violations;
                     }
                 }

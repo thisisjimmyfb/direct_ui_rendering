@@ -161,8 +161,8 @@ TEST_F(ContainmentTest, FontSizeInvariance_DirectVsTraditional_ScaledQuad)
     vmaDestroyBuffer(renderer.getAllocator(), subVtxBuf, subVtxAlloc);
 
     // Compute bounding boxes of magenta pixels for each mode.
-    auto bboxDirect = computeMagentaBBox(pixelsDirect, FB_WIDTH, FB_HEIGHT);
-    auto bboxTrad   = computeMagentaBBox(pixelsTrad,   FB_WIDTH, FB_HEIGHT);
+    auto bboxDirect = render_helpers::computeMagentaBBox(pixelsDirect, FB_WIDTH, FB_HEIGHT);
+    auto bboxTrad   = render_helpers::computeMagentaBBox(pixelsTrad,   FB_WIDTH, FB_HEIGHT);
 
     ASSERT_TRUE(bboxDirect.valid)
         << "No magenta pixels in direct-mode render "
