@@ -29,7 +29,8 @@ inline void createAtlas(VkDevice device, VmaAllocator allocator, VkCommandPool c
                         VkQueue graphicsQueue,
                         uint32_t dim, uint8_t r, uint8_t g, uint8_t b, uint8_t a,
                         VkImage& imgOut, VmaAllocation& allocOut,
-                        VkImageView& viewOut, VkSampler& samplerOut)
+                        VkImageView& viewOut, VkSampler& samplerOut,
+                        VkFilter filter = VK_FILTER_NEAREST)
 {
     std::vector<uint8_t> pixels(dim * dim * 4);
     for (uint32_t i = 0; i < dim * dim; ++i) {
@@ -102,9 +103,10 @@ inline void createAtlas(VkDevice device, VmaAllocator allocator, VkCommandPool c
     EXPECT_EQ(vkCreateImageView(device, &viewCI, nullptr, &viewOut), VK_SUCCESS);
 
     VkSamplerCreateInfo sampCI{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    sampCI.magFilter    = VK_FILTER_NEAREST;
-    sampCI.minFilter    = VK_FILTER_NEAREST;
-    sampCI.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    sampCI.magFilter    = filter;
+    sampCI.minFilter    = filter;
+    sampCI.mipmapMode   = (filter == VK_FILTER_LINEAR) ? VK_SAMPLER_MIPMAP_MODE_LINEAR
+                                                        : VK_SAMPLER_MIPMAP_MODE_NEAREST;
     sampCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     sampCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     sampCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;

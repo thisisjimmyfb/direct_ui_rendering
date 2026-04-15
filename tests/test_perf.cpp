@@ -7,6 +7,7 @@
 #include "vk_utils.h"
 #include "perf_reference.h"
 #include "scene_ubo_helper.h"
+#include "render_helpers.h"
 
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
@@ -52,76 +53,17 @@ protected:
         ASSERT_TRUE(renderer.uploadSceneGeometry(scene));
 
         // Dummy 1x1 atlas (UI_TEST_COLOR overrides sampling, but descriptor must be valid).
-        {
-            VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-            ci.imageType     = VK_IMAGE_TYPE_2D;
-            ci.format        = VK_FORMAT_R8G8B8A8_UNORM;
-            ci.extent        = {1, 1, 1};
-            ci.mipLevels     = 1;
-            ci.arrayLayers   = 1;
-            ci.samples       = VK_SAMPLE_COUNT_1_BIT;
-            ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
-            ci.usage         = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-            ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-            ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            VmaAllocationCreateInfo ai{};
-            ai.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-            ASSERT_EQ(vmaCreateImage(renderer.getAllocator(), &ci, &ai,
-                                     &dummyImg, &dummyAlloc, nullptr), VK_SUCCESS);
-
-            VkCommandBuffer transCmd = vku::beginOneShot(renderer.getDevice(),
-                                                         renderer.getCommandPool());
-            vku::imageBarrier(transCmd, dummyImg,
-                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                0, VK_ACCESS_SHADER_READ_BIT,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-            vku::endOneShot(renderer.getDevice(), renderer.getCommandPool(),
-                            renderer.getGraphicsQueue(), transCmd);
-
-            VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-            viewCI.image            = dummyImg;
-            viewCI.viewType         = VK_IMAGE_VIEW_TYPE_2D;
-            viewCI.format           = VK_FORMAT_R8G8B8A8_UNORM;
-            viewCI.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-            ASSERT_EQ(vkCreateImageView(renderer.getDevice(), &viewCI, nullptr, &dummyView), VK_SUCCESS);
-
-            VkSamplerCreateInfo sampCI{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-            sampCI.magFilter    = VK_FILTER_NEAREST;
-            sampCI.minFilter    = VK_FILTER_NEAREST;
-            sampCI.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-            sampCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            sampCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            sampCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            ASSERT_EQ(vkCreateSampler(renderer.getDevice(), &sampCI, nullptr, &dummySampler), VK_SUCCESS);
-
-            renderer.bindAtlasDescriptor(dummyView, dummySampler);
-        }
+        render_helpers::createDummyAtlas(renderer.getDevice(), renderer.getAllocator(),
+                                         renderer.getCommandPool(), renderer.getGraphicsQueue(),
+                                         dummyImg, dummyAlloc, dummyView, dummySampler);
+        renderer.bindAtlasDescriptor(dummyView, dummySampler);
 
         // Ensure offscreen RT descriptor is valid (needed even in direct mode to satisfy set 2).
         ASSERT_TRUE(renderer.initOffscreenRT());
 
         // UI vertex buffer: one full-canvas quad.
-        {
-            uiVtxCount = 6;
-            const float W = static_cast<float>(W_UI);
-            const float H = static_cast<float>(H_UI);
-            UIVertex verts[6] = {
-                {{0, 0}, {0, 0}}, {{W, 0}, {1, 0}}, {{W, H}, {1, 1}},
-                {{0, 0}, {0, 0}}, {{W, H}, {1, 1}}, {{0, H}, {0, 1}},
-            };
-            VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-            bci.size        = sizeof(verts);
-            bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VmaAllocationCreateInfo ai{};
-            ai.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-            ASSERT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
-                                      &uiVtxBuf, &uiVtxAlloc, nullptr), VK_SUCCESS);
-            void* mapped = nullptr;
-            vmaMapMemory(renderer.getAllocator(), uiVtxAlloc, &mapped);
-            memcpy(mapped, verts, sizeof(verts));
-            vmaUnmapMemory(renderer.getAllocator(), uiVtxAlloc);
-        }
+        uiVtxCount = UI_VTX_COUNT;
+        render_helpers::createUIVertexBuffer(renderer.getAllocator(), uiVtxBuf, uiVtxAlloc);
 
         // Headless render target.
         ASSERT_TRUE(renderer.createHeadlessRT(FB_WIDTH, FB_HEIGHT, hrt));

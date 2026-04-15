@@ -2,8 +2,7 @@
 Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks), but don't implement it yet. If the task affects the core execution of the demo, then please create tests that will fail without implementing the task. After tests are created, work on the implementation. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Be concise and only write comments if the logic is complex. Do not commit and do not write progress or summary in this file.
 
 ## Pending Tasks
-- Package APK when building for the Android platform via /scripts/build.sh --platform=android
-- Add Android platform to /scripts/test.sh. Follow similar style as /scripts/build.sh
+- Fix Android build error via /scripts/build.sh --platform=android
 - Add OpenXR support
 
 ## Iterate

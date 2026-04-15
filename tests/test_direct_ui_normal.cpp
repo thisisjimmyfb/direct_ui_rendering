@@ -30,6 +30,7 @@
 #include "ui_system.h"
 #include "vk_utils.h"
 #include "scene_ubo_helper.h"
+#include "render_helpers.h"
 
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
@@ -70,107 +71,16 @@ protected:
                                   0.1f, 100.0f);
         m_proj[1][1] *= -1.0f;  // Vulkan Y-flip
 
-        // White atlas: all pixels = (255,255,255,255) — fully opaque white.
-        {
-            std::vector<uint8_t> pixels(ATLAS_DIM * ATLAS_DIM * 4, 255);
-
-            VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-            ci.imageType     = VK_IMAGE_TYPE_2D;
-            ci.format        = VK_FORMAT_R8G8B8A8_UNORM;
-            ci.extent        = {ATLAS_DIM, ATLAS_DIM, 1};
-            ci.mipLevels     = 1;
-            ci.arrayLayers   = 1;
-            ci.samples       = VK_SAMPLE_COUNT_1_BIT;
-            ci.tiling        = VK_IMAGE_TILING_OPTIMAL;
-            ci.usage         = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-            ci.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-            ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            VmaAllocationCreateInfo ai{};
-            ai.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-            ASSERT_EQ(vmaCreateImage(renderer.getAllocator(), &ci, &ai,
-                                     &atlasImg, &atlasAlloc, nullptr), VK_SUCCESS);
-
-            VkBuffer stagingBuf;
-            VmaAllocation stagingAlloc;
-            {
-                VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-                bci.size        = pixels.size();
-                bci.usage       = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-                bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-                VmaAllocationCreateInfo sai{};
-                sai.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-                ASSERT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &sai,
-                                          &stagingBuf, &stagingAlloc, nullptr), VK_SUCCESS);
-                void* mapped = nullptr;
-                vmaMapMemory(renderer.getAllocator(), stagingAlloc, &mapped);
-                memcpy(mapped, pixels.data(), pixels.size());
-                vmaUnmapMemory(renderer.getAllocator(), stagingAlloc);
-            }
-
-            VkCommandBuffer uploadCmd = vku::beginOneShot(renderer.getDevice(),
-                                                          renderer.getCommandPool());
-            vku::imageBarrier(uploadCmd, atlasImg,
-                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                0, VK_ACCESS_TRANSFER_WRITE_BIT,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-            VkBufferImageCopy region{};
-            region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-            region.imageExtent      = {ATLAS_DIM, ATLAS_DIM, 1};
-            vkCmdCopyBufferToImage(uploadCmd, stagingBuf, atlasImg,
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-            vku::imageBarrier(uploadCmd, atlasImg,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-            vku::endOneShot(renderer.getDevice(), renderer.getCommandPool(),
-                            renderer.getGraphicsQueue(), uploadCmd);
-            vmaDestroyBuffer(renderer.getAllocator(), stagingBuf, stagingAlloc);
-
-            VkImageViewCreateInfo viewCI{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-            viewCI.image            = atlasImg;
-            viewCI.viewType         = VK_IMAGE_VIEW_TYPE_2D;
-            viewCI.format           = VK_FORMAT_R8G8B8A8_UNORM;
-            viewCI.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-            ASSERT_EQ(vkCreateImageView(renderer.getDevice(), &viewCI, nullptr, &atlasView),
-                      VK_SUCCESS);
-
-            VkSamplerCreateInfo sampCI{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-            sampCI.magFilter    = VK_FILTER_LINEAR;
-            sampCI.minFilter    = VK_FILTER_LINEAR;
-            sampCI.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-            sampCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            sampCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            sampCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            ASSERT_EQ(vkCreateSampler(renderer.getDevice(), &sampCI, nullptr, &atlasSampler),
-                      VK_SUCCESS);
-
-            renderer.bindAtlasDescriptor(atlasView, atlasSampler);
-        }
+        // White atlas: all pixels = (255,255,255,255) — fully opaque white, linear filter.
+        render_helpers::createAtlas(renderer.getDevice(), renderer.getAllocator(),
+                                     renderer.getCommandPool(), renderer.getGraphicsQueue(),
+                                     ATLAS_DIM, 255, 255, 255, 255,
+                                     atlasImg, atlasAlloc, atlasView, atlasSampler,
+                                     VK_FILTER_LINEAR);
+        renderer.bindAtlasDescriptor(atlasView, atlasSampler);
 
         // Full-canvas UI quad in UI space [(0,0)..(W_UI,H_UI)].
-        {
-            const float W = static_cast<float>(W_UI);
-            const float H = static_cast<float>(H_UI);
-            UIVertex verts[UI_VTX_COUNT] = {
-                {{0, 0}, {0, 0}}, {{W, 0}, {1, 0}}, {{W, H}, {1, 1}},
-                {{0, 0}, {0, 0}}, {{W, H}, {1, 1}}, {{0, H}, {0, 1}},
-            };
-            VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-            bci.size        = sizeof(verts);
-            bci.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VmaAllocationCreateInfo ai{};
-            ai.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-            ASSERT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
-                                      &uiVtxBuf, &uiVtxAlloc, nullptr), VK_SUCCESS);
-            void* mapped = nullptr;
-            vmaMapMemory(renderer.getAllocator(), uiVtxAlloc, &mapped);
-            memcpy(mapped, verts, sizeof(verts));
-            vmaUnmapMemory(renderer.getAllocator(), uiVtxAlloc);
-        }
+        render_helpers::createUIVertexBuffer(renderer.getAllocator(), uiVtxBuf, uiVtxAlloc);
 
         ASSERT_TRUE(renderer.createHeadlessRT(FB_WIDTH, FB_HEIGHT, hrt));
         ASSERT_TRUE(renderer.initOffscreenRT());
@@ -179,18 +89,8 @@ protected:
     void TearDown() override {
         if (renderer.getDevice() != VK_NULL_HANDLE)
             vkDeviceWaitIdle(renderer.getDevice());
-        if (atlasSampler != VK_NULL_HANDLE) {
-            vkDestroySampler(renderer.getDevice(), atlasSampler, nullptr);
-            atlasSampler = VK_NULL_HANDLE;
-        }
-        if (atlasView != VK_NULL_HANDLE) {
-            vkDestroyImageView(renderer.getDevice(), atlasView, nullptr);
-            atlasView = VK_NULL_HANDLE;
-        }
-        if (atlasImg != VK_NULL_HANDLE) {
-            vmaDestroyImage(renderer.getAllocator(), atlasImg, atlasAlloc);
-            atlasImg = VK_NULL_HANDLE;
-        }
+        render_helpers::destroyAtlas(renderer.getDevice(), renderer.getAllocator(),
+                                      atlasImg, atlasAlloc, atlasView, atlasSampler);
         cleanupBase();
     }
 
