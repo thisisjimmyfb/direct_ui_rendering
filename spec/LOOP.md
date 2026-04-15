@@ -2,8 +2,8 @@
 Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_rendering.md). Then find the most important task from ['Pending Tasks'](#Pending-Tasks), but don't implement it yet. If the task affects the core execution of the demo, then please create tests that will fail without implementing the task. After tests are created, work on the implementation. Afterward, execute all items in the ['Iterate'](#Iterate) section. Then remove the task and save this file (do not mark or remove tasks from the Iterate Loop Section). Be concise and only write comments if the logic is complex. Do not commit and do not write progress or summary in this file.
 
 ## Pending Tasks
+- Fix compile errors when building for the android platform via /scripts/build.sh --platform=android
 - Add OpenXR support
-- Add shell-based integration tests for build.sh: validate auto-detection maps MINGW/MSYS→windows, Darwin→macos, Linux→linux; validate --platform=android errors correctly when ANDROID_NDK_ROOT is unset; validate unknown arguments print usage and exit non-zero.
 
 ## Iterate
 - Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct. 

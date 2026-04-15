@@ -48,7 +48,9 @@ fi
 CMAKE_ARGS=()
 BUILD_DIR="$ROOT/build"
 
-if [[ "$PLATFORM" == "android" ]]; then
+if [[ "$PLATFORM" == "windows" ]]; then
+	BUILD_DIR="$ROOT/build_windows"
+elif [[ "$PLATFORM" == "android" ]]; then
     # Resolve NDK root from common environment variables
     NDK_ROOT="${ANDROID_NDK_ROOT:-${ANDROID_NDK:-${NDK_HOME:-}}}"
     if [[ -z "$NDK_ROOT" ]]; then
@@ -62,6 +64,7 @@ if [[ "$PLATFORM" == "android" ]]; then
     fi
     BUILD_DIR="$ROOT/build_android_${ANDROID_ABI}"
     CMAKE_ARGS+=(
+		"-G" "MSYS Makefiles"
         "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
         "-DANDROID_ABI=$ANDROID_ABI"
         "-DANDROID_PLATFORM=android-${ANDROID_API}"

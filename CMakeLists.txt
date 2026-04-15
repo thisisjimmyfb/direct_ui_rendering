@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(direct_ui_rendering LANGUAGES CXX)
+project(direct_ui_rendering LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
