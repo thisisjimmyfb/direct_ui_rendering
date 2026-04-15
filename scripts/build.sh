@@ -70,7 +70,31 @@ package_android_apk() {
     local BUILD_TOOLS_DIR="$ANDROID_HOME_VAL/build-tools/$BUILD_TOOLS_VER"
     local AAPT2="$BUILD_TOOLS_DIR/aapt2"
     local ZIPALIGN="$BUILD_TOOLS_DIR/zipalign"
-    local APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+    # apksigner is a .bat script on Windows, a shell script on Linux/macOS
+    if [[ -f "$BUILD_TOOLS_DIR/apksigner.bat" ]]; then
+        local APKSIGNER="$BUILD_TOOLS_DIR/apksigner.bat"
+    else
+        local APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+    fi
+
+    # Locate keytool from JAVA_HOME or common installation paths
+    local KEYTOOL
+    if [[ -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/keytool" ]]; then
+        KEYTOOL="$JAVA_HOME/bin/keytool"
+    elif command -v keytool &>/dev/null; then
+        KEYTOOL="keytool"
+    else
+        for jdir in "/c/Program Files/Java"/jdk-* "/c/Program Files/Eclipse Adoptium"/jdk-* "/usr/lib/jvm"/java-*; do
+            if [[ -x "$jdir/bin/keytool" ]]; then
+                KEYTOOL="$jdir/bin/keytool"
+                break
+            fi
+        done
+    fi
+    if [[ -z "${KEYTOOL:-}" ]]; then
+        echo "Error: keytool not found. Install a JDK and set JAVA_HOME." >&2
+        exit 1
+    fi
 
     # Locate android.jar for the target API
     local ANDROID_JAR="$ANDROID_HOME_VAL/platforms/android-${API}/android.jar"
@@ -89,21 +113,21 @@ package_android_apk() {
 
     local STAGING_DIR="$BUILD_DIR/apk_staging"
     rm -rf "$STAGING_DIR"
-    mkdir -p "$STAGING_DIR/res_compiled"
     mkdir -p "$STAGING_DIR/lib/$ABI"
     mkdir -p "$STAGING_DIR/assets/shaders"
 
-    # Compile resources
+    # Compile resources into a zip archive
+    local RES_ZIP="$STAGING_DIR/res_compiled.zip"
     "$AAPT2" compile \
         --dir "$ROOT/android/res" \
-        -o "$STAGING_DIR/res_compiled"
+        -o "$RES_ZIP"
 
     # Link resources and manifest into a base APK
     local BASE_APK="$STAGING_DIR/base.apk"
     "$AAPT2" link \
         --manifest "$MANIFEST" \
         -I "$ANDROID_JAR" \
-        "$STAGING_DIR/res_compiled/"*.flat \
+        "$RES_ZIP" \
         -o "$BASE_APK" \
         --min-sdk-version "$API" \
         --target-sdk-version 34 \
@@ -128,7 +152,18 @@ package_android_apk() {
 
     # Assemble final APK: start from base.apk, add lib/ and assets/
     cp "$BASE_APK" "$APK_OUT"
-    (cd "$STAGING_DIR" && zip -r "$APK_OUT" lib/ assets/)
+    (cd "$STAGING_DIR" && python3 -c "
+import zipfile, os, sys
+apk = sys.argv[1]
+dirs = sys.argv[2:]
+with zipfile.ZipFile(apk, 'a', compression=zipfile.ZIP_STORED) as zf:
+    for d in dirs:
+        for root, _, files in os.walk(d):
+            for f in files:
+                fp = os.path.join(root, f)
+                arcname = fp.replace(os.sep, '/')
+                zf.write(fp, arcname)
+" "$APK_OUT" lib/ assets/)
 
     # Zipalign (4-byte alignment required by Android)
     rm -f "$APK_ALIGNED"
@@ -140,7 +175,7 @@ package_android_apk() {
     if [[ ! -f "$DEBUG_KEYSTORE" ]]; then
         echo "Creating debug keystore..."
         mkdir -p "$HOME/.android"
-        keytool -genkey -v \
+        "$KEYTOOL" -genkey -v \
             -keystore "$DEBUG_KEYSTORE" \
             -storepass android \
             -alias androiddebugkey \

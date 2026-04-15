@@ -19,6 +19,10 @@
 // Number of vertices for a full-canvas UI quad (two triangles).
 static constexpr uint32_t UI_VTX_COUNT = 6;
 
+// Default headless framebuffer dimensions shared across test fixtures.
+static constexpr uint32_t FB_WIDTH  = 1280;
+static constexpr uint32_t FB_HEIGHT = 720;
+
 namespace render_helpers {
 
 // -----------------------------------------------------------------------------

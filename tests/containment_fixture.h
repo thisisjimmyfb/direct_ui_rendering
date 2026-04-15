@@ -25,9 +25,6 @@
 
 class ContainmentTest : public ::testing::Test {
 protected:
-    static constexpr uint32_t FB_WIDTH  = 1280;
-    static constexpr uint32_t FB_HEIGHT = 720;
-
     Renderer renderer;
     Scene    scene;
 

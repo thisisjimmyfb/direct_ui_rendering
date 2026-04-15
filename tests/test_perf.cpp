@@ -19,9 +19,6 @@
 // Number of headless frames to render for each measurement.
 static constexpr int PERF_FRAME_COUNT = 60;
 
-static constexpr uint32_t FB_WIDTH  = 1280;
-static constexpr uint32_t FB_HEIGHT = 720;
-
 // ---------------------------------------------------------------------------
 // Performance regression tests
 // These tests will be skipped (GTEST_SKIP) until perf_reference.h is filled in.

@@ -346,7 +346,7 @@ This constraint also applies to `UISurface` and `Scene` — neither may hold a d
 | Vulkan SDK | 1.3+ | Core API, validation layers, `glslc` |
 | GLFW | 3.4 | Window creation, input, Vulkan surface (desktop only) |
 | Android NDK | r26+ | `ANativeWindow`, `android_native_app_glue`, Vulkan surface (Android only) |
-| Android SDK build-tools | 30.0+ | `aapt2`, `zipalign`, `apksigner` for APK packaging (Android only) |
+| Android SDK build-tools | 27.0+ | `aapt2`, `zipalign`, `apksigner` for APK packaging (Android only) |
 | VMA | 3.x | GPU memory allocation and tracking |
 | `stb_image` | latest | PNG atlas loading |
 | `glm` | 0.9.9+ | Math (matrices, vectors) |
