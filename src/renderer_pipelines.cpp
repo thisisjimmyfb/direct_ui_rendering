@@ -6,7 +6,6 @@
 #include "ui_system.h"
 #include "msaa_config.h"
 
-#include <GLFW/glfw3.h>
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>

@@ -23,6 +23,7 @@
 //   normalize(vec3(0)) is undefined and both normals produce the same brightness.
 
 #include <gtest/gtest.h>
+#include "sdf_render_fixture.h"
 #include "renderer.h"
 #include "scene.h"
 #include "ui_surface.h"
@@ -37,37 +38,23 @@
 #include <cstdint>
 #include <array>
 
-class DirectUINormalTest : public ::testing::Test {
+class DirectUINormalTest : public SDFRenderFixture {
 protected:
-    static constexpr uint32_t FB_WIDTH      = 640;
-    static constexpr uint32_t FB_HEIGHT     = 360;
-    static constexpr uint32_t ATLAS_DIM     = 64;
-    static constexpr uint32_t UI_VTX_COUNT  = 6;
-
-    Renderer renderer;
-    Scene    scene;
-
     VkImage       atlasImg{VK_NULL_HANDLE};
     VmaAllocation atlasAlloc{};
     VkImageView   atlasView{VK_NULL_HANDLE};
     VkSampler     atlasSampler{VK_NULL_HANDLE};
 
-    VkBuffer      uiVtxBuf{VK_NULL_HANDLE};
-    VmaAllocation uiVtxAlloc{};
-
-    HeadlessRenderTarget hrt{};
-
     glm::mat4 m_view{};
     glm::mat4 m_proj{};
 
-    // Horizontal test surface at y=1, inside the spotlight cone.
-    // eu=(2,0,0), ev=(0,0,-1) → cross=(0,1,0) → natural +Y normal (no correction needed).
-    const glm::vec3 m_P00{-1.0f, 1.0f, -1.5f};
-    const glm::vec3 m_P10{ 1.0f, 1.0f, -1.5f};
-    const glm::vec3 m_P01{-1.0f, 1.0f, -2.5f};
-    const glm::vec3 m_P11{ 1.0f, 1.0f, -2.5f};
-
     void SetUp() override {
+        // Horizontal test surface at y=1, inside the spotlight cone.
+        m_P00 = glm::vec3(-1.0f, 1.0f, -1.5f);
+        m_P10 = glm::vec3( 1.0f, 1.0f, -1.5f);
+        m_P01 = glm::vec3(-1.0f, 1.0f, -2.5f);
+        m_P11 = glm::vec3( 1.0f, 1.0f, -2.5f);
+
         ASSERT_TRUE(renderer.init(/*headless=*/true))
             << "Headless renderer init failed";
         scene.init();
@@ -84,8 +71,6 @@ protected:
         m_proj[1][1] *= -1.0f;  // Vulkan Y-flip
 
         // White atlas: all pixels = (255,255,255,255) — fully opaque white.
-        // In bitmap mode (sdfThreshold=0): texColor = (1,1,1,1), so
-        //   outColor = vec4(texColor.rgb * lit, texColor.a) = vec4(lit, 1.0).
         {
             std::vector<uint8_t> pixels(ATLAS_DIM * ATLAS_DIM * 4, 255);
 
@@ -166,7 +151,6 @@ protected:
         }
 
         // Full-canvas UI quad in UI space [(0,0)..(W_UI,H_UI)].
-        // M_total will project these UI-space vertices onto the world-space surface.
         {
             const float W = static_cast<float>(W_UI);
             const float H = static_cast<float>(H_UI);
@@ -189,48 +173,44 @@ protected:
         }
 
         ASSERT_TRUE(renderer.createHeadlessRT(FB_WIDTH, FB_HEIGHT, hrt));
-        // Offscreen RT descriptor must be valid even in direct mode (set 2 binding 1).
         ASSERT_TRUE(renderer.initOffscreenRT());
     }
 
     void TearDown() override {
         if (renderer.getDevice() != VK_NULL_HANDLE)
             vkDeviceWaitIdle(renderer.getDevice());
-        renderer.destroyHeadlessRT(hrt);
-        if (uiVtxBuf != VK_NULL_HANDLE)
-            vmaDestroyBuffer(renderer.getAllocator(), uiVtxBuf, uiVtxAlloc);
-        if (atlasSampler != VK_NULL_HANDLE)
+        if (atlasSampler != VK_NULL_HANDLE) {
             vkDestroySampler(renderer.getDevice(), atlasSampler, nullptr);
-        if (atlasView != VK_NULL_HANDLE)
+            atlasSampler = VK_NULL_HANDLE;
+        }
+        if (atlasView != VK_NULL_HANDLE) {
             vkDestroyImageView(renderer.getDevice(), atlasView, nullptr);
-        if (atlasImg != VK_NULL_HANDLE)
+            atlasView = VK_NULL_HANDLE;
+        }
+        if (atlasImg != VK_NULL_HANDLE) {
             vmaDestroyImage(renderer.getAllocator(), atlasImg, atlasAlloc);
-        renderer.cleanup();
+            atlasImg = VK_NULL_HANDLE;
+        }
+        cleanupBase();
     }
 
     // Render one direct-mode frame with the given surfaceNormal in SurfaceUBO.
     // Returns average RGB brightness (0–255) of the centre pixel.
-    //
-    // With white atlas (alpha=1) and standard alpha blend, the UI text completely
-    // covers the teal cube below, so the pixel reflects only UI text lighting.
     uint8_t renderCenterBrightness(glm::vec3 normal) {
         SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, m_view, m_proj);
         sceneUBO.lightIntensity = 1.0f;
         renderer.updateSceneUBO(sceneUBO);
 
-        // Cube surface with the same corners for all 6 faces.
         std::array<std::array<glm::vec3, 4>, 6> faceCorners;
         for (auto& f : faceCorners)
             f = {m_P00, m_P10, m_P01, m_P11};
         renderer.updateCubeSurface(faceCorners);
 
-        // Shadow cube at high altitude so it doesn't cast shadows on the test surface.
         std::array<std::array<glm::vec3, 4>, 6> shadowCorners;
         for (auto& f : shadowCorners)
             f[0] = f[1] = f[2] = f[3] = glm::vec3(0.0f, 10.0f, 0.0f);
         renderer.updateUIShadowCube(shadowCorners);
 
-        // SurfaceUBO: M_total from the test corners, explicit surfaceNormal.
         auto transforms = computeSurfaceTransforms(m_P00, m_P10, m_P01,
                                                    static_cast<float>(W_UI),
                                                    static_cast<float>(H_UI),
@@ -270,7 +250,6 @@ protected:
         vkBeginCommandBuffer(cmd, &beginInfo);
 
         renderer.recordShadowPass(cmd);
-        // sdfThreshold=0 → bitmap mode: texColor = raw atlas pixel = (1,1,1,1)
         renderer.recordMainPass(cmd, hrt.rt, /*directMode=*/true,
                                 uiVtxBuf, UI_VTX_COUNT, /*sdfThreshold=*/0.0f);
 
@@ -307,7 +286,6 @@ protected:
         vkFreeCommandBuffers(renderer.getDevice(), renderer.getCommandPool(), 1, &cmd);
         vmaDestroyBuffer(renderer.getAllocator(), readbackBuf, readbackAlloc);
 
-        // Transition the resolve image back so it can be rendered into again.
         VkCommandBuffer resetCmd = vku::beginOneShot(renderer.getDevice(),
                                                      renderer.getCommandPool());
         vku::imageBarrier(resetCmd, hrt.rt.image,
@@ -328,12 +306,6 @@ protected:
 
 // ---------------------------------------------------------------------------
 // Test 1: Upward-facing normal receives diffuse lighting from the spotlight.
-//
-// surfaceNormal=(0,1,0): NdotL = dot((0,1,0), L) ≈ 0.584, spotFactor=1.0
-// Expected: brightness well above ambient-only (~8/255). Threshold: 50/255.
-//
-// Fails if: surfaceNormal is zero (undefined), not read by the shader, or if
-// the NdotL term is absent from ui_direct.frag.
 // ---------------------------------------------------------------------------
 TEST_F(DirectUINormalTest, UpwardNormal_ReceivesDiffuseLighting)
 {
@@ -347,11 +319,6 @@ TEST_F(DirectUINormalTest, UpwardNormal_ReceivesDiffuseLighting)
 
 // ---------------------------------------------------------------------------
 // Test 2: Downward-facing normal receives ambient lighting only.
-//
-// surfaceNormal=(0,-1,0): NdotL = dot((0,-1,0), L) < 0 → clamped to 0.
-// Expected: brightness near ambient-only ≈ 8/255. Threshold: < 30/255.
-//
-// Fails if the normal is ignored and diffuse is always applied (bright surface).
 // ---------------------------------------------------------------------------
 TEST_F(DirectUINormalTest, DownwardNormal_AmbientOnly)
 {
@@ -365,12 +332,6 @@ TEST_F(DirectUINormalTest, DownwardNormal_AmbientOnly)
 
 // ---------------------------------------------------------------------------
 // Test 3: Upward-facing must be significantly brighter than downward-facing.
-//
-// This is the primary regression guard. If surfaceNormal is not used for NdotL
-// (e.g. zero → undefined, or hardcoded), both renders produce the same brightness
-// and this test fails.
-//
-// Expected difference: at least 50 brightness units out of 255.
 // ---------------------------------------------------------------------------
 TEST_F(DirectUINormalTest, NdotL_UpwardBrighterThanDownward)
 {

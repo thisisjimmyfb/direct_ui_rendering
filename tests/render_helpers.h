@@ -435,23 +435,6 @@ inline void expectPixelsDiffer(const std::vector<uint8_t>& a, const std::vector<
 }
 
 // -----------------------------------------------------------------------------
-// Assert helper: count magenta pixels and return count
-// -----------------------------------------------------------------------------
-inline int countMagenta(const std::vector<uint8_t>& pixels, uint32_t width, uint32_t height)
-{
-    int count = 0;
-    for (uint32_t y = 0; y < height; ++y) {
-        for (uint32_t x = 0; x < width; ++x) {
-            const uint8_t* px = pixels.data() + (y * width + x) * 4;
-            if (isMagenta(px[0], px[1], px[2])) {
-                ++count;
-            }
-        }
-    }
-    return count;
-}
-
-// -----------------------------------------------------------------------------
 // Destroy a vertex buffer and allocation
 // -----------------------------------------------------------------------------
 inline void destroyBuffer(VmaAllocator allocator, VkBuffer& buf, VmaAllocation& alloc)

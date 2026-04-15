@@ -187,7 +187,14 @@ target_link_libraries(direct_ui_rendering_lib PUBLIC
 )
 
 if(PLATFORM_ANDROID)
-    # android_native_app_glue is provided by the NDK
+    # android_native_app_glue is provided as NDK source — build it as a static library.
+    add_library(android_native_app_glue STATIC
+        ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c
+    )
+    target_include_directories(android_native_app_glue PUBLIC
+        ${ANDROID_NDK}/sources/android/native_app_glue
+    )
+
     find_library(ANDROID_LIB android)
     find_library(LOG_LIB log)
     target_link_libraries(direct_ui_rendering_lib PUBLIC

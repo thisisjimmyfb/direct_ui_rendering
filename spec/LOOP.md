@@ -3,7 +3,7 @@ Read ['SPEC.md'](/spec/SPEC.md) and ['direct_ui_rendering.md'](/spec/direct_ui_r
 
 ## Pending Tasks
 - Add OpenXR support
-- Add shell-based integration tests for build.sh: validate auto-detection maps MINGW/MSYS→windows, Darwin→macos, Linux→linux; validate --platform=android errors correctly when ANDROID_NDK_HOME is unset; validate unknown arguments print usage and exit non-zero.
+- Add shell-based integration tests for build.sh: validate auto-detection maps MINGW/MSYS→windows, Darwin→macos, Linux→linux; validate --platform=android errors correctly when ANDROID_NDK_ROOT is unset; validate unknown arguments print usage and exit non-zero.
 
 ## Iterate
 - Make sure constants, functions or classes are not duplicated in multiple files. If identical constructs exist in multiple files, consider steps to refactor and share the common construct. 

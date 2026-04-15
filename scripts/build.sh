@@ -9,7 +9,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLATFORM="auto"
 BUILD_TYPE="Debug"
 ANDROID_ABI="arm64-v8a"
-ANDROID_API="26"
+ANDROID_API="27"
 
 # ---------------------------------------------------------------------------
 # Parse arguments
@@ -66,7 +66,6 @@ if [[ "$PLATFORM" == "android" ]]; then
         "-DANDROID_ABI=$ANDROID_ABI"
         "-DANDROID_PLATFORM=android-${ANDROID_API}"
         "-DANDROID_STL=c++_shared"
-		"-G MSYS Makefiles"
     )
     echo "Platform: Android  ABI=$ANDROID_ABI  API=$ANDROID_API"
 else
