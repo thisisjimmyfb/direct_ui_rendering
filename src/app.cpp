@@ -77,7 +77,7 @@ bool App::initWindow()
     while (!m_androidApp->window) {
         int events;
         android_poll_source* source;
-        ALooper_pollAll(0, nullptr, &events, reinterpret_cast<void**>(&source));
+        ALooper_pollOnce(0, nullptr, &events, reinterpret_cast<void**>(&source));
         if (source) source->process(m_androidApp, source);
     }
     m_androidWindow = m_androidApp->window;
@@ -207,7 +207,7 @@ void App::mainLoop()
         }
         int events;
         android_poll_source* source;
-        while (ALooper_pollAll(0, nullptr, &events, reinterpret_cast<void**>(&source)) >= 0) {
+        while (ALooper_pollOnce(0, nullptr, &events, reinterpret_cast<void**>(&source)) >= 0) {
             if (source) source->process(m_androidApp, source);
             if (m_androidApp->destroyRequested) { running = false; break; }
         }
@@ -255,6 +255,7 @@ void App::drawFrame()
         std::sin(m_camPitch),
         std::sin(m_camYaw) * std::cos(m_camPitch));
     glm::vec3 camRight = glm::normalize(glm::cross(camFront, glm::vec3(0, 1, 0)));
+#ifndef __ANDROID__
     if (m_inputMode == InputMode::Camera) {
         const float camSpeed = 3.0f * dt;
         if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) m_camPos += camFront * camSpeed;
@@ -262,6 +263,7 @@ void App::drawFrame()
         if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) m_camPos -= camRight * camSpeed;
         if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) m_camPos += camRight * camSpeed;
     }
+#endif
 
     // Camera look-at from current position and orientation
     glm::mat4 view = glm::lookAt(m_camPos, m_camPos + camFront, glm::vec3(0, 1, 0));
@@ -561,6 +563,7 @@ void App::charCallback(GLFWwindow* win, unsigned int codepoint)
 }
 #endif
 
+#ifndef __ANDROID__
 void App::onChar(unsigned int codepoint)
 {
     if (m_inputMode != InputMode::UITerminal) return;
@@ -568,6 +571,7 @@ void App::onChar(unsigned int codepoint)
     if (codepoint >= 32 && codepoint <= 126)
         m_terminalText += static_cast<char>(codepoint);
 }
+#endif
 
 // ---------------------------------------------------------------------------
 // Cleanup

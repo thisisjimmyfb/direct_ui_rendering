@@ -243,7 +243,18 @@ bool Renderer::createAllocator()
     info.physicalDevice   = m_physDevice;
     info.device           = m_device;
     info.instance         = m_instance;
+
+#ifdef __ANDROID__
+    // Android: use dynamic function loading to avoid static references to
+    // Vulkan 1.1/1.3 symbols that may not be available on older API levels.
+    VmaVulkanFunctions vmaFuncs{};
+    vmaFuncs.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+    vmaFuncs.vkGetDeviceProcAddr   = vkGetDeviceProcAddr;
+    info.pVulkanFunctions = &vmaFuncs;
+    info.vulkanApiVersion = VK_API_VERSION_1_0;
+#else
     info.vulkanApiVersion = VK_API_VERSION_1_3;
+#endif
 
     return vmaCreateAllocator(&info, &m_allocator) == VK_SUCCESS;
 }

@@ -24,9 +24,6 @@
 
 class WallNormalMappingTest : public ContainmentTest {
 protected:
-    static constexpr uint32_t FB_WIDTH  = 1280;
-    static constexpr uint32_t FB_HEIGHT = 720;
-
     // Helper to render a specific wall from a given camera position
     std::vector<uint8_t> renderWallFromCamera(
         const glm::vec3& camPos,

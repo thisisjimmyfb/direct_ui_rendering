@@ -16,6 +16,9 @@
 // Render Helpers - Shared test utilities for Vulkan rendering tests
 // =============================================================================
 
+// Number of vertices for a full-canvas UI quad (two triangles).
+static constexpr uint32_t UI_VTX_COUNT = 6;
+
 namespace render_helpers {
 
 // -----------------------------------------------------------------------------
@@ -334,7 +337,6 @@ inline void createDummyAtlas(VkDevice device, VmaAllocator allocator, VkCommandP
 inline void createUIVertexBuffer(VmaAllocator allocator,
                                  VkBuffer& bufOut, VmaAllocation& allocOut)
 {
-    static constexpr uint32_t UI_VTX_COUNT = 6;
     const float W = static_cast<float>(W_UI);
     const float H = static_cast<float>(H_UI);
     UIVertex verts[UI_VTX_COUNT] = {

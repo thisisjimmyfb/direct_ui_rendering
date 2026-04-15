@@ -202,7 +202,11 @@ if(PLATFORM_ANDROID)
         ${ANDROID_LIB}
         ${LOG_LIB}
     )
-    target_compile_definitions(direct_ui_rendering_lib PUBLIC VK_USE_PLATFORM_ANDROID_KHR)
+    target_compile_definitions(direct_ui_rendering_lib PUBLIC
+        VK_USE_PLATFORM_ANDROID_KHR
+        VMA_STATIC_VULKAN_FUNCTIONS=0
+        VMA_DYNAMIC_VULKAN_FUNCTIONS=1
+    )
 else()
     target_link_libraries(direct_ui_rendering_lib PUBLIC glfw)
 endif()

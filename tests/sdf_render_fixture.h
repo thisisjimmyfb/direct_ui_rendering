@@ -21,10 +21,9 @@
 // The defaults form a unit quad at z=0; override them in the subclass SetUp as needed.
 class SDFRenderFixture : public ::testing::Test {
 protected:
-    static constexpr uint32_t FB_WIDTH     = 640;
-    static constexpr uint32_t FB_HEIGHT    = 360;
-    static constexpr uint32_t ATLAS_DIM    = 64;
-    static constexpr uint32_t UI_VTX_COUNT = 6;
+    static constexpr uint32_t FB_WIDTH  = 640;
+    static constexpr uint32_t FB_HEIGHT = 360;
+    static constexpr uint32_t ATLAS_DIM = 64;
 
     Renderer         renderer;
     Scene            scene;

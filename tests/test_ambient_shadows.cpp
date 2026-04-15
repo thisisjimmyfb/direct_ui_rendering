@@ -11,42 +11,7 @@
 // 3. Both direct and traditional modes apply ambient correctly in shadows
 // ---------------------------------------------------------------------------
 
-class AmbientShadowTest : public ContainmentTest {
-protected:
-    // Helper: render a frame and measure brightness at a specific pixel location.
-    // Returns the average of R, G, B channels as brightness.
-    uint8_t getPixelBrightness(uint32_t x, uint32_t y,
-                               const glm::mat4& view, const glm::mat4& proj,
-                               bool directMode) {
-        SceneUBO sceneUBO = makeSpotlightSceneUBO(scene, view, proj);
-        renderer.updateSceneUBO(sceneUBO);
-
-        // Dummy surface (off-screen, we just want room geometry lit by spotlight)
-        glm::vec3 P00{-0.5f,  0.5f, -5.0f};
-        glm::vec3 P10{ 0.5f,  0.5f, -5.0f};
-        glm::vec3 P01{-0.5f, -0.5f, -5.0f};
-        glm::mat4 vp = proj * view;
-
-        auto transforms = computeSurfaceTransforms(P00, P10, P01,
-                                                   static_cast<float>(W_UI),
-                                                   static_cast<float>(H_UI), vp);
-        auto clipPlanes = computeClipPlanes(P00, P10, P01);
-
-        SurfaceUBO surfaceUBO{};
-        surfaceUBO.totalMatrix = transforms.M_total;
-        surfaceUBO.worldMatrix = transforms.M_world;
-        for (int i = 0; i < 4; ++i) surfaceUBO.clipPlanes[i] = clipPlanes[i];
-        surfaceUBO.depthBias = Renderer::DEPTH_BIAS_DEFAULT;
-        renderer.updateSurfaceUBO(surfaceUBO);
-
-        auto pixels = renderAndReadback(directMode);
-
-        // Extract pixel brightness (average R, G, B channels)
-        const uint8_t* px = pixels.data() + (y * FB_WIDTH + x) * 4;
-        uint32_t sum = static_cast<uint32_t>(px[0]) + px[1] + px[2];
-        return static_cast<uint8_t>(sum / 3);
-    }
-};
+class AmbientShadowTest : public ContainmentTest {};
 
 // ---------------------------------------------------------------------------
 // Test 1: AmbientLighting_InShadow_NotPitchBlack

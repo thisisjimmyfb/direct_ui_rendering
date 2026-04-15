@@ -18,9 +18,6 @@
 
 class StaticFloorCeilingTest : public ContainmentTest {
 protected:
-    static constexpr uint32_t FB_WIDTH  = 1280;
-    static constexpr uint32_t FB_HEIGHT = 720;
-
     // Helper to render a single frame at a given time and read back pixels
     std::vector<uint8_t> renderSceneAtTime(float time) {
         // Camera positioned to view the floor and ceiling
