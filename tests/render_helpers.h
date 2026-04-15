@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
+#include "test_pixel_helpers.h"
 
 // =============================================================================
 // Render Helpers - Shared test utilities for Vulkan rendering tests
@@ -262,7 +263,7 @@ inline int countMagentaPixels(const std::vector<uint8_t>& pixels,
     int count = 0;
     for (uint32_t y = 0; y < height; ++y) {
         for (uint32_t x = 0; x < width; ++x) {
-            const uint8_t* px = pixels.data() + (y * width + x) * 4;
+            const uint8_t* px = TestPixelHelpers::samplePixel(pixels, x, y, width);
             if (isMagenta(px[0], px[1], px[2])) {
                 ++count;
             }
@@ -418,7 +419,7 @@ inline MagentaBBox computeMagentaBBox(const std::vector<uint8_t>& pixels,
     MagentaBBox bb;
     for (uint32_t y = 0; y < height; ++y) {
         for (uint32_t x = 0; x < width; ++x) {
-            const uint8_t* px = pixels.data() + (y * width + x) * 4;
+            const uint8_t* px = TestPixelHelpers::samplePixel(pixels, x, y, width);
             if (isMagenta(px[0], px[1], px[2])) {
                 bb.valid = true;
                 bb.minX  = std::min(bb.minX, (int)x);

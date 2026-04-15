@@ -224,6 +224,99 @@ if(PLATFORM_ANDROID)
     # Android requires a shared library loaded by NativeActivity / GameActivity.
     add_library(direct_ui_rendering SHARED src/main.cpp)
     target_link_libraries(direct_ui_rendering PRIVATE direct_ui_rendering_lib)
+
+    # ---------------------------------------------------------------------------
+    # APK packaging (signing included) — runs as part of the cmake build
+    # ---------------------------------------------------------------------------
+    set(ANDROID_API_LEVEL "27" CACHE STRING "Android API level used for APK packaging")
+
+    set(_ANDROID_HOME "$ENV{ANDROID_HOME}")
+    if(NOT _ANDROID_HOME)
+        set(_ANDROID_HOME "$ENV{ANDROID_SDK_ROOT}")
+    endif()
+
+    if(_ANDROID_HOME)
+        # Locate the newest build-tools directory
+        file(GLOB _BUILD_TOOLS_DIRS LIST_DIRECTORIES true "${_ANDROID_HOME}/build-tools/*")
+        if(_BUILD_TOOLS_DIRS)
+            list(SORT _BUILD_TOOLS_DIRS COMPARE NATURAL ORDER DESCENDING)
+            list(GET _BUILD_TOOLS_DIRS 0 _BUILD_TOOLS_DIR)
+        else()
+            message(WARNING "No Android build-tools found — APK packaging disabled")
+            set(_ANDROID_HOME "")
+        endif()
+    endif()
+
+    if(_ANDROID_HOME)
+        # Locate android.jar for the target API
+        set(_ANDROID_JAR "${_ANDROID_HOME}/platforms/android-${ANDROID_API_LEVEL}/android.jar")
+        if(NOT EXISTS "${_ANDROID_JAR}")
+            file(GLOB_RECURSE _ANDROID_JARS "${_ANDROID_HOME}/platforms/*/android.jar")
+            if(_ANDROID_JARS)
+                list(SORT _ANDROID_JARS COMPARE NATURAL ORDER DESCENDING)
+                list(GET _ANDROID_JARS 0 _ANDROID_JAR)
+                message(WARNING "android-${ANDROID_API_LEVEL} not found; using ${_ANDROID_JAR}")
+            else()
+                message(WARNING "android.jar not found — APK packaging disabled")
+                set(_ANDROID_HOME "")
+            endif()
+        endif()
+    endif()
+
+    if(_ANDROID_HOME)
+        if(WIN32)
+            set(_AAPT2    "${_BUILD_TOOLS_DIR}/aapt2.exe")
+            set(_ZIPALIGN "${_BUILD_TOOLS_DIR}/zipalign.exe")
+            if(EXISTS "${_BUILD_TOOLS_DIR}/apksigner.bat")
+                set(_APKSIGNER "${_BUILD_TOOLS_DIR}/apksigner.bat")
+            else()
+                set(_APKSIGNER "${_BUILD_TOOLS_DIR}/apksigner.exe")
+            endif()
+        else()
+            set(_AAPT2    "${_BUILD_TOOLS_DIR}/aapt2")
+            set(_ZIPALIGN "${_BUILD_TOOLS_DIR}/zipalign")
+            set(_APKSIGNER "${_BUILD_TOOLS_DIR}/apksigner")
+        endif()
+
+        find_program(KEYTOOL_EXEC keytool HINTS "$ENV{JAVA_HOME}/bin")
+        if(NOT KEYTOOL_EXEC)
+            message(WARNING "keytool not found — APK signing will fail at build time")
+        endif()
+
+        find_package(Python3 QUIET COMPONENTS Interpreter)
+        if(NOT Python3_FOUND)
+            message(WARNING "Python3 not found — APK packaging disabled")
+            set(_ANDROID_HOME "")
+        endif()
+    endif()
+
+    if(_ANDROID_HOME)
+        set(_APK_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/direct_ui_rendering.apk")
+
+        add_custom_command(
+            OUTPUT "${_APK_OUTPUT}"
+            COMMAND ${CMAKE_COMMAND}
+                "-DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+                "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+                "-DABI=${ANDROID_ABI}"
+                "-DAPI=${ANDROID_API_LEVEL}"
+                "-DAAPT2=${_AAPT2}"
+                "-DZIPALIGN=${_ZIPALIGN}"
+                "-DAPKSIGNER=${_APKSIGNER}"
+                "-DKEYTOOL=${KEYTOOL_EXEC}"
+                "-DANDROID_JAR=${_ANDROID_JAR}"
+                "-DSHADER_OUTPUT_DIR=${SHADER_OUTPUT_DIR}"
+                "-DAPK_OUTPUT=${_APK_OUTPUT}"
+                "-DPYTHON3=${Python3_EXECUTABLE}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/package_apk.cmake"
+            DEPENDS
+                direct_ui_rendering
+                shaders
+            COMMENT "Packaging and signing APK"
+            VERBATIM
+        )
+        add_custom_target(package_apk ALL DEPENDS "${_APK_OUTPUT}")
+    endif()
 else()
     add_executable(direct_ui_rendering src/main.cpp)
     target_link_libraries(direct_ui_rendering PRIVATE direct_ui_rendering_lib)

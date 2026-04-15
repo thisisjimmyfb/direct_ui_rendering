@@ -17,6 +17,7 @@
 #include <cmath>
 
 #include "scene_ubo_helper.h"
+#include "test_pixel_helpers.h"
 
 // ---------------------------------------------------------------------------
 // ContainmentTest fixture — shared GPU resources across all containment tests.
@@ -164,7 +165,7 @@ protected:
         int violations = 0;
         for (uint32_t y = 0; y < FB_HEIGHT; ++y) {
             for (uint32_t x = 0; x < FB_WIDTH; ++x) {
-                const uint8_t* px = pixels.data() + (y * FB_WIDTH + x) * 4;
+                const uint8_t* px = TestPixelHelpers::samplePixel(pixels, x, y, FB_WIDTH);
                 if (render_helpers::isMagenta(px[0], px[1], px[2])) {
                     glm::vec2 coord{static_cast<float>(x), static_cast<float>(y)};
                     if (!render_helpers::insideConvexQuad(coord, screenCorners, margin)) {
@@ -203,7 +204,7 @@ protected:
         renderer.updateSurfaceUBO(surfaceUBO);
 
         auto pixels = renderAndReadback(directMode);
-        const uint8_t* px = pixels.data() + (y * FB_WIDTH + x) * 4;
+        const uint8_t* px = TestPixelHelpers::samplePixel(pixels, x, y, FB_WIDTH);
         uint32_t sum = static_cast<uint32_t>(px[0]) + px[1] + px[2];
         return static_cast<uint8_t>(sum / 3);
     }
