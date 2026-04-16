@@ -283,6 +283,17 @@ if(PLATFORM_ANDROID)
             message(WARNING "keytool not found — APK signing will fail at build time")
         endif()
 
+        find_program(JAVA_EXEC java HINTS "$ENV{JAVA_HOME}/bin")
+        if(NOT JAVA_EXEC)
+            message(WARNING "java not found — APK signing will fail at build time")
+        endif()
+
+        # Locate apksigner.jar alongside apksigner.bat/exe for direct java invocation
+        set(_APKSIGNER_JAR "${_BUILD_TOOLS_DIR}/apksigner.jar")
+        if(NOT EXISTS "${_APKSIGNER_JAR}")
+            set(_APKSIGNER_JAR "${_BUILD_TOOLS_DIR}/lib/apksigner.jar")
+        endif()
+
         find_package(Python3 QUIET COMPONENTS Interpreter)
         if(NOT Python3_FOUND)
             message(WARNING "Python3 not found — APK packaging disabled")
@@ -303,6 +314,8 @@ if(PLATFORM_ANDROID)
                 "-DAAPT2=${_AAPT2}"
                 "-DZIPALIGN=${_ZIPALIGN}"
                 "-DAPKSIGNER=${_APKSIGNER}"
+                "-DAPKSIGNER_JAR=${_APKSIGNER_JAR}"
+                "-DJAVA=${JAVA_EXEC}"
                 "-DKEYTOOL=${KEYTOOL_EXEC}"
                 "-DANDROID_JAR=${_ANDROID_JAR}"
                 "-DSHADER_OUTPUT_DIR=${SHADER_OUTPUT_DIR}"

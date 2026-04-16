@@ -6,7 +6,9 @@
 #   API               — Android API level (e.g. 27)
 #   AAPT2             — path to aapt2
 #   ZIPALIGN          — path to zipalign
-#   APKSIGNER         — path to apksigner or apksigner.bat
+#   APKSIGNER         — path to apksigner or apksigner.bat (fallback)
+#   APKSIGNER_JAR     — path to apksigner.jar (preferred over APKSIGNER)
+#   JAVA              — path to java executable
 #   KEYTOOL           — path to keytool
 #   ANDROID_JAR       — path to android.jar
 #   SHADER_OUTPUT_DIR — directory containing compiled .spv files
@@ -128,10 +130,21 @@ if(NOT EXISTS "${DEBUG_KEYSTORE}")
     endif()
 endif()
 
-# Sign APK
-if(WIN32 AND APKSIGNER MATCHES "\\.bat$")
+# Sign APK — prefer java -jar apksigner.jar to avoid .bat invocation issues
+if(JAVA AND EXISTS "${APKSIGNER_JAR}")
     execute_process(
-        COMMAND cmd /c "${APKSIGNER}" sign
+        COMMAND "${JAVA}" -jar "${APKSIGNER_JAR}" sign
+            --ks "${DEBUG_KEYSTORE}"
+            --ks-pass pass:android
+            --key-pass pass:android
+            --ks-key-alias androiddebugkey
+            "${APK_OUTPUT}"
+        RESULT_VARIABLE RC
+    )
+elseif(WIN32 AND APKSIGNER MATCHES "\\.bat$")
+    file(TO_NATIVE_PATH "${APKSIGNER}" APKSIGNER_NATIVE)
+    execute_process(
+        COMMAND cmd.exe /c "${APKSIGNER_NATIVE}" sign
             --ks "${DEBUG_KEYSTORE}"
             --ks-pass pass:android
             --key-pass pass:android
