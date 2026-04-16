@@ -76,70 +76,8 @@ protected:
     std::vector<uint8_t> renderAndReadback(bool directMode,
                                            const glm::mat4& uiOrtho = glm::mat4(1.0f))
     {
-        VkBuffer      readbackBuf   = VK_NULL_HANDLE;
-        VmaAllocation readbackAlloc = VK_NULL_HANDLE;
-        const VkDeviceSize readbackSize = static_cast<VkDeviceSize>(FB_WIDTH) * FB_HEIGHT * 4;
-        {
-            VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-            bci.size        = readbackSize;
-            bci.usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VmaAllocationCreateInfo ai{};
-            ai.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-            vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
-                            &readbackBuf, &readbackAlloc, nullptr);
-        }
-
-        VkCommandBufferAllocateInfo cbAI{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cbAI.commandPool        = renderer.getCommandPool();
-        cbAI.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cbAI.commandBufferCount = 1;
-        VkCommandBuffer cmd = VK_NULL_HANDLE;
-        vkAllocateCommandBuffers(renderer.getDevice(), &cbAI, &cmd);
-
-        VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(cmd, &beginInfo);
-
-        renderer.recordShadowPass(cmd);
-        if (!directMode) {
-            renderer.recordUIRTPass(cmd, uiVtxBuf, UI_VTX_COUNT, uiOrtho);
-        }
-        renderer.recordMainPass(cmd, hrt.rt, directMode, uiVtxBuf, UI_VTX_COUNT);
-
-        vku::imageBarrier(cmd, hrt.rt.image,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_ACCESS_TRANSFER_READ_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-        VkBufferImageCopy copyRegion{};
-        copyRegion.imageSubresource  = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-        copyRegion.imageExtent       = {FB_WIDTH, FB_HEIGHT, 1};
-        vkCmdCopyImageToBuffer(cmd, hrt.rt.image,
-                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               readbackBuf, 1, &copyRegion);
-
-        vkEndCommandBuffer(cmd);
-
-        VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers    = &cmd;
-        vkQueueSubmit(renderer.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(renderer.getGraphicsQueue());
-
-        void* mapped = nullptr;
-        vmaMapMemory(renderer.getAllocator(), readbackAlloc, &mapped);
-        std::vector<uint8_t> pixels(readbackSize);
-        memcpy(pixels.data(), mapped, static_cast<size_t>(readbackSize));
-        vmaUnmapMemory(renderer.getAllocator(), readbackAlloc);
-
-        vkFreeCommandBuffers(renderer.getDevice(), renderer.getCommandPool(), 1, &cmd);
-        vmaDestroyBuffer(renderer.getAllocator(), readbackBuf, readbackAlloc);
-
-        return pixels;
+        return render_helpers::renderAndReadback(
+            renderer, hrt, uiVtxBuf, UI_VTX_COUNT, directMode, uiOrtho);
     }
 
     // Count how many pixels in the readback image are magenta.

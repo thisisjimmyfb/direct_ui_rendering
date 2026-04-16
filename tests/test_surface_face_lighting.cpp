@@ -25,37 +25,6 @@
 
 class SurfaceFaceLightingTest : public ContainmentTest {
 protected:
-    // Construct 6 identical face-corner arrays for a flat horizontal quad at
-    // the given y-height.  normalSign = +1 → +Y normal, -1 → -Y normal.
-    // The quad spans x=[-1,1], z=[-1.5,-2.5], centred at (0, y, -2).
-    //
-    // Corner layout passed to updateCubeSurface:  {P_00, P_10, P_01, P_11}
-    //   +Y case:  eu = P_10-P_00 = (+2,0,0),  ev = P_01-P_00 = (0,0,-1)
-    //             cross(eu,ev) = (0,+2,0) → +Y
-    //   -Y case:  eu = P_10-P_00 = (0,0,-1),  ev = P_01-P_00 = (+2,0,0)
-    //             cross(eu,ev) = (0,-2,0) → -Y
-    static std::array<std::array<glm::vec3, 4>, 6>
-    makeHorizontalFaces(float y, float normalSign)
-    {
-        std::array<std::array<glm::vec3, 4>, 6> faces;
-        for (int i = 0; i < 6; ++i) {
-            if (normalSign > 0.0f) {
-                // +Y normal: eu=+X, ev=-Z
-                faces[i][0] = {-1.0f, y, -1.5f};  // P_00
-                faces[i][1] = { 1.0f, y, -1.5f};  // P_10
-                faces[i][2] = {-1.0f, y, -2.5f};  // P_01
-                faces[i][3] = { 1.0f, y, -2.5f};  // P_11
-            } else {
-                // -Y normal: swap P_10 / P_01 to flip winding
-                faces[i][0] = {-1.0f, y, -1.5f};  // P_00
-                faces[i][1] = {-1.0f, y, -2.5f};  // P_10 (was P_01)
-                faces[i][2] = { 1.0f, y, -1.5f};  // P_01 (was P_10)
-                faces[i][3] = { 1.0f, y, -2.5f};  // P_11
-            }
-        }
-        return faces;
-    }
-
     // Render the cube surface with the given face corners and return the average
     // R+G+B brightness at the centre pixel.
     //
@@ -101,25 +70,6 @@ protected:
             (static_cast<uint32_t>(px[0]) + px[1] + px[2]) / 3);
     }
 
-    // Standard camera: above and slightly in front of the test surface,
-    // looking down at its centre (0, 1, -2).
-    // Up = (1,0,0) since the look direction is mostly -Y.
-    static glm::mat4 makeTopView()
-    {
-        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 2.5f, -1.0f),
-                                     glm::vec3(0.0f, 1.0f, -2.0f),
-                                     glm::vec3(1.0f, 0.0f,  0.0f));
-        return view;
-    }
-
-    static glm::mat4 makeProj()
-    {
-        glm::mat4 proj = glm::perspective(glm::radians(60.0f),
-                                          static_cast<float>(FB_WIDTH) / FB_HEIGHT,
-                                          0.1f, 100.0f);
-        proj[1][1] *= -1.0f;  // Vulkan Y-flip
-        return proj;
-    }
 };
 
 // ---------------------------------------------------------------------------
@@ -133,10 +83,10 @@ protected:
 // ---------------------------------------------------------------------------
 TEST_F(SurfaceFaceLightingTest, UpwardFacingSurface_ReceivesDiffuseLight)
 {
-    auto view  = makeTopView();
-    auto proj  = makeProj();
+    auto view  = render_helpers::makeTopView();
+    auto proj  = render_helpers::makeProj();
 
-    auto faces = makeHorizontalFaces(1.0f, +1.0f);  // +Y normal
+    auto faces = render_helpers::makeHorizontalFaces(1.0f, +1.0f);  // +Y normal
     uint8_t brightness = renderFaces(faces, view, proj);
 
     // Ambient-only brightness for teal (0, 0.5, 0.5) × ambient (0.08, 0.08, 0.12):
@@ -160,10 +110,10 @@ TEST_F(SurfaceFaceLightingTest, UpwardFacingSurface_ReceivesDiffuseLight)
 // ---------------------------------------------------------------------------
 TEST_F(SurfaceFaceLightingTest, DownwardFacingSurface_OnlyAmbient)
 {
-    auto view  = makeTopView();
-    auto proj  = makeProj();
+    auto view  = render_helpers::makeTopView();
+    auto proj  = render_helpers::makeProj();
 
-    auto faces = makeHorizontalFaces(1.0f, -1.0f);  // -Y normal
+    auto faces = render_helpers::makeHorizontalFaces(1.0f, -1.0f);  // -Y normal
     uint8_t brightness = renderFaces(faces, view, proj);
 
     // With NdotL = 0 (facing away) the surface shows ambient only.
@@ -188,11 +138,11 @@ TEST_F(SurfaceFaceLightingTest, DownwardFacingSurface_OnlyAmbient)
 // ---------------------------------------------------------------------------
 TEST_F(SurfaceFaceLightingTest, NdotL_TopFaceBrighterThanBottomFace)
 {
-    auto view = makeTopView();
-    auto proj = makeProj();
+    auto view = render_helpers::makeTopView();
+    auto proj = render_helpers::makeProj();
 
-    uint8_t topBrightness = renderFaces(makeHorizontalFaces(1.0f, +1.0f), view, proj);
-    uint8_t botBrightness = renderFaces(makeHorizontalFaces(1.0f, -1.0f), view, proj);
+    uint8_t topBrightness = renderFaces(render_helpers::makeHorizontalFaces(1.0f, +1.0f), view, proj);
+    uint8_t botBrightness = renderFaces(render_helpers::makeHorizontalFaces(1.0f, -1.0f), view, proj);
 
     EXPECT_GT(topBrightness, botBrightness + 20)
         << "Upward face (" << static_cast<int>(topBrightness)

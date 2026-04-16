@@ -85,31 +85,6 @@ protected:
             renderer, hrt, uiVtxBuf, UI_VTX_COUNT, /*directMode=*/false, uiOrtho);
     }
 
-    // Build 6 identical horizontal face-corner arrays.
-    // normalSign = +1 → +Y outward normal; -1 → -Y outward normal.
-    // Quad spans x=[-1,1], z=[-1.5,-2.5], placed at height y.
-    static std::array<std::array<glm::vec3, 4>, 6>
-    makeHorizontalFaces(float y, float normalSign)
-    {
-        std::array<std::array<glm::vec3, 4>, 6> faces;
-        for (int i = 0; i < 6; ++i) {
-            if (normalSign > 0.0f) {
-                // +Y normal: eu = +X, ev = -Z  → cross(eu,ev) = +Y
-                faces[i][0] = {-1.0f, y, -1.5f};
-                faces[i][1] = { 1.0f, y, -1.5f};
-                faces[i][2] = {-1.0f, y, -2.5f};
-                faces[i][3] = { 1.0f, y, -2.5f};
-            } else {
-                // -Y normal: swap P_10/P_01 to flip winding → cross(eu,ev) = -Y
-                faces[i][0] = {-1.0f, y, -1.5f};
-                faces[i][1] = {-1.0f, y, -2.5f};
-                faces[i][2] = { 1.0f, y, -1.5f};
-                faces[i][3] = { 1.0f, y, -2.5f};
-            }
-        }
-        return faces;
-    }
-
     // Render the cube surface in traditional mode; return mean RGB brightness
     // of the centre pixel.  The RT is transparent so the output is teal * lit.
     uint8_t renderFaces(
@@ -193,20 +168,6 @@ protected:
             (static_cast<uint32_t>(px[0]) + px[1] + px[2]) / 3);
     }
 
-    // Camera: above and slightly in front of the test surface, looking down at (0,1,-2).
-    static glm::mat4 makeTopView() {
-        return glm::lookAt(glm::vec3(0.0f, 2.5f, -1.0f),
-                           glm::vec3(0.0f, 1.0f, -2.0f),
-                           glm::vec3(1.0f, 0.0f,  0.0f));
-    }
-
-    static glm::mat4 makeProj() {
-        glm::mat4 proj = glm::perspective(glm::radians(60.0f),
-                                          static_cast<float>(FB_WIDTH) / FB_HEIGHT,
-                                          0.1f, 100.0f);
-        proj[1][1] *= -1.0f;
-        return proj;
-    }
 };
 
 // ---------------------------------------------------------------------------
@@ -221,10 +182,10 @@ protected:
 // ---------------------------------------------------------------------------
 TEST_F(TraditionalLightingTest, UpwardFacingSurface_ReceivesDiffuseLight_Traditional)
 {
-    auto view  = makeTopView();
-    auto proj  = makeProj();
+    auto view  = render_helpers::makeTopView();
+    auto proj  = render_helpers::makeProj();
 
-    uint8_t brightness = renderFaces(makeHorizontalFaces(1.0f, +1.0f), view, proj);
+    uint8_t brightness = renderFaces(render_helpers::makeHorizontalFaces(1.0f, +1.0f), view, proj);
 
     // Teal (0, 0.5, 0.5) × ambient (0.08, 0.08, 0.12): avg ≈ 8/255.
     // With NdotL ≈ 0.584 and spotlight inside cone, expect > 30/255.
@@ -247,10 +208,10 @@ TEST_F(TraditionalLightingTest, UpwardFacingSurface_ReceivesDiffuseLight_Traditi
 // ---------------------------------------------------------------------------
 TEST_F(TraditionalLightingTest, DownwardFacingSurface_OnlyAmbient_Traditional)
 {
-    auto view  = makeTopView();
-    auto proj  = makeProj();
+    auto view  = render_helpers::makeTopView();
+    auto proj  = render_helpers::makeProj();
 
-    uint8_t brightness = renderFaces(makeHorizontalFaces(1.0f, -1.0f), view, proj);
+    uint8_t brightness = renderFaces(render_helpers::makeHorizontalFaces(1.0f, -1.0f), view, proj);
 
     // With NdotL = 0, only ambient light reaches the surface.
     // Teal × ambient ≈ avg(0, 0.04, 0.06) ≈ 8/255.
@@ -270,11 +231,11 @@ TEST_F(TraditionalLightingTest, DownwardFacingSurface_OnlyAmbient_Traditional)
 // ---------------------------------------------------------------------------
 TEST_F(TraditionalLightingTest, NdotL_TopFaceBrighterThanBottomFace_Traditional)
 {
-    auto view = makeTopView();
-    auto proj = makeProj();
+    auto view = render_helpers::makeTopView();
+    auto proj = render_helpers::makeProj();
 
-    uint8_t topBrightness = renderFaces(makeHorizontalFaces(1.0f, +1.0f), view, proj);
-    uint8_t botBrightness = renderFaces(makeHorizontalFaces(1.0f, -1.0f), view, proj);
+    uint8_t topBrightness = renderFaces(render_helpers::makeHorizontalFaces(1.0f, +1.0f), view, proj);
+    uint8_t botBrightness = renderFaces(render_helpers::makeHorizontalFaces(1.0f, -1.0f), view, proj);
 
     EXPECT_GT(topBrightness, botBrightness + 20)
         << "Traditional mode: upward face (" << static_cast<int>(topBrightness)
@@ -298,9 +259,9 @@ TEST_F(TraditionalLightingTest, NdotL_TopFaceBrighterThanBottomFace_Traditional)
 // ---------------------------------------------------------------------------
 TEST_F(TraditionalLightingTest, DirectVsTraditional_LightingParity_SameSurface)
 {
-    auto view  = makeTopView();
-    auto proj  = makeProj();
-    auto faces = makeHorizontalFaces(1.0f, +1.0f);
+    auto view  = render_helpers::makeTopView();
+    auto proj  = render_helpers::makeProj();
+    auto faces = render_helpers::makeHorizontalFaces(1.0f, +1.0f);
 
     uint8_t brightnessTrad   = renderFaces(faces, view, proj);
     uint8_t brightnessDirect = renderFacesDirect(faces, view, proj);

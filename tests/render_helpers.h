@@ -7,10 +7,12 @@
 #include "ui_system.h"
 #include "vk_utils.h"
 #include <vector>
+#include <array>
 #include <cstdint>
 #include <algorithm>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "test_pixel_helpers.h"
 
 // =============================================================================
@@ -441,6 +443,57 @@ inline void expectPixelsDiffer(const std::vector<uint8_t>& a, const std::vector<
     uint64_t diff = computePixelDiff(a, b, 0);
     std::string ctx = context[0] ? std::string(": ") + context : "";
     EXPECT_GT(diff, threshold) << "Pixel buffers should differ by > " << threshold << " total diff" << ctx;
+}
+
+// -----------------------------------------------------------------------------
+// Create 6 identical horizontal face-corner arrays for lighting tests.
+// normalSign = +1 → +Y outward normal; -1 → -Y outward normal.
+// Quad spans x=[-1,1], z=[-1.5,-2.5], placed at height y.
+// -----------------------------------------------------------------------------
+inline std::array<std::array<glm::vec3, 4>, 6>
+makeHorizontalFaces(float y, float normalSign)
+{
+    std::array<std::array<glm::vec3, 4>, 6> faces;
+    for (int i = 0; i < 6; ++i) {
+        if (normalSign > 0.0f) {
+            // +Y normal: eu = +X, ev = -Z  → cross(eu,ev) = +Y
+            faces[i][0] = {-1.0f, y, -1.5f};
+            faces[i][1] = { 1.0f, y, -1.5f};
+            faces[i][2] = {-1.0f, y, -2.5f};
+            faces[i][3] = { 1.0f, y, -2.5f};
+        } else {
+            // -Y normal: swap P_10/P_01 to flip winding → cross(eu,ev) = -Y
+            faces[i][0] = {-1.0f, y, -1.5f};
+            faces[i][1] = {-1.0f, y, -2.5f};
+            faces[i][2] = { 1.0f, y, -1.5f};
+            faces[i][3] = { 1.0f, y, -2.5f};
+        }
+    }
+    return faces;
+}
+
+// -----------------------------------------------------------------------------
+// Standard camera looking down at a horizontal surface at (0, 1, -2) from above.
+// Used by lighting tests that place a horizontal quad in the spotlight cone.
+// -----------------------------------------------------------------------------
+inline glm::mat4 makeTopView()
+{
+    return glm::lookAt(glm::vec3(0.0f, 2.5f, -1.0f),
+                       glm::vec3(0.0f, 1.0f, -2.0f),
+                       glm::vec3(1.0f, 0.0f,  0.0f));
+}
+
+// -----------------------------------------------------------------------------
+// Perspective projection (60° FOV, 16:9, Vulkan Y-flip) for lighting tests.
+// FB_WIDTH/FB_HEIGHT give a 16:9 aspect ratio identical to SDFRenderFixture.
+// -----------------------------------------------------------------------------
+inline glm::mat4 makeProj()
+{
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f),
+                                      static_cast<float>(FB_WIDTH) / FB_HEIGHT,
+                                      0.1f, 100.0f);
+    proj[1][1] *= -1.0f;
+    return proj;
 }
 
 // -----------------------------------------------------------------------------

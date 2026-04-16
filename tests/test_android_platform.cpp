@@ -17,6 +17,7 @@ TEST(NativeWindowHandle, NullptrConstructorIsNull) {
     EXPECT_EQ(h.platformType(), PlatformType::Desktop);
 }
 
+#ifndef __ANDROID__
 TEST(NativeWindowHandle, FromGLFWNullptrIsNull) {
     NativeWindowHandle h = NativeWindowHandle::fromGLFW(nullptr);
     EXPECT_EQ(h.platformType(), PlatformType::Desktop);
@@ -32,6 +33,7 @@ TEST(NativeWindowHandle, FromGLFWNonNullRoundtrips) {
     EXPECT_EQ(h.glfwWindow(), fakeWindow);
     EXPECT_FALSE(h.isNull());
 }
+#endif
 
 TEST(NativeWindowHandle, PlatformTypeIsDesktopOnNonAndroid) {
 #ifndef __ANDROID__
@@ -51,12 +53,13 @@ TEST(NativeWindowHandle, FromAndroidRoundtrips) {
     EXPECT_FALSE(h.isNull());
 }
 
-TEST(NativeWindowHandle, AndroidWindowReturnsNullForDesktopHandle) {
-    NativeWindowHandle h = NativeWindowHandle::fromGLFW(nullptr);
+TEST(NativeWindowHandle, AndroidWindowReturnsNullForDefaultHandle) {
+    NativeWindowHandle h;
     EXPECT_EQ(h.androidWindow(), nullptr);
 }
 #endif
 
+#ifndef __ANDROID__
 TEST(NativeWindowHandle, CopyConstructorPreservesState) {
     GLFWwindow* fakeWindow = reinterpret_cast<GLFWwindow*>(static_cast<uintptr_t>(0xABCD));
     NativeWindowHandle a = NativeWindowHandle::fromGLFW(fakeWindow);
@@ -65,6 +68,7 @@ TEST(NativeWindowHandle, CopyConstructorPreservesState) {
     EXPECT_EQ(b.glfwWindow(), a.glfwWindow());
     EXPECT_EQ(b.isNull(), a.isNull());
 }
+#endif
 
 // ---------------------------------------------------------------------------
 // Android asset manager integration — UISystem::AssetLoader interface

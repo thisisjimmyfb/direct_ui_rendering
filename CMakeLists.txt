@@ -347,9 +347,7 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------
-# Tests subdirectory (desktop only)
+# Tests subdirectory (all platforms)
 # ---------------------------------------------------------------------------
-if(NOT PLATFORM_ANDROID)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
+enable_testing()
+add_subdirectory(tests)

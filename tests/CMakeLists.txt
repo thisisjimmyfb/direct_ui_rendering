@@ -2,6 +2,18 @@ cmake_minimum_required(VERSION 3.25)
 
 include(GoogleTest)
 
+# Device directory used by android_test_runner.sh and compile-time shader paths.
+set(ANDROID_DEVICE_TEST_DIR "/data/local/tmp/ctest_direct_ui")
+
+# ---------------------------------------------------------------------------
+# Android CTest crosscompiling emulator
+# ---------------------------------------------------------------------------
+if(PLATFORM_ANDROID)
+    set(CMAKE_CROSSCOMPILING_EMULATOR
+        "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/android_test_runner.sh"
+        CACHE STRING "ADB-based test runner for Android cross-compilation" FORCE)
+endif()
+
 # ---------------------------------------------------------------------------
 # tests_unit — pure CPU tests (no Vulkan context required)
 # Sources split by domain:
@@ -11,22 +23,29 @@ include(GoogleTest)
 #   test_ui_system.cpp    — SDFConstants, UISystemUVTable, TessellateString, UISurface
 #   test_metrics.cpp      — FrameTimingRollingAverage, UpdateGPUMem, AverageFrameMs
 #   test_hud.cpp          — MetricsTest HUDTessellation_* tests
-#   test_app_input.cpp    — AppInputHandler input handling, mode toggle, depth bias, terminal input
+#   test_app_input.cpp    — AppInputHandler (desktop only: GLFW dependency)
 #   test_light_intensity.cpp — LightIntensityPulsing time-based pulsing effect validation
 #   test_command_line.cpp — CommandLineTest --timeout parameter parsing validation
+#   test_android_platform.cpp — NativeWindowHandle and AssetLoader abstraction
 # ---------------------------------------------------------------------------
-add_executable(tests_unit
+set(UNIT_TEST_SOURCES
     test_matrix_math.cpp
     test_clip_planes.cpp
     test_scene.cpp
     test_ui_system.cpp
     test_metrics.cpp
     test_hud.cpp
-    test_app_input.cpp
     test_light_intensity.cpp
     test_command_line.cpp
     test_android_platform.cpp
 )
+
+# test_app_input.cpp uses GLFW (key constants, window creation) — desktop only
+if(NOT PLATFORM_ANDROID)
+    list(APPEND UNIT_TEST_SOURCES test_app_input.cpp)
+endif()
+
+add_executable(tests_unit ${UNIT_TEST_SOURCES})
 
 target_link_libraries(tests_unit PRIVATE
     direct_ui_rendering_lib
@@ -41,7 +60,12 @@ target_compile_definitions(tests_unit PRIVATE
     ATLAS_ASSET_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../assets/atlas.png"
 )
 
-gtest_discover_tests(tests_unit)
+if(PLATFORM_ANDROID)
+    # Source-based discovery avoids executing the cross-compiled binary on the host.
+    gtest_add_tests(TARGET tests_unit SOURCES ${UNIT_TEST_SOURCES})
+else()
+    gtest_discover_tests(tests_unit)
+endif()
 
 # ---------------------------------------------------------------------------
 # Test shaders for tests_render — compiled with -DUI_TEST_COLOR so ui.frag
@@ -76,7 +100,7 @@ foreach(SRC ${TEST_SHADER_SOURCES})
     set(SPV ${TEST_SHADER_OUTPUT_DIR}/${NAME}.spv)
     add_custom_command(
         OUTPUT  ${SPV}
-        COMMAND Vulkan::glslc -DUI_TEST_COLOR ${SRC} -o ${SPV}
+        COMMAND Vulkan::glslc -I${RENDER_SHADER_DIR} -DUI_TEST_COLOR ${SRC} -o ${SPV}
         DEPENDS ${SRC} ${SHADER_INCLUDE_HEADERS}
         COMMENT "Compiling test shader (UI_TEST_COLOR) ${NAME}"
         VERBATIM
@@ -102,7 +126,7 @@ add_custom_target(test_shaders DEPENDS ${TEST_SPIRV_OUTPUTS})
 #   test_shadow_acne_walls.cpp    — Shadow acne banding artifacts on walls (Tests ShadowAcneWall_*)
 #   test_surface_face_lighting.cpp — Surface NdotL and spotlight cone per-face lighting (Tests SurfaceFaceLighting_*)
 # ---------------------------------------------------------------------------
-add_executable(tests_render
+set(RENDER_TEST_SOURCES
     test_containment.cpp
     test_shadow_render.cpp
     test_ui_cube_shadow.cpp
@@ -121,6 +145,8 @@ add_executable(tests_render
     test_surface_face_lighting.cpp
 )
 
+add_executable(tests_render ${RENDER_TEST_SOURCES})
+
 add_dependencies(tests_render test_shaders)
 
 target_link_libraries(tests_render PRIVATE
@@ -132,26 +158,35 @@ target_include_directories(tests_render PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-# TEST_SHADER_DIR points to the UI_TEST_COLOR-compiled shaders.
-# When Renderer::init(headless=true) is implemented, it should load from
-# TEST_SHADER_DIR (if defined) instead of the default SHADER_DIR.
-target_compile_definitions(tests_render PRIVATE
-    TEST_SHADER_DIR="${TEST_SHADER_OUTPUT_DIR}/"
-)
-
-gtest_discover_tests(tests_render)
+# TEST_SHADER_DIR: host build path on desktop; device path on Android (pushed by runner).
+if(PLATFORM_ANDROID)
+    target_compile_definitions(tests_render PRIVATE
+        TEST_SHADER_DIR="${ANDROID_DEVICE_TEST_DIR}/test_shaders/"
+    )
+    gtest_add_tests(TARGET tests_render SOURCES ${RENDER_TEST_SOURCES})
+else()
+    # TEST_SHADER_DIR points to the UI_TEST_COLOR-compiled shaders.
+    target_compile_definitions(tests_render PRIVATE
+        TEST_SHADER_DIR="${TEST_SHADER_OUTPUT_DIR}/"
+    )
+    gtest_discover_tests(tests_render)
+endif()
 
 # ---------------------------------------------------------------------------
 # tests_sdf — headless Vulkan SDF/lighting tests using production shaders
 # Uses production shaders (no UI_TEST_COLOR) so the real atlas-sampling,
 # SDF smoothstep logic in ui_direct.frag, and composite.frag lighting are
 # all exercised.  SHADER_DIR inherited from direct_ui_rendering_lib.
+# On Android, SHADER_DIR_OVERRIDE env var (set by android_test_runner.sh)
+# redirects shader loading to the device-local shaders directory.
 # ---------------------------------------------------------------------------
-add_executable(tests_sdf
+set(SDF_TEST_SOURCES
     test_sdf.cpp
     test_traditional_lighting.cpp
     test_direct_ui_normal.cpp
 )
+
+add_executable(tests_sdf ${SDF_TEST_SOURCES})
 
 add_dependencies(tests_sdf shaders)
 
@@ -164,4 +199,8 @@ target_include_directories(tests_sdf PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-gtest_discover_tests(tests_sdf)
+if(PLATFORM_ANDROID)
+    gtest_add_tests(TARGET tests_sdf SOURCES ${SDF_TEST_SOURCES})
+else()
+    gtest_discover_tests(tests_sdf)
+endif()

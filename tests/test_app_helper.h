@@ -13,7 +13,8 @@ struct GLFWwindow;
  */
 class AppTestHelper {
 public:
-    // ---- Callback Forwarding ----
+    // ---- Callback Forwarding (desktop only) ----
+#ifndef __ANDROID__
     static void callOnKey(App& app, int key, int action) {
         app.onKey(key, action);
     }
@@ -29,6 +30,7 @@ public:
     static void callOnMouseButton(App& app, int button, int action) {
         app.onMouseButton(button, action);
     }
+#endif
 
     // ---- Render Mode ----
     static RenderMode getRenderMode(const App& app) {
@@ -107,7 +109,8 @@ public:
         return app.m_camPitch;
     }
 
-    // ---- Window ----
+    // ---- Window (desktop only) ----
+#ifndef __ANDROID__
     static GLFWwindow* getWindow(const App& app) {
         return app.m_window;
     }
@@ -115,6 +118,7 @@ public:
     static void setWindow(App& app, GLFWwindow* win) {
         app.m_window = win;
     }
+#endif
 
     // ---- Time ----
     static float getTime(const App& app) {

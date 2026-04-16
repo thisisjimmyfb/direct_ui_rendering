@@ -23,7 +23,18 @@
 bool Renderer::init(bool headless, const NativeWindowHandle& window, const char* shaderDir)
 {
     m_headless   = headless;
-    m_shaderDir  = shaderDir ? shaderDir : SHADER_DIR;
+    if (shaderDir) {
+        m_shaderDir = shaderDir;
+    } else {
+#ifdef __ANDROID__
+        // On Android, tests push shaders to the device and advertise the path
+        // via SHADER_DIR_OVERRIDE so the filesystem loader can find them.
+        const char* envDir = getenv("SHADER_DIR_OVERRIDE");
+        m_shaderDir = envDir ? envDir : SHADER_DIR;
+#else
+        m_shaderDir = SHADER_DIR;
+#endif
+    }
     // Headless mode uses a known format; non-headless format is set by createSwapchain().
     if (m_headless) m_colorFormat = VK_FORMAT_R8G8B8A8_UNORM;
 

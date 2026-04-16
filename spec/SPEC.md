@@ -325,13 +325,15 @@ Testing is split into three GoogleTest targets:
 | `tests_render` | Headless `VkDevice` | Clip containment: UI pixels fall inside the projected quad |
 | `tests_sdf` | Headless `VkDevice` | SDF threshold/render tests with production shaders and real atlas |
 
+All targets are built for both desktop and Android. On Android, CTest uses an ADB-based crosscompiling emulator (`cmake/android_test_runner.sh`) to push binaries to the device, copy shader SPIR-V files to a device-local directory (`/data/local/tmp/ctest_direct_ui`), and execute via `adb shell`. Desktop-only tests (GLFW input handling) are excluded from the Android build. Test discovery on Android uses source-based registration (`gtest_add_tests`) to avoid executing cross-compiled binaries on the host at configure time.
+
 Both targets link against the same app library (`direct_ui_rendering_lib`) and call the same functions the app uses. No math or rendering logic is duplicated.
 
 ### 9.2 Headless Renderer Design Constraint
 
 The `Renderer` class must cleanly separate the **device/pipeline layer** from the **swapchain/presentation layer**:
 
-- `Renderer::init(headless: bool, window: NativeWindowHandle, shaderDir: const char*)` — when `headless` is `true`, skips surface and swapchain setup. `NativeWindowHandle` wraps either a `GLFWwindow*` (desktop) or an `ANativeWindow*` (Android); passing a null handle is equivalent to headless mode. All pipelines, render passes, descriptor layouts, and VMA allocator are initialized identically regardless of platform. The `shaderDir` parameter specifies the directory path where test shaders are located; tests must pass `TEST_SHADER_DIR` at runtime so the library resolves test shaders rather than defaulting to the production `SHADER_DIR`.
+- `Renderer::init(headless: bool, window: NativeWindowHandle, shaderDir: const char*)` — when `headless` is `true`, skips surface and swapchain setup. `NativeWindowHandle` wraps either a `GLFWwindow*` (desktop) or an `ANativeWindow*` (Android); passing a null handle is equivalent to headless mode. All pipelines, render passes, descriptor layouts, and VMA allocator are initialized identically regardless of platform. The `shaderDir` parameter specifies the directory path where test shaders are located; tests must pass `TEST_SHADER_DIR` at runtime so the library resolves test shaders rather than defaulting to the production `SHADER_DIR`. On Android, when `shaderDir` is `nullptr`, the `SHADER_DIR_OVERRIDE` environment variable is consulted before falling back to the compile-time `SHADER_DIR`; this allows the ADB test runner to redirect shader loading to a device-local directory without recompilation.
 - The output render target is abstracted behind a `RenderTarget` handle. In normal mode this wraps the swapchain image; in headless mode it wraps a plain `VkImage` allocated by the test.
 - All render functions (`drawScene`, `drawUI`, etc.) accept a `RenderTarget&` and are unaware of whether it is a swapchain image or an offscreen image.
 

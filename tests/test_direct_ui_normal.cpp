@@ -27,16 +27,11 @@
 #include "renderer.h"
 #include "scene.h"
 #include "ui_surface.h"
-#include "ui_system.h"
-#include "vk_utils.h"
 #include "scene_ubo_helper.h"
 #include "render_helpers.h"
 
-#include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <vector>
-#include <cstdint>
 #include <array>
 
 class DirectUINormalTest : public SDFRenderFixture {
@@ -61,15 +56,8 @@ protected:
         scene.init();
         ASSERT_TRUE(renderer.uploadSceneGeometry(scene));
 
-        // Camera above the surface, looking down at its centre (0,1,-2).
-        // up=(1,0,0) because look direction is mostly -Y.
-        m_view = glm::lookAt(glm::vec3(0.0f, 2.5f, -1.0f),
-                             glm::vec3(0.0f, 1.0f, -2.0f),
-                             glm::vec3(1.0f, 0.0f,  0.0f));
-        m_proj = glm::perspective(glm::radians(60.0f),
-                                  static_cast<float>(FB_WIDTH) / FB_HEIGHT,
-                                  0.1f, 100.0f);
-        m_proj[1][1] *= -1.0f;  // Vulkan Y-flip
+        m_view = render_helpers::makeTopView();
+        m_proj = render_helpers::makeProj();
 
         // White atlas: all pixels = (255,255,255,255) — fully opaque white, linear filter.
         render_helpers::createAtlas(renderer.getDevice(), renderer.getAllocator(),
@@ -124,79 +112,8 @@ protected:
         surfaceUBO.surfaceNormal = glm::vec4(normal, 0.0f);
         renderer.updateSurfaceUBO(surfaceUBO);
 
-        const VkDeviceSize readbackSize = static_cast<VkDeviceSize>(FB_WIDTH) * FB_HEIGHT * 4;
-        VkBuffer      readbackBuf;
-        VmaAllocation readbackAlloc;
-        {
-            VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-            bci.size        = readbackSize;
-            bci.usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VmaAllocationCreateInfo ai{};
-            ai.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-            EXPECT_EQ(vmaCreateBuffer(renderer.getAllocator(), &bci, &ai,
-                                      &readbackBuf, &readbackAlloc, nullptr), VK_SUCCESS);
-        }
-
-        VkCommandBufferAllocateInfo cbAI{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cbAI.commandPool        = renderer.getCommandPool();
-        cbAI.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cbAI.commandBufferCount = 1;
-        VkCommandBuffer cmd = VK_NULL_HANDLE;
-        EXPECT_EQ(vkAllocateCommandBuffers(renderer.getDevice(), &cbAI, &cmd), VK_SUCCESS);
-
-        VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(cmd, &beginInfo);
-
-        renderer.recordShadowPass(cmd);
-        renderer.recordMainPass(cmd, hrt.rt, /*directMode=*/true,
-                                uiVtxBuf, UI_VTX_COUNT, /*sdfThreshold=*/0.0f);
-
-        vku::imageBarrier(cmd, hrt.rt.image,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_ACCESS_TRANSFER_READ_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-        VkBufferImageCopy copyRegion{};
-        copyRegion.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-        copyRegion.imageExtent      = {FB_WIDTH, FB_HEIGHT, 1};
-        vkCmdCopyImageToBuffer(cmd, hrt.rt.image,
-                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               readbackBuf, 1, &copyRegion);
-
-        vkEndCommandBuffer(cmd);
-
-        VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers    = &cmd;
-        EXPECT_EQ(vkQueueSubmit(renderer.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE),
-                  VK_SUCCESS);
-        vkQueueWaitIdle(renderer.getGraphicsQueue());
-
-        void* mapped = nullptr;
-        vmaMapMemory(renderer.getAllocator(), readbackAlloc, &mapped);
-        std::vector<uint8_t> pixels(readbackSize);
-        memcpy(pixels.data(), mapped, static_cast<size_t>(readbackSize));
-        vmaUnmapMemory(renderer.getAllocator(), readbackAlloc);
-
-        vkFreeCommandBuffers(renderer.getDevice(), renderer.getCommandPool(), 1, &cmd);
-        vmaDestroyBuffer(renderer.getAllocator(), readbackBuf, readbackAlloc);
-
-        VkCommandBuffer resetCmd = vku::beginOneShot(renderer.getDevice(),
-                                                     renderer.getCommandPool());
-        vku::imageBarrier(resetCmd, hrt.rt.image,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_ACCESS_TRANSFER_READ_BIT,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        vku::endOneShot(renderer.getDevice(), renderer.getCommandPool(),
-                        renderer.getGraphicsQueue(), resetCmd);
+        auto pixels = render_helpers::renderAndReadback(
+            renderer, hrt, uiVtxBuf, UI_VTX_COUNT, /*directMode=*/true);
 
         const size_t ci = (static_cast<size_t>(FB_HEIGHT / 2) * FB_WIDTH + FB_WIDTH / 2) * 4;
         return static_cast<uint8_t>(
